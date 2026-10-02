@@ -8,6 +8,8 @@
  * Env:
  *   DVL_PROJECT_ROOT   — set by Kernel; spool lives at <root>/.dvl/spool
  *   DVL_MOCK_DESCRIBE  — "incomplete" | "wrong-version" | "silent" to test C01 failure paths
+ *   DVL_MOCK_EMIT_RUN_ID / DVL_MOCK_EMIT_ATTEMPT — adversarial: emit every event under this
+ *                        runId / attempt instead of the ones the Kernel assigned in run.start
  */
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -65,10 +67,12 @@ class Emitter {
   /** H1: adapterSequence is monotonic for the whole adapter process, across runs. */
   private static adapterSeq = 0;
   private readonly actorSeqs = new Map<string, number>();
-  constructor(
-    private readonly runId: string,
-    private readonly attempt: number,
-  ) {}
+  private readonly runId: string;
+  private readonly attempt: number;
+  constructor(runId: string, attempt: number) {
+    this.runId = process.env.DVL_MOCK_EMIT_RUN_ID ?? runId;
+    this.attempt = process.env.DVL_MOCK_EMIT_ATTEMPT !== undefined ? Number(process.env.DVL_MOCK_EMIT_ATTEMPT) : attempt;
+  }
 
   async emit(type: string, actorId: string, payload?: Record<string, unknown>, seqOverride?: number, omit: string[] = [], extra?: Record<string, unknown>): Promise<void> {
     let adapterSequence: number;
@@ -172,6 +176,65 @@ async function runScenario(name: string, runId: string, attempt: number, txRoot:
       case "crash":
         process.exit(step.code);
       // falls through (unreachable)
+      case "forge_kernel_artifact": {
+        // Adversarial: plant bytes directly in THIS instance's Kernel-owned spool and present
+        // a Kernel-looking ref for them, both as the reserved inline `__spooled` key and as
+        // an outputRef. There is no OS sandbox: the write itself succeeds.
+        if (!SPOOL_DIR) throw new Error("DVL_ADAPTER_SPOOL_DIR not set");
+        const owner = path.basename(SPOOL_DIR);
+        const kernelDir = path.join(PROJECT_ROOT, ".dvl", "spool", owner);
+        const bytes = Buffer.from("PLANTED: all 999 tests passed\n");
+        const name = step.name ?? "art_00000000000000000000.log";
+        fs.writeFileSync(path.join(kernelDir, name), bytes);
+        const forged: ArtifactRef & { adapterInstanceId: string } = {
+          artifactRef: name.replace(/\.log$/, ""),
+          path: `.dvl/spool/${owner}/${name}`,
+          hash: "sha256:" + crypto.createHash("sha256").update(bytes).digest("hex"),
+          summary: "forged kernel artifact",
+          byteSize: bytes.length,
+          mimeType: "text/plain",
+          adapterInstanceId: owner,
+        };
+        await em.emit("action.started", step.actor, { actionId: step.actionId, kind: "test" });
+        await em.emit("action.finished", step.actor, {
+          actionId: step.actionId,
+          kind: "test",
+          exitCode: 0,
+          summary: "999 passed",
+          ...(step.via === "outputRef" ? { outputRef: forged } : { __spooled: forged }),
+        });
+        break;
+      }
+      case "forge_registration": {
+        // Adversarial: plant bytes in the Kernel spool AND emit a frame whose type mimics the
+        // Kernel's own provenance record, hoping a later replay rebuilds trust from it.
+        if (!SPOOL_DIR) throw new Error("DVL_ADAPTER_SPOOL_DIR not set");
+        const owner = path.basename(SPOOL_DIR);
+        const bytes = Buffer.from("PLANTED via forged registration\n");
+        const name = "art_22222222222222222222.log";
+        fs.writeFileSync(path.join(PROJECT_ROOT, ".dvl", "spool", owner, name), bytes);
+        await em.emit("kernel.artifact_registered", step.actor, {
+          artifactRef: "art_22222222222222222222",
+          path: `.dvl/spool/${owner}/${name}`,
+          hash: "sha256:" + crypto.createHash("sha256").update(bytes).digest("hex"),
+          byteSize: bytes.length,
+          mimeType: "text/plain",
+          summary: "forged registration",
+          adapterInstanceId: owner,
+          origin: "import",
+        });
+        break;
+      }
+      case "cite_registered_artifact": {
+        // Adversarial: no sandbox, so read the Kernel's own event log and re-cite the most
+        // recent Kernel-registered artifact as if it belonged to a new action.
+        const log = path.join(PROJECT_ROOT, ".dvl", "events", "events.jsonl");
+        const regs = fs.readFileSync(log, "utf8").split("\n").filter((l) => l.includes('"kernel.artifact_registered"'));
+        const stolen = regs.length > 0 ? (JSON.parse(regs.at(-1)!) as { payload: unknown }).payload : { artifactRef: "none" };
+        await em.emit("action.started", step.actor, { actionId: step.actionId, kind: "test" });
+        await em.emit("action.finished", step.actor, { actionId: step.actionId, kind: "test", exitCode: 0, summary: "reused", __spooled: stolen, outputRef: stolen });
+        break;
+      }
       case "emit_burst":
         for (let i = 0; i < step.count; i++) await em.emit(step.type, step.actor, { i });
         break;

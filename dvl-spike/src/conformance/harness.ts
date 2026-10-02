@@ -40,3 +40,20 @@ export function violations(k: Kernel, kind?: string) {
     .map((e) => e.payload as Record<string, unknown>)
     .filter((p) => !kind || p.kind === kind);
 }
+
+/**
+ * Start a run without requiring run.start to be acknowledged. When a safety limit can halt
+ * the instance before the Kernel processes the ack, startRun() rightly rejects ("adapter
+ * instance terminated before replying") while the run itself exists and ends `halted`.
+ * kernel.run_created is appended synchronously inside startRun, before its first await.
+ */
+export function startRunLenient(k: Kernel, scenario: string): { runId: string; acked: Promise<boolean> } {
+  const before = k.store.all().length;
+  const acked = k.startRun({ role: "builder", goal: scenario, acceptanceCriteria: ["mock"], scope: ["src/**"], scenario }).then(
+    () => true,
+    () => false,
+  );
+  const created = k.store.all().slice(before).find((e) => e.type === "kernel.run_created");
+  if (!created?.runId) throw new Error("startRun did not create a run (describe() missing?)");
+  return { runId: created.runId, acked };
+}

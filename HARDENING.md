@@ -98,6 +98,23 @@ Add a test that simulates Kernel interruption and verifies replay from JSONL eve
 Acceptance:
 After restart, Kernel can reconstruct enough state to avoid false completion or corrupted truth.
 
+## Post-review fixes (Codex blocker candidates A–C) — pending independent review
+
+- A (H1, run ownership): an adapter event naming a known run is applied only if its
+  (adapterInstanceId, runId, attempt) equals the run's Kernel-created binding, the attempt is not terminal,
+  and the transition is legal (`run.started` only from `starting`). Otherwise: `run_binding_violation`
+  (`run_owned_by_other_instance` | `attempt_mismatch` | `run_terminal` | `illegal_transition`), stored, never
+  applied. Continuation after a terminal attempt only via `Kernel.retryRun()` (attempt N+1, rebound to the
+  current instance, `kernel.attempt_created`). Suite C10.
+- B (H2, spool provenance): no OS sandbox — an adapter can physically write into `.dvl/spool/<id>/`.
+  Location never grants trust: every Kernel spool write records `kernel.artifact_registered` (id, owner, path,
+  hash, size, origin, run/attempt), rebuilt on replay from Kernel-origin records only; `verifyKernelArtifact`
+  requires a matching registration plus a byte re-check. Evidence attaches a Kernel-spooled payload ref only
+  for the exact payload object the Kernel created (adapter `__spooled` keys are data). Suite C11.
+- C (H3, maxIncomingBytes): charged in the transport when stdout/stderr bytes are read — before splitting,
+  parsing, queueing, gates — per instance, once. Breach seals the queue, one `kernel.safety_halt`
+  (`kind: max_incoming_bytes`, stream, byte counts), instance killed and fenced. Suite C12; C09 updated.
+
 ## Execution rule
 
 Implement one hardening task at a time.

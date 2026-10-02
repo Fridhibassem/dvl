@@ -29,7 +29,13 @@ export type Step =
   | { op: "sleep"; ms: number }
   | { op: "crash"; code: number }
   /** H3: emit `count` events back-to-back as fast as stdout accepts them. */
-  | { op: "emit_burst"; type: string; actor: string; count: number };
+  | { op: "emit_burst"; type: string; actor: string; count: number }
+  /** Adversarial (blocker B): plant a file in the Kernel spool and cite it as Kernel-spooled. */
+  | { op: "forge_kernel_artifact"; actor: string; actionId: string; via: "__spooled" | "outputRef"; name?: string }
+  /** Adversarial (blocker B): emit a frame mimicking kernel.artifact_registered for planted bytes. */
+  | { op: "forge_registration"; actor: string }
+  /** Adversarial (blocker B): re-cite an artifact the Kernel registered for an earlier event. */
+  | { op: "cite_registered_artifact"; actor: string; actionId: string };
 
 export const ROOT = "actor_root";
 
@@ -257,6 +263,52 @@ export const SCENARIOS: Record<string, Step[]> = {
     { op: "stdout_flood", bytes: 2 * 1024 * 1024 },
     ...finish(),
   ],
+
+  /** Blocker A — keeps working after its own run is terminal (same instance). */
+  "post-terminal": [
+    ...start(),
+    { op: "emit", type: "run.finished", actor: ROOT },
+    { op: "emit", type: "run.started", actor: ROOT },
+    { op: "emit", type: "actor.started", actor: "actor_ghost", payload: { parentActorId: ROOT } },
+    ...smallTest(ROOT, "act_ghost"),
+    { op: "emit", type: "run.failed", actor: ROOT },
+  ],
+
+  /** Blocker A — a second run.started on a live run (attempted reset of lifecycle state). */
+  "double-start": [
+    ...start(),
+    { op: "emit", type: "actor.fork", actor: ROOT, payload: { childActorIds: ["actor_w"] } },
+    { op: "emit", type: "run.started", actor: "actor_w" },
+    { op: "emit", type: "actor.started", actor: "actor_w", payload: { parentActorId: ROOT } },
+    { op: "emit", type: "actor.finished", actor: "actor_w" },
+    ...finish(),
+  ],
+
+  /** Blocker B — forged Kernel artifact via the reserved inline key. */
+  "forge-spooled": [...start(), { op: "forge_kernel_artifact", actor: ROOT, actionId: "act_forge", via: "__spooled" }, ...finish()],
+  /** Blocker B — forged Kernel artifact via outputRef. */
+  "forge-outputref": [...start(), { op: "forge_kernel_artifact", actor: ROOT, actionId: "act_forge", via: "outputRef" }, ...finish()],
+
+  /** Blocker B — legit Kernel-spooled payload, then re-cite that registered artifact. */
+  "reuse-registered": [
+    ...start(),
+    { op: "emit", type: "action.started", actor: ROOT, payload: { actionId: "act_inl", kind: "command" } },
+    { op: "emit", type: "action.finished", actor: ROOT, payload: { actionId: "act_inl", kind: "command", exitCode: 0, summary: "big inline", output: "x".repeat(100 * 1024) } },
+    { op: "sleep", ms: 300 },
+    { op: "cite_registered_artifact", actor: ROOT, actionId: "act_reuse" },
+    ...finish(),
+  ],
+
+  /** Duration re-arm — a run that outlives a short maxDurationMs. */
+  slow: [...start(), { op: "sleep", ms: 4_000 }, ...finish()],
+
+  /** Blocker B — adapter forges a provenance record for planted bytes. */
+  "forge-registration": [...start(), { op: "forge_registration", actor: ROOT }, ...finish()],
+
+  /** Blocker C — non-DVL1 stdout volume with almost no protocol frames. */
+  "stdout-noise-flood": [...start(), { op: "stdout_flood", bytes: 1024 * 1024 }, ...finish()],
+  /** Blocker C — stderr volume with almost no protocol frames. */
+  "stderr-flood": [...start(), { op: "stderr_flood", bytes: 1024 * 1024 }, ...finish()],
 
   /** Adapter death mid-run. */
   crash: [

@@ -201,12 +201,6 @@ export class Kernel {
   private readonly actorSeq = new Map<string, number>(); // instanceKey(adapterInstanceId, runId, actorId) → last seq
   private readonly lastDeferralKey = new Map<string, string>();
   private lastMutationAt = 0;
-  /**
-   * §49 maxIncomingBytes is a per-adapter-instance budget (like maxDurationMs, whose timer
-   * is re-armed per instance). Kernel-wide accumulation would make a fresh instance start
-   * out already over budget after a restart (pre-H1 a Kernel had exactly one instance).
-   */
-  private readonly incomingBytes = new Map<string, number>(); // adapterInstanceId → bytes
   private durationTimer: NodeJS.Timeout | null = null;
   private closeWaiters: (() => void)[] = [];
   private closed = false;
@@ -302,6 +296,7 @@ export class Kernel {
       adapterInstanceId,
       maxQueuedFrames: this.queueLimits.maxQueuedFrames,
       maxQueuedBytes: this.queueLimits.maxQueuedBytes,
+      maxIncomingBytes: this.limits.maxIncomingBytes,
       onFrame: (f, bytes, entryInstanceId) => this.ingest(f, bytes, entryInstanceId),
       onIssue: (i) => this.onTransportIssue(i, adapterInstanceId),
       onClose: (info) => this.onAdapterClosed(info, adapterInstanceId),
@@ -376,8 +371,46 @@ export class Kernel {
     const txWorkspace = path.join(this.store.dvlDir, "tx", runId);
     fs.mkdirSync(txWorkspace, { recursive: true });
     this.runs.set(runId, { identity, adapterInstanceId: this.adapterInstanceId!, status: "starting", txWorkspace, endWaiters: [] });
-    this.kernelEvent("kernel.run_created", { ...identity, txWorkspace: path.relative(this.opts.root, txWorkspace) }, runId, attempt);
+    this.kernelEvent("kernel.run_created", { ...identity, adapterInstanceId: this.adapterInstanceId, txWorkspace: path.relative(this.opts.root, txWorkspace) }, runId, attempt);
+    await this.sendRunStart(identity, task, txWorkspace, decisions);
+    return identity;
+  }
 
+  /**
+   * Blocker A — the ONLY way a run continues after its attempt ended: the Kernel creates
+   * attempt N+1 of the same run and binds it to the CURRENT adapter instance. The terminal
+   * attempt stays terminal history; events for it (or from any other instance) are rejected.
+   */
+  async retryRun(runId: string, task: RunTask): Promise<RunIdentity> {
+    if (!this.capabilities) throw new Error("describe() must succeed before run.start");
+    const run = this.runs.get(runId);
+    if (!run) throw new Error(`unknown run ${runId}`);
+    if (!isTerminal(run.status)) throw new Error(`run ${runId} attempt ${run.identity.attempt} is not terminal (status=${run.status})`);
+    const previous = { attempt: run.identity.attempt, status: run.status, adapterInstanceId: run.adapterInstanceId };
+    const identity: RunIdentity = { ...run.identity, attempt: previous.attempt + 1 };
+    run.identity = identity;
+    run.adapterInstanceId = this.adapterInstanceId!;
+    run.status = "starting";
+    run.rootActorId = undefined;
+    run.endWaiters = [];
+    this.kernelEvent(
+      "kernel.attempt_created",
+      {
+        runId,
+        attempt: identity.attempt,
+        adapterInstanceId: run.adapterInstanceId,
+        previousAttempt: previous.attempt,
+        previousStatus: previous.status,
+        previousAdapterInstanceId: previous.adapterInstanceId,
+      },
+      runId,
+      identity.attempt,
+    );
+    await this.sendRunStart(identity, task, run.txWorkspace, { db: "postgres", style: "spike" });
+    return identity;
+  }
+
+  private async sendRunStart(identity: RunIdentity, task: RunTask, txWorkspace: string, decisions: Record<string, string>): Promise<void> {
     await this.request("run.start", {
       ...identity,
       role: task.role,
@@ -394,7 +427,6 @@ export class Kernel {
       credentialsRef: null, // §51: never inline credentials
       scenario: task.scenario,
     });
-    return identity;
   }
 
   waitForRunEnd(runId: string, timeoutMs = 15_000): Promise<RunStatus> {
@@ -428,10 +460,14 @@ export class Kernel {
   async shutdown(timeoutMs = 3_000): Promise<void> {
     if (!this.child) return;
     if (!this.closed) {
-      try {
-        await this.transport!.send({ type: "adapter.shutdown", requestId: newId("req") });
-      } catch {
-        /* already gone */
+      // A halted/terminated instance is never commanded again: its process was killed and a
+      // write to its stdin may wait forever for a 'drain' that never comes.
+      if (!this.terminatedInstances.has(this.adapterInstanceId!)) {
+        try {
+          await this.transport!.send({ type: "adapter.shutdown", requestId: newId("req") });
+        } catch {
+          /* already gone */
+        }
       }
       const exited = await this.waitClosed(timeoutMs);
       if (!exited) {
@@ -531,22 +567,8 @@ export class Kernel {
       return;
     }
 
-    const incoming = (this.incomingBytes.get(aid) ?? 0) + rawBytes;
-    this.incomingBytes.set(aid, incoming);
-    if (incoming > this.limits.maxIncomingBytes) {
-      // The triggering frame is kept as diagnostic context (never truth), then the
-      // instance is halted and fenced: nothing after it is applied.
-      const seq = frame.adapterSequence;
-      this.store.append({ origin: "adapter", trust: "protocol_violation", type, adapterInstanceId: aid, adapterSequence: typeof seq === "number" ? seq : undefined, payload: capPayload(this, aid, frame, type) });
-      this.haltForSafety(`maxIncomingBytes ${this.limits.maxIncomingBytes} exceeded`, {
-        kind: "max_incoming_bytes",
-        maxIncomingBytes: this.limits.maxIncomingBytes,
-        incomingBytes: incoming,
-        triggeringFrameBytes: rawBytes,
-        lastAcceptedAdapterSequence: this.lastAdapterSequence.get(aid) ?? null,
-      });
-      return;
-    }
+    // §49 maxIncomingBytes is charged by the transport at the drain boundary (blocker C),
+    // per adapter instance, before parsing/queueing/gates — never again here.
 
     // 1) Responses to Kernel commands.
     if ((RESPONSE_TYPES as readonly string[]).includes(type)) {
@@ -626,6 +648,43 @@ export class Kernel {
       this.kernelEvent("kernel.protocol_violation", { kind: "actor_sequence_gap", adapterInstanceId: aid, actorId, expected: lastActorSeq + 1, got: actorSequence }, runId, attempt);
     }
     this.actorSeq.set(actorKey, Math.max(lastActorSeq, actorSequence));
+
+    // 4b) Blocker A — execution binding + lifecycle fence. An event naming a known run is
+    //     admissible only if THIS instance holds that run's current Kernel-created attempt,
+    //     the attempt is not terminal, and the transition is legal. Otherwise it is kept as
+    //     a violation and never applied: a provider can never revive or hijack an attempt.
+    if (run) {
+      const reason =
+        run.adapterInstanceId !== aid
+          ? "run_owned_by_other_instance"
+          : attempt !== run.identity.attempt
+            ? "attempt_mismatch"
+            : isTerminal(run.status)
+              ? "run_terminal"
+              : type === "run.started" && run.status !== "starting"
+                ? "illegal_transition"
+                : null;
+      if (reason) {
+        this.store.append({ origin: "adapter", trust: "protocol_violation", type, adapterInstanceId: aid, runId, attempt, adapterSequence, actorId, actorSequence, payload: capPayload(this, aid, frame.payload, type, runId) });
+        this.kernelEvent(
+          "kernel.protocol_violation",
+          {
+            kind: "run_binding_violation",
+            reason,
+            type,
+            runId,
+            attempt,
+            adapterInstanceId: aid,
+            boundAdapterInstanceId: run.adapterInstanceId,
+            boundAttempt: run.identity.attempt,
+            status: run.status,
+          },
+          runId,
+          attempt,
+        );
+        return;
+      }
+    }
 
     // 5) Unknown event types: stored, never trusted (§56).
     const known = (PROVIDER_EVENT_TYPES as readonly string[]).includes(type);
@@ -734,7 +793,7 @@ export class Kernel {
       // H2: the adapter's claim is never attached. Only bytes the Kernel verified and
       // imported into its own spool are referenced, via a Kernel-issued ref.
       const aid = ev.adapterInstanceId!;
-      const imp = this.store.importAdapterArtifact(outputRef, aid);
+      const imp = this.store.importAdapterArtifact(outputRef, aid, { runId: run.identity.runId, attempt: run.identity.attempt });
       if (imp.ok) {
         refs.push(imp.ref);
         this.kernelEvent("kernel.artifact_imported", { adapterInstanceId: aid, artifactRef: imp.ref.artifactRef, sourceArtifactRef: imp.ref.sourceArtifactRef, hash: imp.ref.hash, byteSize: imp.ref.byteSize }, run.identity.runId, ev.attempt);
@@ -744,8 +803,11 @@ export class Kernel {
         this.kernelEvent("kernel.artifact_rejected", { adapterInstanceId: aid, reason: imp.reason, sourceEventId: ev.eventId }, run.identity.runId, ev.attempt);
       }
     }
-    const spooled = (ev.payload as { __spooled?: ArtifactRef } | undefined)?.__spooled;
-    if (spooled) refs.push(spooled);
+    // Blocker B: attach a Kernel-spooled payload ref ONLY if the Kernel itself replaced this
+    // very event's payload (object identity). An adapter-supplied `__spooled` key is just data.
+    if (ev.payload !== null && typeof ev.payload === "object" && KERNEL_SPOOL_MARKERS.has(ev.payload)) {
+      refs.push((ev.payload as { __spooled: ArtifactRef }).__spooled);
+    }
 
     const summary = String(payload.summary ?? `${kind} exit=${String(payload.exitCode)}`).slice(0, 280);
     const rec: EvidenceRecord = {
@@ -783,7 +845,12 @@ export class Kernel {
     });
     const violations = manifest.filter((m) => !m.inside || m.symlink);
     const aborted = this.actors.aborted();
-    const ref = this.store.spoolArtifact(JSON.stringify(manifest, null, 2), { owner: KERNEL_SPOOL_OWNER, mimeType: "application/json", summary: `snapshot of ${files.length} files` });
+    const ref = this.store.spoolArtifact(JSON.stringify(manifest, null, 2), {
+      owner: KERNEL_SPOOL_OWNER,
+      mimeType: "application/json",
+      summary: `snapshot of ${files.length} files`,
+      provenance: { origin: "snapshot", runId, attempt: run.identity.attempt },
+    });
     const rec: EvidenceRecord = {
       evidenceId: newId("evd"),
       projectId: run.identity.projectId,
@@ -835,6 +902,19 @@ export class Kernel {
   private onTransportIssue(issue: TransportIssue, adapterInstanceId: string): void {
     // Noise is expected and already spooled; only count it in the store as a diagnostic.
     if (issue.kind === "noise") return;
+    if (issue.kind === "byte_limit") {
+      const { kind: _kind, ...b } = issue;
+      if (adapterInstanceId !== this.adapterInstanceId || this.terminatedInstances.has(adapterInstanceId)) {
+        this.kernelEvent("kernel.transport_issue", { kind: "byte_limit", stale: true, ...b });
+        return;
+      }
+      this.haltForSafety(`maxIncomingBytes ${b.maxIncomingBytes} exceeded`, {
+        kind: "max_incoming_bytes",
+        ...b,
+        lastAcceptedAdapterSequence: this.lastAdapterSequence.get(adapterInstanceId) ?? null,
+      });
+      return;
+    }
     if (issue.kind === "queue_overflow") {
       const { kind: _kind, ...q } = issue;
       if (adapterInstanceId !== this.adapterInstanceId || this.terminatedInstances.has(adapterInstanceId)) {
@@ -965,15 +1045,28 @@ export class Kernel {
  * spooled defensively and a protocol violation recorded. Nothing >32KB lands
  * inline in the event log.
  */
+/**
+ * Blocker B — payload objects the Kernel itself created by spooling an oversized payload.
+ * Identity-based, so an adapter payload that merely contains a `__spooled` key never matches.
+ */
+const KERNEL_SPOOL_MARKERS = new WeakSet<object>();
+
 function capPayload(k: Kernel, adapterInstanceId: string, payload: unknown, type: string, runId?: string): unknown {
   if (payload === undefined) return undefined;
   const json = JSON.stringify(payload);
   const bytes = Buffer.byteLength(json);
   if (bytes <= MAX_INLINE_PAYLOAD_BYTES) return payload;
   // H2: spooled into the sending instance's own Kernel-owned spool, ref stamped with it.
-  const ref = k.store.spoolArtifact(json, { owner: adapterInstanceId, mimeType: "application/json", summary: `oversized inline payload of ${type} (${bytes} bytes) spooled by Kernel` });
+  const ref = k.store.spoolArtifact(json, {
+    owner: adapterInstanceId,
+    mimeType: "application/json",
+    summary: `oversized inline payload of ${type} (${bytes} bytes) spooled by Kernel`,
+    provenance: { origin: "kernel_spooled_payload", runId },
+  });
   k.kernelEvent("kernel.protocol_violation", { kind: "inline_payload_exceeded", type, bytes, limit: MAX_INLINE_PAYLOAD_BYTES, artifactRef: ref.artifactRef }, runId);
-  return { __spooled: ref, __note: "payload exceeded 32KB inline cap; spooled by Kernel" };
+  const marker = { __spooled: ref, __note: "payload exceeded 32KB inline cap; spooled by Kernel" };
+  KERNEL_SPOOL_MARKERS.add(marker);
+  return marker;
 }
 
 function instanceKey(...parts: string[]): string {

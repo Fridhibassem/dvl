@@ -11,7 +11,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { Kernel, KernelOptions } from "../kernel/kernel.js";
 import type { StoredEvent } from "../kernel/types.js";
-import { makeKernel, violations, waitForEvent } from "./harness.js";
+import { makeKernel, startRunLenient, violations, waitForEvent } from "./harness.js";
 
 let kernels: Kernel[] = [];
 let releases: (() => void)[] = [];
@@ -112,7 +112,7 @@ describe("C09 safety-halt regression for pre-H3 triggers (H3)", () => {
     const spawnedAt = Date.now();
     await k.describe();
     const aidA = k.currentAdapterInstanceId!;
-    const run = await k.startRun({ role: "builder", goal: "slow", acceptanceCriteria: ["mock"], scope: ["src/**"], scenario: "burst-100" });
+    const run = startRunLenient(k, "burst-100"); // a safety halt may race the run.start ack
     await untilQuiet(k);
     const queued = k.transportStats!.queueDepth;
     expect(queued).toBeGreaterThan(100); // heartbeats, action.*, actor/run.finished all waiting
@@ -169,7 +169,7 @@ describe("C09 safety-halt regression for pre-H3 triggers (H3)", () => {
     k.start();
     await k.describe();
     const aidA = k.currentAdapterInstanceId!;
-    const run = await k.startRun({ role: "builder", goal: "slow", acceptanceCriteria: ["mock"], scope: ["src/**"], scenario: "burst-100" });
+    const run = startRunLenient(k, "burst-100"); // a safety halt may race the run.start ack
     await untilQuiet(k);
     const queued = k.transportStats!.queueDepth;
     const halt = await waitForEvent(k, (e) => e.type === "kernel.safety_halt", LIMIT + 5_000);
@@ -193,23 +193,20 @@ describe("C09 safety-halt regression for pre-H3 triggers (H3)", () => {
 
   it("maxIncomingBytes: one halt with limit metadata, trailing frames fenced, fresh instance healthy", async () => {
     const LIMIT = 8_000;
-    // A short duration limit that expires while A's queue is still held after the byte
-    // halt: the second trigger on the same instance must NOT produce a second halt.
+    // Bytes are charged at the drain boundary (blocker C), so the burst trips the limit
+    // while processing is held. Processing of intent_hint (seq 2) is held, so the halted
+    // instance stays open — independent of how stdout is chunked — past a short duration
+    // limit: that second trigger on the same instance must NOT produce a second halt.
     const DURATION = 2_500;
-    // action.requested (right after the burst) is held separately, so the halted instance
-    // stays open (unclosed) while its duration timer expires.
-    const { k, release, releaseType } = gatedKernel("c09-bytes", { limits: { maxIncomingBytes: LIMIT, maxDurationMs: DURATION } }, ["heartbeat", "action.requested"]);
+    const { k, release } = gatedKernel("c09-bytes", { limits: { maxIncomingBytes: LIMIT, maxDurationMs: DURATION } }, ["provider.intent_hint"]);
     k.start();
     const spawnedAt = Date.now();
     await k.describe();
     const aidA = k.currentAdapterInstanceId!;
-    const run = await k.startRun({ role: "builder", goal: "chatty", acceptanceCriteria: ["mock"], scope: ["src/**"], scenario: "burst-100" });
-    await untilQuiet(k);
-    const received = k.transportStats!.framesReceived;
-    expect(halts(k)).toHaveLength(0);
+    const run = startRunLenient(k, "burst-100"); // the byte halt may race the run.start ack
 
-    release(); // processing resumes; cumulative bytes cross LIMIT mid-burst
     const halt = await waitForEvent(k, (e) => e.type === "kernel.safety_halt");
+    expect(k.store.ofType("provider.intent_hint")).toHaveLength(0); // processing was still held
     const p = halt.payload as Record<string, unknown>;
     expect(p).toMatchObject({
       errorClass: "halted_by_safety_limit",
@@ -217,40 +214,63 @@ describe("C09 safety-halt regression for pre-H3 triggers (H3)", () => {
       maxIncomingBytes: LIMIT,
       adapterInstanceId: aidA,
       runIds: [run.runId],
+      stream: "stdout",
+      lastAcceptedAdapterSequence: 1,
     });
     expect(String(p.reason)).toBe(`maxIncomingBytes ${LIMIT} exceeded`);
     expect(p.incomingBytes as number).toBeGreaterThan(LIMIT);
-    expect((p.incomingBytes as number) - (p.triggeringFrameBytes as number)).toBeLessThanOrEqual(LIMIT);
-    const lastAccepted = p.lastAcceptedAdapterSequence as number;
-    expect(lastAccepted).toBeGreaterThan(2);
+    expect((p.incomingBytes as number) - (p.triggeringChunkBytes as number)).toBeLessThanOrEqual(LIMIT);
+    expect((p.stdoutBytes as number) + (p.stderrBytes as number)).toBe(p.incomingBytes);
 
-    // A is halted but still open (its trailing action.requested is held). Let its duration
-    // timer expire: a second trigger on the same instance must not add a second halt.
+    // Halted but still open (a frame is in flight): let its duration limit expire.
     await until(() => Date.now() - spawnedAt > DURATION + 300, "duration limit to pass", DURATION + 5_000);
-    expect(k.transportStats!.queueDepth).toBeGreaterThan(0); // still open, frames still queued
+    expect(await k.waitClosed(1)).toBe(false);
     expect(halts(k)).toHaveLength(1);
-    releaseType("action.requested");
+    release();
     await k.waitClosed(10_000);
     expect(halts(k)).toHaveLength(1);
 
-    // Accepted prefix is exactly 1..lastAccepted; the triggering frame is kept as a
-    // diagnostic violation; everything after it is fenced. Nothing vanished.
-    expect(acceptedOf(k, aidA).map((e) => e.adapterSequence)).toEqual([...Array(lastAccepted).keys()].map((i) => i + 1));
+    // Accepted prefix is exactly seq 1; everything in flight or queued at the breach is
+    // fenced by the halt (H1 terminated-instance guard); everything after it was never queued.
+    expect(acceptedOf(k, aidA).map((e) => e.adapterSequence)).toEqual([1]);
     const after = recordsOf(k, aidA).filter((e) => e.kernelSequence > halt.kernelSequence);
     expect(after.length).toBeGreaterThan(0);
     expect(after.every((e) => e.trust === "protocol_violation")).toBe(true);
-    // ...and fenced by the halt (H1 terminated-instance guard), not merely re-rejected.
     const stale = violations(k, "stale_adapter_instance");
     expect(stale).toHaveLength(after.length);
     expect(stale.every((v) => v.adapterInstanceId === aidA && v.terminated === true)).toBe(true);
-    const trigger = recordsOf(k, aidA).filter((e) => e.kernelSequence < halt.kernelSequence && e.trust === "protocol_violation");
-    expect(trigger.map((e) => e.adapterSequence)).toEqual([lastAccepted + 1]);
-    expect(recordsOf(k, aidA)).toHaveLength(received);
+    const s = k.transportStats!;
+    expect(recordsOf(k, aidA).length + s.framesRejected).toBe(s.framesReceived); // nothing vanished
     expectNoFalseTruth(k, aidA, run.runId);
-    expect(k.transportStats!.queueDepth).toBe(0);
+    expect(s.queueDepth).toBe(0);
 
     // Retire normally (A is closed) and start B: B must not inherit A's byte budget.
     k.restartAdapter();
     await expectFreshInstanceHealthy(k, aidA);
+  });
+
+  it("maxDurationMs is re-armed for the replacement instance (runtime, not just source)", async () => {
+    const LIMIT = 1_000;
+    const k = makeKernel("c09-rearm", { limits: { maxDurationMs: LIMIT } });
+    kernels.push(k);
+    k.start();
+    await k.describe();
+    const aidA = k.currentAdapterInstanceId!;
+    const rA = startRunLenient(k, "slow"); // the duration halt may race the run.start ack under load
+    expect(await k.waitForRunEnd(rA.runId, LIMIT + 5_000)).toBe("halted");
+    await k.waitClosed(5_000);
+
+    k.restartAdapter();
+    const tB = Date.now();
+    await k.describe();
+    const aidB = k.currentAdapterInstanceId!;
+    const rB = startRunLenient(k, "slow");
+    expect(await k.waitForRunEnd(rB.runId, LIMIT + 5_000)).toBe("halted");
+    expect(Date.now() - tB).toBeGreaterThanOrEqual(LIMIT - TIMER_SLACK_MS);
+    const hs = halts(k).map((e) => e.payload as Record<string, unknown>);
+    expect(hs.map((h) => [h.kind, h.adapterInstanceId, h.runIds])).toEqual([
+      ["max_duration", aidA, [rA.runId]],
+      ["max_duration", aidB, [rB.runId]],
+    ]);
   });
 });

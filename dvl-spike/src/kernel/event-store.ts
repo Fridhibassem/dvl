@@ -33,6 +33,19 @@ const MIME_RE = /^[A-Za-z0-9][\w.+-]{0,63}\/[A-Za-z0-9][\w.+-]{0,63}$/;
 
 export type ArtifactCheck = { ok: true; ref: ArtifactRef } | { ok: false; reason: string };
 
+/**
+ * Blocker B — Kernel provenance of a spool artifact. Recorded in the event log
+ * (kernel.artifact_registered) at the moment the Kernel writes the bytes, and rebuilt on
+ * replay. A file under .dvl/spool without a matching registration is never trusted.
+ */
+export type ArtifactOrigin = "import" | "kernel_spooled_payload" | "snapshot";
+export interface ArtifactProvenance {
+  origin: ArtifactOrigin;
+  runId?: string;
+  attempt?: number;
+}
+export const ARTIFACT_REGISTERED = "kernel.artifact_registered";
+
 export function sha256(data: Buffer | string): string {
   return "sha256:" + crypto.createHash("sha256").update(data).digest("hex");
 }
@@ -57,6 +70,8 @@ export class EventStore {
   private seq = 0;
   private readonly events: StoredEvent[] = [];
   private readonly evidence = new Map<string, EvidenceRecord>();
+  /** Blocker B — Kernel-issued artifacts by artifactId. The only source of spool trust. */
+  private readonly registry = new Map<string, ArtifactRef & ArtifactProvenance>();
 
   constructor(private readonly opts: EventStoreOptions) {
     this.dvlDir = path.join(opts.root, ".dvl");
@@ -143,7 +158,7 @@ export class EventStore {
   }
 
   /** Kernel writes bytes into its own spool for `owner`. Never called with adapter-chosen paths. */
-  spoolArtifact(content: Buffer | string, opts: { owner: string; mimeType: string; summary: string; sourceArtifactRef?: string }): ArtifactRef {
+  spoolArtifact(content: Buffer | string, opts: { owner: string; mimeType: string; summary: string; sourceArtifactRef?: string; provenance: ArtifactProvenance }): ArtifactRef {
     const artifactId = newId("art");
     const ext = opts.mimeType === "application/json" ? "json" : "log";
     const dir = this.kernelSpoolDirOf(opts.owner);
@@ -159,6 +174,10 @@ export class EventStore {
     const ref: ArtifactRef = { artifactRef: artifactId, path: rel, hash: sha256(buf), summary: opts.summary.slice(0, 280), byteSize: buf.length, mimeType: opts.mimeType };
     if (opts.owner !== KERNEL_SPOOL_OWNER) ref.adapterInstanceId = opts.owner;
     if (opts.sourceArtifactRef !== undefined) ref.sourceArtifactRef = opts.sourceArtifactRef;
+    // Provenance is recorded by the Kernel at write time — never inferred from location.
+    const entry = { ...ref, ...opts.provenance };
+    this.append({ origin: "kernel", trust: "kernel_truth", type: ARTIFACT_REGISTERED, runId: opts.provenance.runId, attempt: opts.provenance.attempt, payload: entry });
+    this.registry.set(artifactId, entry);
     return ref;
   }
 
@@ -175,7 +194,7 @@ export class EventStore {
    * Bytes are read ONCE through an O_NOFOLLOW fd; the hash is computed over exactly the
    * bytes that are then written, so a concurrent rewrite cannot slip in unverified data.
    */
-  importAdapterArtifact(claim: unknown, adapterInstanceId: string): ArtifactCheck {
+  importAdapterArtifact(claim: unknown, adapterInstanceId: string, context: { runId?: string; attempt?: number } = {}): ArtifactCheck {
     const c = claim as Partial<ArtifactRef> | null;
     if (!c || typeof c !== "object") return { ok: false, reason: "malformed artifactRef" };
     if (typeof c.path !== "string" || typeof c.hash !== "string" || typeof c.byteSize !== "number" || !Number.isInteger(c.byteSize) || c.byteSize < 0) {
@@ -237,15 +256,22 @@ export class EventStore {
     const mimeType = typeof c.mimeType === "string" && MIME_RE.test(c.mimeType) ? c.mimeType : "application/octet-stream";
     const summary = typeof c.summary === "string" ? c.summary : "";
     const source = typeof c.artifactRef === "string" ? c.artifactRef.slice(0, 128) : undefined;
-    return { ok: true, ref: this.spoolArtifact(buf, { owner: adapterInstanceId, mimeType, summary, sourceArtifactRef: source }) };
+    return { ok: true, ref: this.spoolArtifact(buf, { owner: adapterInstanceId, mimeType, summary, sourceArtifactRef: source, provenance: { origin: "import", ...context } }) };
   }
 
   /**
-   * H2 — re-verify a Kernel-issued ref against its bytes in the Kernel spool. A missing or
-   * altered file is never valid runtime material.
+   * H2/blocker B — re-verify a ref against (1) the Kernel's own registration of that
+   * artifact and (2) the bytes on disk. Location alone grants nothing: a file planted under
+   * .dvl/spool, or a ref whose id/path/hash/size/owner differs from the registration, is
+   * rejected even if its bytes hash correctly. A missing or altered file is never valid.
    */
   verifyKernelArtifact(ref: ArtifactRef): { ok: true } | { ok: false; reason: string } {
     if (typeof ref?.path !== "string" || typeof ref.hash !== "string") return { ok: false, reason: "malformed artifactRef" };
+    const reg = typeof ref.artifactRef === "string" ? this.registry.get(ref.artifactRef) : undefined;
+    if (!reg) return { ok: false, reason: `artifact ${String(ref.artifactRef)} is not registered by the Kernel` };
+    if (reg.path !== ref.path || reg.hash !== ref.hash || reg.byteSize !== ref.byteSize || reg.adapterInstanceId !== ref.adapterInstanceId) {
+      return { ok: false, reason: `artifactRef does not match the Kernel registration of ${ref.artifactRef}` };
+    }
     const parts = ref.path.split("/");
     if (parts.length !== 4 || parts[0] !== ".dvl" || parts[1] !== "spool" || !OWNER_RE.test(parts[2]!) || !SAFE_FILENAME_RE.test(parts[3]!)) {
       return { ok: false, reason: `not a Kernel spool path: ${ref.path}` };
@@ -310,6 +336,11 @@ export class EventStore {
     for (const e of readJsonl<StoredEvent>(this.eventsPath)) {
       this.events.push(e);
       this.seq = Math.max(this.seq, e.kernelSequence);
+      // Only Kernel-origin registrations rebuild provenance; an adapter can never forge one.
+      if (e.type === ARTIFACT_REGISTERED && e.origin === "kernel" && e.trust === "kernel_truth") {
+        const entry = e.payload as ArtifactRef & ArtifactProvenance;
+        this.registry.set(entry.artifactRef, entry);
+      }
     }
     for (const r of this.readEvidenceFromDisk()) this.evidence.set(r.evidenceId, r);
   }
