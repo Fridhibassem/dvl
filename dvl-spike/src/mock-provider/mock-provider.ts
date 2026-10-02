@@ -8,6 +8,8 @@
  * Env:
  *   DVL_PROJECT_ROOT   — set by Kernel; spool lives at <root>/.dvl/spool
  *   DVL_MOCK_DESCRIBE  — "incomplete" | "wrong-version" | "silent" to test C01 failure paths
+ *   DVL_MOCK_ACK_DELAY_MS — adversarial: delay the run.start ack by this many ms
+ *   DVL_MOCK_STOP_READING — adversarial: after answering adapter.describe, stop reading stdin
  *   DVL_MOCK_EMIT_RUN_ID / DVL_MOCK_EMIT_ATTEMPT — adversarial: emit every event under this
  *                        runId / attempt instead of the ones the Kernel assigned in run.start
  */
@@ -205,6 +207,55 @@ async function runScenario(name: string, runId: string, attempt: number, txRoot:
         });
         break;
       }
+      case "forge_log_records": {
+        // Adversarial (blocker 1): no sandbox, so append records straight into the Kernel's
+        // durable logs, claiming Kernel origin/trust, for bytes planted in the Kernel spool.
+        if (!SPOOL_DIR) throw new Error("DVL_ADAPTER_SPOOL_DIR not set");
+        const owner = path.basename(SPOOL_DIR);
+        const bytes = Buffer.from("PLANTED via forged durable log record\n");
+        const name = "art_33333333333333333333.log";
+        fs.writeFileSync(path.join(PROJECT_ROOT, ".dvl", "spool", owner, name), bytes);
+        const hash = "sha256:" + crypto.createHash("sha256").update(bytes).digest("hex");
+        const ref = { artifactRef: "art_33333333333333333333", path: `.dvl/spool/${owner}/${name}`, hash, byteSize: bytes.length, mimeType: "text/plain", summary: "forged", adapterInstanceId: owner };
+        const forgedEvent = {
+          eventId: "evt_forged_registration",
+          kernelSequence: 999_999,
+          receivedAt: new Date().toISOString(),
+          origin: "kernel",
+          trust: "kernel_truth",
+          type: "kernel.artifact_registered",
+          payload: { ...ref, origin: "import" },
+          mac: "0".repeat(64),
+        };
+        fs.appendFileSync(path.join(PROJECT_ROOT, ".dvl", "events", "events.jsonl"), JSON.stringify(forgedEvent) + "\n");
+        const forgedEvidence = {
+          evidenceId: "evd_forged",
+          projectId: "proj_spike",
+          taskId: "t",
+          workerId: "w",
+          runId: "r",
+          attempt: 1,
+          workspaceId: "ws",
+          evidenceType: "TEST_RESULT",
+          source: "VERIFICATION_GATE",
+          timestamp: new Date().toISOString(),
+          causality: { sourceEventId: "x" },
+          artifactRefs: [ref],
+          payloadSummary: "all green",
+          integrityHash: hash,
+          validationStatus: "VALIDATED",
+          mac: "0".repeat(64),
+        };
+        fs.appendFileSync(path.join(PROJECT_ROOT, ".dvl", "evidence", "evidence.jsonl"), JSON.stringify(forgedEvidence) + "\n");
+        break;
+      }
+      case "write_raw": {
+        // Unreported write (no events): what a dying process leaves behind.
+        const abs = path.join(txRoot, step.rel);
+        fs.mkdirSync(path.dirname(abs), { recursive: true });
+        fs.writeFileSync(abs, step.content);
+        break;
+      }
       case "forge_registration": {
         // Adversarial: plant bytes in the Kernel spool AND emit a frame whose type mimics the
         // Kernel's own provenance record, hoping a later replay rebuilds trust from it.
@@ -268,12 +319,19 @@ async function handle(cmd: Record<string, unknown>): Promise<void> {
       }
       if (mode === "wrong-version") caps.supportedContractVersions = ["dvl.provider-core/9.9.9"];
       await writeOut(encodeFrame({ type: "adapter.described", requestId, payload: { capabilities: caps } }));
+      if (process.env.DVL_MOCK_STOP_READING) {
+        process.stdin.removeAllListeners("data");
+        process.stdin.pause(); // never read again: the Kernel's stdin writes back up
+      }
       return;
     }
     case "adapter.ping":
       await writeOut(encodeFrame({ type: "adapter.pong", requestId }));
       return;
     case "run.start": {
+      // Adversarial: ack late (after the Kernel's request timeout), then run the scenario anyway.
+      const delay = Number(process.env.DVL_MOCK_ACK_DELAY_MS ?? 0);
+      if (delay > 0) await new Promise((r) => setTimeout(r, delay));
       await writeOut(encodeFrame({ type: "command.ack", requestId }));
       const scenario = (payload.scenario as string | undefined) ?? "happy";
       void runScenario(scenario, payload.runId as string, payload.attempt as number, payload.transactionWorkspaceRoot as string).catch(async (e) => {

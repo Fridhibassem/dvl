@@ -13,7 +13,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { EventStore, newId, sha256 } from "./event-store.js";
+import { EventStore, newId, sha256, type ChainHead, type ChainReport } from "./event-store.js";
 import { NdjsonTransport, type TransportIssue } from "./ndjson-transport.js";
 import {
   CONTRACT_VERSION,
@@ -60,6 +60,15 @@ export interface KernelOptions {
    */
   frameGate?: (frameType: string) => Promise<void>;
   quiescenceMs?: number;
+  /**
+   * Blocker 1 — secret the HOST holds for this project and hands to every Kernel it creates
+   * for the root. Authenticates durable records (HMAC chain). Never put in env or on disk,
+   * never passed to the adapter. Absent ⇒ an ephemeral key: nothing written by this Kernel
+   * can be authenticated by a later one.
+   */
+  integrityKey?: Buffer;
+  /** Blocker 1 — host-held head anchor of the events log (truncation/rollback detection). */
+  expectedHead?: ChainHead;
   /** H3 — protocol queue bounds per adapter instance (defaults: MAX_QUEUED_FRAMES / MAX_QUEUED_BYTES). */
   queueLimits?: Partial<QueueLimits>;
 }
@@ -77,16 +86,55 @@ export interface RunTask {
   scenario?: string; // Mock-only: selects deterministic scenario
 }
 
-type RunStatus = "starting" | "running" | "finished" | "failed" | "halted";
+/**
+ * Run (attempt) lifecycle — blocker 2/4. Terminal states are irreversible for the attempt:
+ *   starting --run.started--> running --run.finished--> finished
+ *   starting|running --run.failed--> failed;   any --safety halt--> halted
+ *   starting --dispatch failed--> failed_to_start (Kernel-decided, never adapter-driven)
+ */
+type RunStatus = "starting" | "running" | "finished" | "failed" | "halted" | "failed_to_start";
 
+/** Action lifecycle — blocker 2. `finished`/`aborted` are terminal. */
+type ActionState = "requested" | "started" | "finished" | "aborted";
+interface ActionRecord {
+  state: ActionState;
+  actorId: string;
+}
+
+/**
+ * Everything below is owned by ONE attempt (the current binding). A retry replaces it
+ * wholesale: nothing of a previous attempt's actors, actions or workspace is reused.
+ */
 interface RunState {
   identity: RunIdentity;
-  /** H1 — the adapter instance this run was started on. */
+  /** H1 — the adapter instance this attempt is bound to. */
   adapterInstanceId: string;
   status: RunStatus;
+  /** Blocker 3 — this attempt's own transaction workspace (.dvl/tx/<runId>/attempt-<n>). */
   txWorkspace: string;
   rootActorId?: string;
+  actors: ActorTracker;
+  actions: Map<string, ActionRecord>;
   endWaiters: ((s: RunStatus) => void)[];
+}
+
+/** Admission gate — action transitions: event → allowed from-states and resulting state. */
+const ACTION_FSM: Record<string, { from: (ActionState | "none")[]; to: ActionState }> = {
+  "action.requested": { from: ["none"], to: "requested" },
+  "action.started": { from: ["none", "requested"], to: "started" },
+  "action.updated": { from: ["started"], to: "started" },
+  "action.finished": { from: ["started"], to: "finished" },
+};
+/** Events that are acts OF an actor (vs run-level/informational events). */
+const ACTOR_SCOPED = (type: string) => type.startsWith("actor.") || type.startsWith("action.") || type === "workspace.hint" || type === "approval.requested";
+
+export interface RetryOptions {
+  /**
+   * Blocker 3 — carry files forward ONLY from this explicitly selected safe mechanical
+   * checkpoint: a VALIDATED FILE_SNAPSHOT of the same run whose registered manifest still
+   * matches the bytes on disk. Absent ⇒ the new attempt starts from an empty workspace.
+   */
+  resumeFromEvidenceId?: string;
 }
 
 // ───────────────────────── actor lifecycle §46 ─────────────────────────
@@ -145,6 +193,13 @@ export class ActorTracker {
     this.ensure(actorId).state = "finished";
   }
 
+  /** H1 — owner died: abort every unresolved actor; returns the aborted ids. */
+  abortUnresolved(): string[] {
+    const ids: string[] = [];
+    for (const a of this.actors.values()) if (this.abort(a.actorId)) ids.push(a.actorId);
+    return ids;
+  }
+
   /** H1 — owner instance died. Returns true if the actor was unresolved (and is now aborted). */
   abort(actorId: string): boolean {
     const a = this.actors.get(actorId);
@@ -182,15 +237,12 @@ export interface SnapshotResult {
 
 export class Kernel {
   readonly store: EventStore;
-  readonly actors = new ActorTracker();
   capabilities: AdapterCapabilities | null = null;
 
   private child: ChildProcess | null = null;
   private transport: NdjsonTransport | null = null;
   private readonly pending = new Map<string, { resolve: (f: Record<string, unknown>) => void; reject: (e: Error) => void; timer: NodeJS.Timeout }>();
   private readonly runs = new Map<string, RunState>();
-  private readonly activeActions = new Map<string, { actorId: string; adapterInstanceId: string }>(); // actionId → owner
-  private readonly actorOwner = new Map<string, string>(); // actorId → adapterInstanceId that last drove it
   private readonly terminatedInstances = new Set<string>();
   /**
    * H1 — identity of the live adapter process. adapterSequence is only meaningful
@@ -209,7 +261,14 @@ export class Kernel {
   readonly projectId: string;
 
   constructor(private readonly opts: KernelOptions) {
-    this.store = new EventStore({ root: opts.root, fsync: opts.fsync });
+    this.store = new EventStore({ root: opts.root, fsync: opts.fsync, integrityKey: opts.integrityKey, expectedHead: opts.expectedHead });
+    const { events, evidence } = this.store.integrity;
+    if (!events.ok || !evidence.ok) {
+      // Fail closed: rejected records stay on disk as inert bytes and confer nothing.
+      const summarize = (r: ChainReport) => ({ ok: r.ok, accepted: r.accepted, truncated: r.truncated, rejectedCount: r.rejected.length, rejected: r.rejected.slice(0, 50) });
+      this.kernelEvent("kernel.integrity_violation", { events: summarize(events), evidence: summarize(evidence) });
+    }
+    if (this.store.ephemeralKey) this.kernelEvent("kernel.integrity_key_ephemeral", { note: "no host integrityKey: durable records will not authenticate after restart" });
     this.limits = { maxDurationMs: 60_000, maxIncomingBytes: 256 * 1024 * 1024, ...opts.limits };
     this.queueLimits = { maxQueuedFrames: MAX_QUEUED_FRAMES, maxQueuedBytes: MAX_QUEUED_BYTES, ...opts.queueLimits };
     this.projectId = "proj_spike";
@@ -368,46 +427,162 @@ export class Kernel {
       decisionSnapshotVersion: 1,
       decisionSnapshotHash: sha256(JSON.stringify(decisions)),
     };
-    const txWorkspace = path.join(this.store.dvlDir, "tx", runId);
-    fs.mkdirSync(txWorkspace, { recursive: true });
-    this.runs.set(runId, { identity, adapterInstanceId: this.adapterInstanceId!, status: "starting", txWorkspace, endWaiters: [] });
+    const txWorkspace = this.createAttemptWorkspace(runId, attempt);
+    const run: RunState = { identity, adapterInstanceId: this.adapterInstanceId!, status: "starting", txWorkspace, actors: new ActorTracker(), actions: new Map(), endWaiters: [] };
+    this.runs.set(runId, run);
     this.kernelEvent("kernel.run_created", { ...identity, adapterInstanceId: this.adapterInstanceId, txWorkspace: path.relative(this.opts.root, txWorkspace) }, runId, attempt);
-    await this.sendRunStart(identity, task, txWorkspace, decisions);
+    await this.dispatch(run, identity, task);
     return identity;
   }
 
   /**
-   * Blocker A — the ONLY way a run continues after its attempt ended: the Kernel creates
-   * attempt N+1 of the same run and binds it to the CURRENT adapter instance. The terminal
-   * attempt stays terminal history; events for it (or from any other instance) are rejected.
+   * The ONLY way a run continues after its attempt ended: the Kernel creates attempt N+1,
+   * binds it to the CURRENT adapter instance, gives it a FRESH workspace (blocker 3) and
+   * dispatches it atomically (blocker 4). The terminal attempt stays terminal history.
+   * Every precondition — including checkpoint safety — is checked before anything changes.
    */
-  async retryRun(runId: string, task: RunTask): Promise<RunIdentity> {
+  async retryRun(runId: string, task: RunTask, opts: RetryOptions = {}): Promise<RunIdentity> {
     if (!this.capabilities) throw new Error("describe() must succeed before run.start");
     const run = this.runs.get(runId);
     if (!run) throw new Error(`unknown run ${runId}`);
     if (!isTerminal(run.status)) throw new Error(`run ${runId} attempt ${run.identity.attempt} is not terminal (status=${run.status})`);
-    const previous = { attempt: run.identity.attempt, status: run.status, adapterInstanceId: run.adapterInstanceId };
-    const identity: RunIdentity = { ...run.identity, attempt: previous.attempt + 1 };
+    const checkpoint = opts.resumeFromEvidenceId ? this.loadCheckpoint(runId, opts.resumeFromEvidenceId) : null;
+
+    const previous = { attempt: run.identity.attempt, status: run.status, adapterInstanceId: run.adapterInstanceId, workspaceId: run.identity.workspaceId, txWorkspace: run.txWorkspace };
+    this.archiveAttemptWorkspace(runId, previous);
+
+    const identity: RunIdentity = { ...run.identity, attempt: previous.attempt + 1, workspaceId: newId("ws") };
+    const txWorkspace = this.createAttemptWorkspace(runId, identity.attempt);
     run.identity = identity;
     run.adapterInstanceId = this.adapterInstanceId!;
     run.status = "starting";
+    run.txWorkspace = txWorkspace;
     run.rootActorId = undefined;
+    run.actors = new ActorTracker();
+    run.actions = new Map();
     run.endWaiters = [];
     this.kernelEvent(
       "kernel.attempt_created",
       {
         runId,
         attempt: identity.attempt,
+        workspaceId: identity.workspaceId,
+        txWorkspace: path.relative(this.opts.root, txWorkspace),
         adapterInstanceId: run.adapterInstanceId,
         previousAttempt: previous.attempt,
         previousStatus: previous.status,
         previousAdapterInstanceId: previous.adapterInstanceId,
+        resumeFromEvidenceId: checkpoint?.evidenceId ?? null,
       },
       runId,
       identity.attempt,
     );
-    await this.sendRunStart(identity, task, run.txWorkspace, { db: "postgres", style: "spike" });
+    if (checkpoint) {
+      for (const f of checkpoint.files) {
+        const abs = path.join(txWorkspace, f.path);
+        fs.mkdirSync(path.dirname(abs), { recursive: true });
+        fs.writeFileSync(abs, f.bytes, { flag: "wx" });
+      }
+      this.kernelEvent(
+        "kernel.checkpoint_restored",
+        { runId, attempt: identity.attempt, fromAttempt: checkpoint.attempt, evidenceId: checkpoint.evidenceId, files: checkpoint.files.map((f) => f.path) },
+        runId,
+        identity.attempt,
+      );
+    }
+    await this.dispatch(run, identity, task);
     return identity;
+  }
+
+  /** Blocker 3 — every attempt gets a brand-new directory; an existing one is never reused. */
+  private createAttemptWorkspace(runId: string, attempt: number): string {
+    const runDir = path.join(this.store.dvlDir, "tx", runId);
+    fs.mkdirSync(runDir, { recursive: true });
+    const dir = path.join(runDir, `attempt-${attempt}`);
+    fs.mkdirSync(dir); // throws EEXIST rather than inherit anything
+    return dir;
+  }
+
+  /** Blocker 3 — final disposition of a superseded attempt's workspace: hashed, registered, left in place, never reused. */
+  private archiveAttemptWorkspace(runId: string, prev: { attempt: number; status: RunStatus; workspaceId: string; txWorkspace: string }): void {
+    const files = listFiles(prev.txWorkspace);
+    const manifest = files.map((rel) => {
+      const st = fs.lstatSync(path.join(prev.txWorkspace, rel));
+      return { path: rel, symlink: st.isSymbolicLink(), bytes: st.size, hash: st.isSymbolicLink() ? null : sha256(fs.readFileSync(path.join(prev.txWorkspace, rel))) };
+    });
+    const manifestRef = this.store.spoolArtifact(JSON.stringify(manifest, null, 2), {
+      owner: KERNEL_SPOOL_OWNER,
+      mimeType: "application/json",
+      summary: `archived workspace of ${runId} attempt ${prev.attempt} (${prev.status})`,
+      provenance: { origin: "attempt_archive", runId, attempt: prev.attempt },
+    });
+    this.kernelEvent(
+      "kernel.workspace_archived",
+      { runId, attempt: prev.attempt, workspaceId: prev.workspaceId, previousStatus: prev.status, txWorkspace: path.relative(this.opts.root, prev.txWorkspace), files, manifestRef },
+      runId,
+      prev.attempt,
+    );
+  }
+
+  /**
+   * Blocker 3 — a checkpoint is safe only if it is a Kernel-VALIDATED FILE_SNAPSHOT of THIS
+   * run, its manifest is a registered Kernel artifact, and every listed file still has
+   * exactly the snapshotted bytes in that attempt's workspace. Returns the verified bytes.
+   */
+  private loadCheckpoint(runId: string, evidenceId: string): { evidenceId: string; attempt: number; files: { path: string; bytes: Buffer }[] } {
+    const ev = this.store.allEvidence().find((e) => e.evidenceId === evidenceId);
+    if (!ev) throw new Error(`unknown checkpoint ${evidenceId}`);
+    if (ev.runId !== runId) throw new Error(`checkpoint ${evidenceId} belongs to run ${ev.runId}, not ${runId}`);
+    if (ev.evidenceType !== "FILE_SNAPSHOT" || ev.validationStatus !== "VALIDATED" || ev.source !== "DVL_RUNTIME_CAPTURE") {
+      throw new Error(`checkpoint ${evidenceId} is not a VALIDATED FILE_SNAPSHOT (${ev.evidenceType}/${ev.validationStatus})`);
+    }
+    const ref = ev.artifactRefs[0];
+    const v = ref ? this.store.verifyKernelArtifact(ref) : { ok: false as const, reason: "no manifest" };
+    if (!v.ok) throw new Error(`checkpoint ${evidenceId} manifest not trusted: ${v.reason}`);
+    // Parse exactly the bytes whose hash matches the registration (no verify/read race).
+    const manifestBytes = fs.readFileSync(path.join(this.opts.root, ref!.path));
+    if (sha256(manifestBytes) !== ref!.hash) throw new Error(`checkpoint ${evidenceId} manifest changed after verification`);
+    const manifest = JSON.parse(manifestBytes.toString("utf8")) as { path: string; inside: boolean; symlink: boolean; hash: string | null }[];
+    const ws = path.join(this.store.dvlDir, "tx", runId, `attempt-${ev.attempt}`);
+    const files = manifest.map((m) => {
+      const abs = path.resolve(ws, m.path);
+      if (!m.inside || m.symlink || !abs.startsWith(ws + path.sep)) throw new Error(`checkpoint ${evidenceId} lists an unsafe path: ${m.path}`);
+      let bytes: Buffer;
+      try {
+        const fd = fs.openSync(abs, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+        try {
+          bytes = fs.readFileSync(fd);
+        } finally {
+          fs.closeSync(fd);
+        }
+      } catch {
+        throw new Error(`checkpoint bytes changed: ${m.path} (missing or not a regular file)`);
+      }
+      if (sha256(bytes) !== m.hash) throw new Error(`checkpoint bytes changed: ${m.path}`);
+      return { path: m.path, bytes };
+    });
+    return { evidenceId, attempt: ev.attempt, files };
+  }
+
+  /**
+   * Blocker 4 — dispatch with a final disposition. If run.start cannot be delivered and
+   * acknowledged, the attempt becomes terminal `failed_to_start`; it is never left live.
+   */
+  private async dispatch(run: RunState, identity: RunIdentity, task: RunTask): Promise<void> {
+    try {
+      await this.sendRunStart(identity, task, run.txWorkspace, { db: "postgres", style: "spike" });
+    } catch (e) {
+      if (run.identity.attempt === identity.attempt && !isTerminal(run.status)) {
+        this.kernelEvent(
+          "kernel.attempt_dispatch_failed",
+          { runId: identity.runId, attempt: identity.attempt, adapterInstanceId: run.adapterInstanceId, reason: (e as Error).message },
+          identity.runId,
+          identity.attempt,
+        );
+        this.endRun(run, "failed_to_start");
+      }
+      throw e;
+    }
   }
 
   private async sendRunStart(identity: RunIdentity, task: RunTask, txWorkspace: string, decisions: Record<string, string>): Promise<void> {
@@ -427,6 +602,13 @@ export class Kernel {
       credentialsRef: null, // §51: never inline credentials
       scenario: task.scenario,
     });
+  }
+
+  /** Per-attempt actor state of a run (blocker 2). */
+  actorsOf(runId: string): ActorTracker {
+    const r = this.runs.get(runId);
+    if (!r) throw new Error(`unknown run ${runId}`);
+    return r.actors;
   }
 
   waitForRunEnd(runId: string, timeoutMs = 15_000): Promise<RunStatus> {
@@ -464,7 +646,7 @@ export class Kernel {
       // write to its stdin may wait forever for a 'drain' that never comes.
       if (!this.terminatedInstances.has(this.adapterInstanceId!)) {
         try {
-          await this.transport!.send({ type: "adapter.shutdown", requestId: newId("req") });
+          await this.transport!.send({ type: "adapter.shutdown", requestId: newId("req") }, timeoutMs); // bounded
         } catch {
           /* already gone */
         }
@@ -496,8 +678,9 @@ export class Kernel {
     if (!run) return [`unknown run ${runId}`];
     const reasons: string[] = [];
     if (!run.rootActorId) reasons.push("root actor not yet started");
-    else if (!this.actors.isFullyFinished(run.rootActorId)) reasons.push(`actors unresolved: ${this.actors.unresolved().join(", ")}`);
-    if (this.activeActions.size > 0) reasons.push(`active actions: ${[...this.activeActions.keys()].join(", ")}`);
+    else if (!run.actors.isFullyFinished(run.rootActorId)) reasons.push(`actors unresolved: ${run.actors.unresolved().join(", ")}`);
+    const active = [...run.actions].filter(([, a]) => a.state === "started").map(([id]) => id);
+    if (active.length > 0) reasons.push(`active actions: ${active.join(", ")}`);
     const quiet = this.opts.quiescenceMs ?? QUIESCENCE_MS;
     const sinceMutation = Date.now() - this.lastMutationAt;
     if (sinceMutation < quiet) reasons.push(`filesystem not quiescent (${sinceMutation}ms < ${quiet}ms since last mutation hint)`);
@@ -649,31 +832,23 @@ export class Kernel {
     }
     this.actorSeq.set(actorKey, Math.max(lastActorSeq, actorSequence));
 
-    // 4b) Blocker A — execution binding + lifecycle fence. An event naming a known run is
-    //     admissible only if THIS instance holds that run's current Kernel-created attempt,
-    //     the attempt is not terminal, and the transition is legal. Otherwise it is kept as
-    //     a violation and never applied: a provider can never revive or hijack an attempt.
+    // 4b) Admission gate (blockers A + 2): identity binding AND a legal transition of the
+    //     authoritative run/actor/action state machines. A rejected event is kept as a
+    //     violation and mutates nothing — no state change, no Evidence.
     if (run) {
-      const reason =
-        run.adapterInstanceId !== aid
-          ? "run_owned_by_other_instance"
-          : attempt !== run.identity.attempt
-            ? "attempt_mismatch"
-            : isTerminal(run.status)
-              ? "run_terminal"
-              : type === "run.started" && run.status !== "starting"
-                ? "illegal_transition"
-                : null;
-      if (reason) {
+      const verdict = this.admit(run, aid, attempt, type, actorId, frame.payload);
+      if (verdict) {
         this.store.append({ origin: "adapter", trust: "protocol_violation", type, adapterInstanceId: aid, runId, attempt, adapterSequence, actorId, actorSequence, payload: capPayload(this, aid, frame.payload, type, runId) });
         this.kernelEvent(
           "kernel.protocol_violation",
           {
             kind: "run_binding_violation",
-            reason,
+            ...verdict,
             type,
             runId,
             attempt,
+            actorId,
+            adapterSequence,
             adapterInstanceId: aid,
             boundAdapterInstanceId: run.adapterInstanceId,
             boundAttempt: run.identity.attempt,
@@ -709,52 +884,90 @@ export class Kernel {
     this.applyEvent(run, stored, (frame.payload ?? {}) as Record<string, unknown>);
   }
 
+  /**
+   * The single admission decision for an event naming a known run. Returns null when the
+   * event may be applied, otherwise why not. Order: binding, terminal, run FSM, actor FSM,
+   * action FSM. Pure: never mutates.
+   */
+  private admit(
+    run: RunState,
+    aid: string,
+    attempt: number,
+    type: string,
+    actorId: string,
+    rawPayload: unknown,
+  ): { reason: string; machine?: "run" | "actor" | "action"; from?: string; actionId?: string } | null {
+    if (run.adapterInstanceId !== aid) return { reason: "run_owned_by_other_instance" };
+    if (attempt !== run.identity.attempt) return { reason: "attempt_mismatch" };
+    if (isTerminal(run.status)) return { reason: "run_terminal", machine: "run", from: run.status };
+    // Run FSM.
+    const runOk = type === "run.started" ? run.status === "starting" : type === "run.failed" ? run.status === "starting" || run.status === "running" : run.status === "running";
+    if (!runOk) return { reason: "illegal_transition", machine: "run", from: run.status };
+    // Actor FSM: a finished/aborted actor can no longer act.
+    if (ACTOR_SCOPED(type)) {
+      const st = run.actors.get(actorId)?.state;
+      if (st === "finished" || st === "aborted") return { reason: "illegal_transition", machine: "actor", from: st };
+    }
+    // Action FSM.
+    const rule = ACTION_FSM[type];
+    if (rule) {
+      const actionId = (rawPayload as { actionId?: unknown } | undefined)?.actionId;
+      if (typeof actionId !== "string" || actionId.length === 0) return { reason: "illegal_transition", machine: "action", from: "invalid_action_id" };
+      const cur = run.actions.get(actionId);
+      if (cur && cur.actorId !== actorId) return { reason: "illegal_transition", machine: "action", from: `owned_by:${cur.actorId}`, actionId };
+      const from = cur?.state ?? "none";
+      if (!(rule.from as string[]).includes(from)) return { reason: "illegal_transition", machine: "action", from, actionId };
+    }
+    return null;
+  }
+
   private applyEvent(run: RunState, ev: StoredEvent, payload: Record<string, unknown>): void {
     const actorId = ev.actorId!;
-    const aid = ev.adapterInstanceId!;
-    this.actorOwner.set(actorId, aid);
+    const actors = run.actors;
     const lifecycle = ev.type === "run.started" || ev.type.startsWith("actor.");
-    if (!lifecycle && !this.actors.get(actorId)) {
+    if (!lifecycle && ACTOR_SCOPED(ev.type) && !actors.get(actorId)) {
       // An actor we never saw start is acting: treat it as a live writer (conservative),
       // and attach it under the root so the root cannot be "fully finished" without it.
-      this.actors.start(actorId);
-      if (run.rootActorId && run.rootActorId !== actorId) this.actors.fork(run.rootActorId, [actorId]);
+      actors.start(actorId);
+      if (run.rootActorId && run.rootActorId !== actorId) actors.fork(run.rootActorId, [actorId]);
       this.kernelEvent("kernel.actor_undeclared", { actorId, type: ev.type }, run.identity.runId, ev.attempt);
     }
     switch (ev.type) {
       case "run.started":
         run.status = "running";
         run.rootActorId = actorId;
-        this.actors.start(actorId);
+        actors.start(actorId);
         break;
       case "actor.fork": {
         const children = Array.isArray(payload.childActorIds) ? (payload.childActorIds as string[]) : [];
-        this.actors.fork(actorId, children);
-        for (const c of children) this.actorOwner.set(c, aid);
+        actors.fork(actorId, children);
         break;
       }
       case "actor.started": {
         const parentId = payload.parentActorId as string | undefined;
-        const undeclared = this.actors.start(actorId);
+        const undeclared = actors.start(actorId);
         if (undeclared) {
           // Fork race: child started before parent declared it. Attach to parent conservatively.
-          if (parentId) this.actors.fork(parentId, [actorId]);
-          else if (run.rootActorId && run.rootActorId !== actorId) this.actors.fork(run.rootActorId, [actorId]);
+          if (parentId) actors.fork(parentId, [actorId]);
+          else if (run.rootActorId && run.rootActorId !== actorId) actors.fork(run.rootActorId, [actorId]);
           this.kernelEvent("kernel.actor_fork_race", { actorId, parentActorId: parentId ?? run.rootActorId, note: "actor.started before actor.fork; attached conservatively" }, run.identity.runId, ev.attempt);
         }
         break;
       }
       case "actor.finished":
-        this.actors.finish(actorId);
-        if (!this.actors.isFullyFinished(actorId)) {
-          this.kernelEvent("kernel.actor_finish_pending_children", { actorId, unresolved: this.actors.unresolved() }, run.identity.runId, ev.attempt);
+        actors.finish(actorId);
+        if (!actors.isFullyFinished(actorId)) {
+          this.kernelEvent("kernel.actor_finish_pending_children", { actorId, unresolved: actors.unresolved() }, run.identity.runId, ev.attempt);
         }
         break;
+      case "action.requested":
       case "action.started":
-        this.activeActions.set(String(payload.actionId), { actorId, adapterInstanceId: aid });
+      case "action.updated":
+        // Transition already admitted by the FSM gate; only record the resulting state.
+        run.actions.set(String(payload.actionId), { state: ACTION_FSM[ev.type]!.to, actorId });
         break;
       case "action.finished":
-        this.activeActions.delete(String(payload.actionId));
+        run.actions.set(String(payload.actionId), { state: "finished", actorId });
         this.maybeCreateEvidence(run, ev, payload);
         break;
       case "workspace.hint":
@@ -844,7 +1057,7 @@ export class Kernel {
       return { path: rel, inside, symlink: st.isSymbolicLink(), hash: st.isSymbolicLink() ? null : sha256(fs.readFileSync(abs)), bytes: st.size };
     });
     const violations = manifest.filter((m) => !m.inside || m.symlink);
-    const aborted = this.actors.aborted();
+    const aborted = run.actors.aborted();
     const ref = this.store.spoolArtifact(JSON.stringify(manifest, null, 2), {
       owner: KERNEL_SPOOL_OWNER,
       mimeType: "application/json",
@@ -891,7 +1104,7 @@ export class Kernel {
       this.pending.set(requestId, { resolve, reject, timer });
       const cmd: CommandFrame = { type, requestId, payload };
       this.kernelEvent("kernel.command_sent", { type, requestId });
-      this.transport!.send(cmd).catch((e: Error) => {
+      this.transport!.send(cmd, timeoutMs).catch((e: Error) => {
         clearTimeout(timer);
         this.pending.delete(requestId);
         reject(e);
@@ -972,14 +1185,19 @@ export class Kernel {
       this.kernelEvent("kernel.run_failed", { errorClass: "provider_unavailable", reason, adapterInstanceId }, run.identity.runId, run.identity.attempt);
       this.endRun(run, "failed");
     }
-    for (const [actionId, owner] of this.activeActions) {
-      if (owner.adapterInstanceId !== adapterInstanceId) continue;
-      this.activeActions.delete(actionId);
-      this.kernelEvent("kernel.action_aborted", { actionId, actorId: owner.actorId, adapterInstanceId, reason });
-    }
-    for (const [actorId, owner] of this.actorOwner) {
-      if (owner !== adapterInstanceId) continue;
-      if (this.actors.abort(actorId)) this.kernelEvent("kernel.actor_aborted", { actorId, adapterInstanceId, reason });
+    // Final disposition of everything the dead instance owned: the actions and actors of
+    // every attempt bound to it are aborted (never "finished").
+    for (const run of this.runs.values()) {
+      if (run.adapterInstanceId !== adapterInstanceId) continue;
+      const { runId, attempt } = run.identity;
+      for (const [actionId, a] of run.actions) {
+        if (a.state !== "requested" && a.state !== "started") continue;
+        a.state = "aborted";
+        this.kernelEvent("kernel.action_aborted", { actionId, actorId: a.actorId, adapterInstanceId, runId, attempt, reason }, runId, attempt);
+      }
+      for (const actorId of run.actors.abortUnresolved()) {
+        this.kernelEvent("kernel.actor_aborted", { actorId, adapterInstanceId, runId, attempt, reason }, runId, attempt);
+      }
     }
   }
 
@@ -1074,7 +1292,7 @@ function instanceKey(...parts: string[]): string {
 }
 
 function isTerminal(s: RunStatus): boolean {
-  return s === "finished" || s === "failed" || s === "halted";
+  return s === "finished" || s === "failed" || s === "halted" || s === "failed_to_start";
 }
 
 function sleep(ms: number): Promise<void> {

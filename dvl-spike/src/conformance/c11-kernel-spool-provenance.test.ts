@@ -14,7 +14,7 @@ import { sha256 } from "../kernel/event-store.js";
 import { Kernel } from "../kernel/kernel.js";
 import { mockProviderCommand } from "../kernel/mock-launch.js";
 import type { ArtifactRef } from "../kernel/types.js";
-import { makeKernel, runScenario } from "./harness.js";
+import { makeKernel, runScenario, kernelOn } from "./harness.js";
 
 let kernels: Kernel[] = [];
 afterEach(async () => {
@@ -105,7 +105,7 @@ describe("C11 Kernel spool provenance (blocker B)", () => {
 
     // A fresh Kernel on the same root rebuilds the registry from the event log.
     await k.shutdown();
-    const replay = track(new Kernel({ root: rootOf(k), adapterCommand: mockProviderCommand() }));
+    const replay = track(kernelOn(rootOf(k)));
     expect(replay.store.verifyKernelArtifact(imported)).toEqual({ ok: true });
   });
 
@@ -132,7 +132,7 @@ describe("C11 Kernel spool provenance (blocker B)", () => {
     expect(fs.existsSync(path.join(rootOf(k), forged.path))).toBe(true); // bytes really planted, hash correct
     expect((k.store.verifyKernelArtifact(forged) as { reason: string }).reason).toMatch(/not registered/);
     await k.shutdown();
-    const replay = track(new Kernel({ root: rootOf(k), adapterCommand: mockProviderCommand() }));
+    const replay = track(kernelOn(rootOf(k)));
     expect((replay.store.verifyKernelArtifact(forged) as { reason: string }).reason).toMatch(/not registered/);
   });
 });

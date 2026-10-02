@@ -115,6 +115,26 @@ After restart, Kernel can reconstruct enough state to avoid false completion or 
   parsing, queueing, gates — per instance, once. Breach seals the queue, one `kernel.safety_halt`
   (`kind: max_incoming_bytes`, stream, byte counts), instance killed and fenced. Suite C12; C09 updated.
 
+## Post-review fixes, round 2 (Codex blockers 1–4) — pending independent review
+
+- 1 (durable authority): the adapter can physically write `.dvl/events/events.jsonl` and
+  `.dvl/evidence/evidence.jsonl` (same OS user, no sandbox). Both logs are HMAC-SHA256 chains keyed by a
+  host-held `integrityKey` passed to the Kernel in memory (never env, disk or adapter). Replay accepts only
+  lines whose MAC continues the last accepted line; forged/inserted lines are rejected, a modified, deleted or
+  reordered line ends trust from that point (fail-closed), `kernel.integrity_violation` is recorded. Tail
+  truncation/rollback is detected only against a host-held `expectedHead`. No key ⇒ ephemeral key: nothing
+  authenticates after restart. Suite C13.
+- 2 (lifecycle FSM): one admission gate (`Kernel.admit`) checks binding, terminal state, run FSM, actor FSM
+  (finished/aborted actors cannot act) and action FSM (requested → started → updated* → finished, owner-actor
+  only). Actor/action state is per attempt. Rejected events mutate nothing and create no Evidence. Suite C14.
+- 3 (attempt workspaces): each attempt owns `.dvl/tx/<runId>/attempt-<n>` and a fresh workspaceId; a superseded
+  workspace is archived (registered manifest) and never reused. Files carry forward only from an explicitly
+  selected VALIDATED FILE_SNAPSHOT of the same run, byte-verified, checked before any attempt exists. Suite C15.
+- 4 (atomic dispatch): a run.start that is not delivered and acknowledged makes the attempt terminal
+  `failed_to_start` (`kernel.attempt_dispatch_failed`); retries stay monotonic. Suite C16.
+- Also: `send()` waits for stdin drain only until a timeout or stdin close/error; every ArtifactRef field
+  (incl. mimeType, summary, sourceArtifactRef) is bound to the Kernel registration. Suite C17.
+
 ## Execution rule
 
 Implement one hardening task at a time.

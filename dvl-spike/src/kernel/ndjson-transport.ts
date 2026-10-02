@@ -175,12 +175,34 @@ export class NdjsonTransport {
   }
 
   /** Kernel → Adapter. Honors stdin backpressure. */
-  async send(cmd: CommandFrame): Promise<void> {
-    if (this.closed || !this.child.stdin || this.child.stdin.destroyed) {
+  /**
+   * Kernel → Adapter. Honors stdin backpressure, but never unboundedly: if the adapter stops
+   * reading, the wait for 'drain' ends at `timeoutMs` (rejects) or when stdin closes/errors
+   * (the child died). Nothing in the Kernel can be parked forever on an adapter's pipe.
+   */
+  async send(cmd: CommandFrame, timeoutMs?: number): Promise<void> {
+    const stdin = this.child.stdin;
+    if (this.closed || !stdin || stdin.destroyed) {
       throw new Error(`transport closed; cannot send ${cmd.type}`);
     }
-    const ok = this.child.stdin.write(encodeFrame(cmd));
-    if (!ok) await new Promise<void>((r) => this.child.stdin!.once("drain", () => r()));
+    if (stdin.write(encodeFrame(cmd))) return;
+    await new Promise<void>((resolve, reject) => {
+      const done = (err?: Error) => {
+        stdin.off("drain", onDrain);
+        stdin.off("close", onClose);
+        stdin.off("error", onError);
+        if (timer) clearTimeout(timer);
+        if (err) reject(err);
+        else resolve();
+      };
+      const onDrain = () => done();
+      const onClose = () => done(new Error(`adapter stdin closed before ${cmd.type} was flushed`));
+      const onError = (e: Error) => done(new Error(`adapter stdin error while sending ${cmd.type}: ${e.message}`));
+      const timer = timeoutMs !== undefined ? setTimeout(() => done(new Error(`send of ${cmd.type} timed out after ${timeoutMs}ms (adapter not reading stdin)`)), timeoutMs) : null;
+      stdin.on("drain", onDrain);
+      stdin.on("close", onClose);
+      stdin.on("error", onError);
+    });
   }
 
   /** Resolves when every enqueued frame has been processed by the Kernel. */

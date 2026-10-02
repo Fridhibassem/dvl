@@ -104,7 +104,7 @@ describe("C10 run/attempt binding fence (blocker A)", () => {
     expect(after.every((e) => e.trust === "protocol_violation")).toBe(true);
     expect(bindingViolations(k, "run_terminal")).toHaveLength(after.length);
     expect(k.store.readEvidenceFromDisk().filter((e) => e.relatedActionId === "act_ghost")).toEqual([]);
-    expect(k.actors.get("actor_ghost")).toBeUndefined();
+    expect(k.actorsOf(r.runId).get("actor_ghost")).toBeUndefined();
     expect(k.store.ofType("kernel.run_failed")).toHaveLength(0);
   });
 
@@ -133,7 +133,8 @@ describe("C10 run/attempt binding fence (blocker A)", () => {
     const aidB = k.currentAdapterInstanceId!;
 
     const id2 = await k.retryRun(a.id.runId, task("happy"));
-    expect(id2).toMatchObject({ runId: a.id.runId, attempt: 2, taskId: a.id.taskId, workspaceId: a.id.workspaceId });
+    expect(id2).toMatchObject({ runId: a.id.runId, attempt: 2, taskId: a.id.taskId });
+    expect(id2.workspaceId).not.toBe(a.id.workspaceId); // blocker 3: every attempt owns a fresh workspace
     expect(await k.waitForRunEnd(a.id.runId)).toBe("finished");
     await k.settle();
     const created = k.store.ofType("kernel.attempt_created")[0]!.payload as Record<string, unknown>;

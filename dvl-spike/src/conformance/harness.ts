@@ -1,4 +1,5 @@
 /** Shared conformance-test harness. Not a test file itself. */
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -10,8 +11,26 @@ export function tempRoot(tag: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), `dvl-${tag}-`));
 }
 
+/**
+ * Blocker 1 — the HOST holds each project's integrity key and hands it to every Kernel it
+ * creates for that root (never via env, never on disk, never to the adapter). Tests play
+ * the host: one key per temp root.
+ */
+const hostKeys = new Map<string, Buffer>();
+export function keyFor(root: string): Buffer {
+  let k = hostKeys.get(root);
+  if (!k) hostKeys.set(root, (k = crypto.randomBytes(32)));
+  return k;
+}
+
 export function makeKernel(tag: string, extra: Partial<KernelOptions> = {}): Kernel {
-  return new Kernel({ root: tempRoot(tag), adapterCommand: mockProviderCommand(), requestTimeoutMs: 5_000, ...extra });
+  const root = tempRoot(tag);
+  return new Kernel({ root, adapterCommand: mockProviderCommand(), requestTimeoutMs: 5_000, integrityKey: keyFor(root), ...extra });
+}
+
+/** Another Kernel on an existing root, as the host would create it (same integrity key). */
+export function kernelOn(root: string, extra: Partial<KernelOptions> = {}): Kernel {
+  return new Kernel({ root, adapterCommand: mockProviderCommand(), requestTimeoutMs: 5_000, integrityKey: keyFor(root), ...extra });
 }
 
 /** Spawn + describe + run a scenario to completion. */

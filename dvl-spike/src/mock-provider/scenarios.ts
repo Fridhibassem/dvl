@@ -32,6 +32,10 @@ export type Step =
   | { op: "emit_burst"; type: string; actor: string; count: number }
   /** Adversarial (blocker B): plant a file in the Kernel spool and cite it as Kernel-spooled. */
   | { op: "forge_kernel_artifact"; actor: string; actionId: string; via: "__spooled" | "outputRef"; name?: string }
+  /** Adversarial (blocker 1): append forged Kernel-origin records directly to the durable logs. */
+  | { op: "forge_log_records" }
+  /** Unreported workspace write (no events). */
+  | { op: "write_raw"; rel: string; content: string }
   /** Adversarial (blocker B): emit a frame mimicking kernel.artifact_registered for planted bytes. */
   | { op: "forge_registration"; actor: string }
   /** Adversarial (blocker B): re-cite an artifact the Kernel registered for an earlier event. */
@@ -304,6 +308,77 @@ export const SCENARIOS: Record<string, Step[]> = {
 
   /** Blocker B — adapter forges a provenance record for planted bytes. */
   "forge-registration": [...start(), { op: "forge_registration", actor: ROOT }, ...finish()],
+
+  /** Blocker 1 — forged durable authority records. */
+  "forge-log": [...start(), { op: "forge_log_records" }, ...finish()],
+
+  /** Blocker 2 — action.finished with no action.started (evidence-bearing). */
+  "finish-before-start": [
+    ...start(),
+    { op: "emit", type: "action.finished", actor: ROOT, payload: { actionId: "act_x", kind: "test", exitCode: 0, summary: "never started" } },
+    ...finish(),
+  ],
+  /** Blocker 2 — the same action finished twice. */
+  "duplicate-finish": [
+    ...start(),
+    ...smallTest(ROOT, "act_dup"),
+    { op: "emit", type: "action.finished", actor: ROOT, payload: { actionId: "act_dup", kind: "test", exitCode: 0, summary: "again" } },
+    ...finish(),
+  ],
+  /** Blocker 2 — action.updated before action.started. */
+  "update-before-start": [
+    ...start(),
+    { op: "emit", type: "action.updated", actor: ROOT, payload: { actionId: "act_u", progress: 0.5 } },
+    { op: "emit", type: "action.started", actor: ROOT, payload: { actionId: "act_u", kind: "test" } },
+    { op: "emit", type: "action.finished", actor: ROOT, payload: { actionId: "act_u", kind: "test", exitCode: 0, summary: "ok" } },
+    ...finish(),
+  ],
+  /** Blocker 2 — run.finished as the very first event (never running). */
+  "early-finish": [
+    { op: "emit", type: "action.started", actor: ROOT, payload: { actionId: "act_pre", kind: "test" } },
+    { op: "emit", type: "action.finished", actor: ROOT, payload: { actionId: "act_pre", kind: "test", exitCode: 0, summary: "pre" } },
+    { op: "emit", type: "run.finished", actor: ROOT },
+  ],
+  /** Blocker 2 — an actor keeps acting after it finished. */
+  "actor-after-finish": [
+    ...start(),
+    { op: "emit", type: "actor.fork", actor: ROOT, payload: { childActorIds: ["actor_w"] } },
+    { op: "emit", type: "actor.started", actor: "actor_w", payload: { parentActorId: ROOT } },
+    { op: "emit", type: "actor.finished", actor: "actor_w" },
+    ...smallTest("actor_w", "act_zombie"),
+    { op: "emit", type: "actor.finished", actor: "actor_w" },
+    ...finish(),
+  ],
+
+  /** Blocker 2 — one actor completes another actor's action. */
+  "steal-action": [
+    ...start(),
+    { op: "emit", type: "actor.fork", actor: ROOT, payload: { childActorIds: ["actor_w1", "actor_w2"] } },
+    { op: "emit", type: "actor.started", actor: "actor_w1", payload: { parentActorId: ROOT } },
+    { op: "emit", type: "actor.started", actor: "actor_w2", payload: { parentActorId: ROOT } },
+    { op: "emit", type: "action.started", actor: "actor_w1", payload: { actionId: "act_s", kind: "test" } },
+    { op: "emit", type: "action.finished", actor: "actor_w2", payload: { actionId: "act_s", kind: "test", exitCode: 0, summary: "stolen" } },
+    { op: "emit", type: "action.finished", actor: "actor_w1", payload: { actionId: "act_s", kind: "test", exitCode: 1, summary: "real" } },
+    { op: "emit", type: "actor.finished", actor: "actor_w1" },
+    { op: "emit", type: "actor.finished", actor: "actor_w2" },
+    ...finish(),
+  ],
+
+  /** Blocker 3 — attempt writes partial work, then dies. */
+  "crash-after-write": [
+    ...start(),
+    { op: "write_file", actor: ROOT, rel: "src/partial.ts", content: "export const partial = 'half';\n", actionId: "act_p" },
+    { op: "crash", code: 137 },
+  ],
+  /** Blocker 3 — reaches a no-writer checkpoint, then leaves unreported dirt and dies. */
+  "checkpoint-then-crash": [
+    ...start(),
+    { op: "write_file", actor: ROOT, rel: "src/a.ts", content: "export const a = 1;\n", actionId: "act_a" },
+    { op: "emit", type: "actor.finished", actor: ROOT },
+    { op: "sleep", ms: 1_200 },
+    { op: "write_raw", rel: "src/partial.ts", content: "export const partial = 'half';\n" },
+    { op: "crash", code: 137 },
+  ],
 
   /** Blocker C — non-DVL1 stdout volume with almost no protocol frames. */
   "stdout-noise-flood": [...start(), { op: "stdout_flood", bytes: 1024 * 1024 }, ...finish()],
