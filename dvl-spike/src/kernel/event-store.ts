@@ -43,8 +43,26 @@ export interface ArtifactProvenance {
   origin: ArtifactOrigin;
   runId?: string;
   attempt?: number;
+  /** H2 — imports only: the validated path in the adapter's own area the bytes were copied from. */
+  sourcePath?: string;
+  /** H2 — imports only: the adapter event that cited the artifact. */
+  sourceEventId?: string;
 }
 export const ARTIFACT_REGISTERED = "kernel.artifact_registered";
+
+/**
+ * H2 — a Kernel-owned file or directory is not where the Kernel expects it (symlinked
+ * component, non-regular file, swapped inode, pre-existing entry). The write is refused;
+ * nothing is registered and nothing is written outside the Kernel-owned area.
+ */
+export class SpoolIntegrityError extends Error {
+  constructor(message: string) {
+    super(`spool integrity: ${message}`);
+    this.name = "SpoolIntegrityError";
+  }
+}
+const { O_RDONLY, O_WRONLY, O_CREAT, O_EXCL, O_APPEND, O_NOFOLLOW } = fs.constants;
+const sameInode = (a: fs.Stats, b: fs.Stats) => a.dev === b.dev && a.ino === b.ino;
 
 /**
  * Blocker 1 — durable authority. The adapter runs as the same OS user (no sandbox) and can
@@ -95,6 +113,12 @@ export class EventStore {
   readonly spoolDir: string;
   /** Untrusted adapter write areas root; per-instance subdirectories only. */
   readonly adapterSpoolDir: string;
+  /**
+   * H2 — canonical (realpath) project root, fixed at construction. Every Kernel-owned path
+   * must still resolve to exactly <realRoot>/<its relative path> when used: a symlink planted
+   * anywhere below the root (by an adapter running as the same OS user) is never followed.
+   */
+  private readonly realRoot: string;
   private seq = 0;
   private readonly events: StoredEvent[] = [];
   private readonly evidence = new Map<string, EvidenceRecord>();
@@ -116,13 +140,16 @@ export class EventStore {
       events: { ok: true, accepted: 0, rejected: [], truncated: false },
       evidence: { ok: true, accepted: 0, rejected: [], truncated: false },
     };
+    this.realRoot = fs.realpathSync(opts.root);
     this.dvlDir = path.join(opts.root, ".dvl");
     this.spoolDir = path.join(this.dvlDir, "spool");
     this.adapterSpoolDir = path.join(this.dvlDir, "adapter-spool");
     this.eventsPath = path.join(this.dvlDir, "events", "events.jsonl");
     this.evidencePath = path.join(this.dvlDir, "evidence", "evidence.jsonl");
+    // H2: fail closed if any Kernel-owned directory was replaced by a symlink (or a file).
     for (const d of [this.spoolDir, this.adapterSpoolDir, path.dirname(this.eventsPath), path.dirname(this.evidencePath)]) {
       fs.mkdirSync(d, { recursive: true });
+      this.ownedDir(d);
     }
     this.replay();
   }
@@ -200,8 +227,12 @@ export class EventStore {
   createInstanceSpools(adapterInstanceId: string): { kernelDir: string; adapterDir: string } {
     const kernelDir = this.kernelSpoolDirOf(adapterInstanceId);
     const adapterDir = this.adapterSpoolDirOf(adapterInstanceId);
+    this.ownedDir(this.spoolDir);
+    this.ownedDir(this.adapterSpoolDir);
     fs.mkdirSync(kernelDir);
     fs.mkdirSync(adapterDir);
+    this.ownedDir(kernelDir);
+    this.ownedDir(adapterDir);
     return { kernelDir, adapterDir };
   }
 
@@ -210,15 +241,15 @@ export class EventStore {
     const artifactId = newId("art");
     const ext = opts.mimeType === "application/json" ? "json" : "log";
     const dir = this.kernelSpoolDirOf(opts.owner);
-    fs.mkdirSync(dir, { recursive: true });
+    this.ownedDir(this.spoolDir);
+    try {
+      fs.mkdirSync(dir); // non-recursive: parent already verified, never created through a symlink
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
+    }
     const rel = path.posix.join(".dvl", "spool", opts.owner, `${artifactId}.${ext}`);
     const buf = typeof content === "string" ? Buffer.from(content, "utf8") : content;
-    const abs = path.join(this.opts.root, rel);
-    // write-then-rename: readers never observe a half-written artifact. "wx": never
-    // follow or reuse a pre-existing temp file.
-    const tmp = abs + ".tmp";
-    fs.writeFileSync(tmp, buf, { flag: "wx" });
-    fs.renameSync(tmp, abs);
+    this.writeKernelFile(dir, `${artifactId}.${ext}`, buf);
     const ref: ArtifactRef = { artifactRef: artifactId, path: rel, hash: sha256(buf), summary: opts.summary.slice(0, 280), byteSize: buf.length, mimeType: opts.mimeType };
     if (opts.owner !== KERNEL_SPOOL_OWNER) ref.adapterInstanceId = opts.owner;
     if (opts.sourceArtifactRef !== undefined) ref.sourceArtifactRef = opts.sourceArtifactRef;
@@ -242,7 +273,7 @@ export class EventStore {
    * Bytes are read ONCE through an O_NOFOLLOW fd; the hash is computed over exactly the
    * bytes that are then written, so a concurrent rewrite cannot slip in unverified data.
    */
-  importAdapterArtifact(claim: unknown, adapterInstanceId: string, context: { runId?: string; attempt?: number } = {}): ArtifactCheck {
+  importAdapterArtifact(claim: unknown, adapterInstanceId: string, context: { runId?: string; attempt?: number; sourceEventId?: string } = {}): ArtifactCheck {
     const c = claim as Partial<ArtifactRef> | null;
     if (!c || typeof c !== "object") return { ok: false, reason: "malformed artifactRef" };
     if (typeof c.path !== "string" || typeof c.hash !== "string" || typeof c.byteSize !== "number" || !Number.isInteger(c.byteSize) || c.byteSize < 0) {
@@ -268,14 +299,14 @@ export class EventStore {
       return { ok: false, reason: "adapter instance area missing" };
     }
     if (areaSt.isSymbolicLink() || !areaSt.isDirectory()) return { ok: false, reason: "adapter instance area is not a real directory" };
-    if (fs.realpathSync(area) !== path.join(fs.realpathSync(this.adapterSpoolDir), adapterInstanceId)) {
-      return { ok: false, reason: "adapter instance area resolves outside adapter-spool" };
-    }
+    // Allowed root = the CANONICAL project root fixed at construction: a symlinked
+    // .dvl/adapter-spool (or any other component) makes the area resolve elsewhere.
+    if (fs.realpathSync(area) !== this.canonical(area)) return { ok: false, reason: "adapter instance area resolves outside adapter-spool" };
 
     const abs = path.join(area, name);
     let fd: number;
     try {
-      fd = fs.openSync(abs, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+      fd = fs.openSync(abs, O_RDONLY | O_NOFOLLOW);
     } catch (e) {
       const code = (e as NodeJS.ErrnoException).code;
       if (code === "ENOENT") return { ok: false, reason: "artifact missing" };
@@ -286,6 +317,16 @@ export class EventStore {
     try {
       const st = fs.fstatSync(fd);
       if (!st.isFile()) return { ok: false, reason: "artifact is not a regular file" };
+      // A hard link aliases an inode that also lives elsewhere (e.g. a Kernel-owned file):
+      // O_NOFOLLOW cannot see it, the link count can. Adapter output is a single-link file.
+      if (st.nlink !== 1) return { ok: false, reason: `artifact is hard-linked (nlink=${st.nlink}); not exclusively in the adapter area` };
+      // No openat in Node: re-check after the open that the area was not swapped and the
+      // name still maps to the inode we hold, so the bytes came from inside the area.
+      try {
+        if (!sameInode(fs.lstatSync(area), areaSt) || !sameInode(fs.lstatSync(abs), st)) return { ok: false, reason: "adapter instance area changed during import" };
+      } catch {
+        return { ok: false, reason: "adapter instance area changed during import" };
+      }
       if (st.size !== c.byteSize) return { ok: false, reason: `byteSize mismatch: claimed ${c.byteSize}, actual ${st.size}` };
       buf = Buffer.alloc(st.size);
       let off = 0;
@@ -304,7 +345,15 @@ export class EventStore {
     const mimeType = typeof c.mimeType === "string" && MIME_RE.test(c.mimeType) ? c.mimeType : "application/octet-stream";
     const summary = typeof c.summary === "string" ? c.summary : "";
     const source = typeof c.artifactRef === "string" ? c.artifactRef.slice(0, 128) : undefined;
-    return { ok: true, ref: this.spoolArtifact(buf, { owner: adapterInstanceId, mimeType, summary, sourceArtifactRef: source, provenance: { origin: "import", ...context } }) };
+    // The Kernel materializes its OWN copy under a Kernel-chosen name; the adapter file is
+    // never moved, linked or referenced. Provenance names exactly where it came from.
+    const provenance: ArtifactProvenance = { origin: "import", ...context, sourcePath: path.posix.join(areaRel, name) };
+    try {
+      return { ok: true, ref: this.spoolArtifact(buf, { owner: adapterInstanceId, mimeType, summary, sourceArtifactRef: source, provenance }) };
+    } catch (e) {
+      if (e instanceof SpoolIntegrityError) return { ok: false, reason: e.message };
+      throw e;
+    }
   }
 
   /**
@@ -328,9 +377,14 @@ export class EventStore {
     }
     if (ref.adapterInstanceId !== undefined && ref.adapterInstanceId !== parts[2]) return { ok: false, reason: "adapterInstanceId does not match spool owner" };
     const abs = path.join(this.opts.root, ...parts);
+    try {
+      this.ownedDir(path.dirname(abs));
+    } catch (e) {
+      return { ok: false, reason: (e as Error).message };
+    }
     let fd: number;
     try {
-      fd = fs.openSync(abs, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+      fd = fs.openSync(abs, O_RDONLY | O_NOFOLLOW);
     } catch (e) {
       return { ok: false, reason: (e as NodeJS.ErrnoException).code === "ENOENT" ? "artifact missing" : "artifact unreadable or symlink" };
     }
@@ -367,6 +421,72 @@ export class EventStore {
 
   // ───────────── internals ─────────────
 
+  /**
+   * H2 — assert `abs` (a path derived from the canonical root) is a real directory that
+   * resolves to exactly itself: no symlinked component anywhere below the root.
+   */
+  private ownedDir(abs: string): fs.Stats {
+    let st: fs.Stats;
+    let real: string;
+    try {
+      st = fs.lstatSync(abs);
+      real = fs.realpathSync(abs);
+    } catch (e) {
+      throw new SpoolIntegrityError(`${this.rel(abs)} unavailable (${(e as NodeJS.ErrnoException).code})`);
+    }
+    if (st.isSymbolicLink() || !st.isDirectory() || real !== this.canonical(abs)) throw new SpoolIntegrityError(`${this.rel(abs)} is not a real Kernel-owned directory`);
+    return st;
+  }
+
+  /** Root-relative form of a Kernel path (for messages). */
+  private rel(abs: string): string {
+    return path.relative(this.opts.root, abs);
+  }
+
+  /** Where a Kernel path (derived from opts.root) must canonically resolve. */
+  private canonical(abs: string): string {
+    return path.join(this.realRoot, this.rel(abs));
+  }
+
+  /**
+   * H2 — create a NEW Kernel file `dir/name` with exactly `buf`. Exclusive + no-follow
+   * create of a temp file, identity re-checks (no openat in Node), rename, final check.
+   * Throws SpoolIntegrityError if anything was swapped; the caller then registers nothing.
+   */
+  private writeKernelFile(dir: string, name: string, buf: Buffer): void {
+    const dirSt = this.ownedDir(dir);
+    const tmp = path.join(dir, `${name}.tmp`);
+    const abs = path.join(dir, name);
+    let fd: number;
+    try {
+      fd = fs.openSync(tmp, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0o644);
+    } catch (e) {
+      throw new SpoolIntegrityError(`cannot create ${this.rel(tmp)} exclusively (${(e as NodeJS.ErrnoException).code})`);
+    }
+    let written: fs.Stats;
+    try {
+      let off = 0;
+      while (off < buf.length) off += fs.writeSync(fd, buf, off, buf.length - off);
+      if (this.opts.fsync) fs.fsyncSync(fd);
+      written = fs.fstatSync(fd);
+    } finally {
+      fs.closeSync(fd);
+    }
+    const check = (p: string) => {
+      if (!sameInode(this.ownedDir(dir), dirSt)) throw new SpoolIntegrityError(`${this.rel(dir)} was replaced during a Kernel write`);
+      let now: fs.Stats;
+      try {
+        now = fs.lstatSync(p);
+      } catch {
+        throw new SpoolIntegrityError(`${this.rel(p)} vanished during a Kernel write`);
+      }
+      if (!sameInode(now, written) || now.nlink !== 1) throw new SpoolIntegrityError(`${this.rel(p)} was swapped or aliased during a Kernel write`);
+    };
+    check(tmp);
+    fs.renameSync(tmp, abs); // write-then-rename: readers never observe a half-written artifact
+    check(abs);
+  }
+
   private genesis(kind: LogKind): string {
     return crypto.createHmac("sha256", this.key).update(`dvl-genesis:${kind}`).digest("hex");
   }
@@ -385,16 +505,21 @@ export class EventStore {
     // `mac` is the LAST key, so stripping it reproduces `canonical` byte-for-byte on replay.
     const line = canonical.slice(0, -1) + (canonical === "{}" ? "" : ",") + `"mac":"${mac}"}` + "\n";
     const file = this.pathOf(kind);
-    if (this.opts.fsync) {
-      const fd = fs.openSync(file, "a");
-      try {
-        fs.writeSync(fd, line);
-        fs.fsyncSync(fd);
-      } finally {
-        fs.closeSync(fd);
-      }
-    } else {
-      fs.appendFileSync(file, line);
+    // H2: never append through a symlink (or a symlinked directory) planted in place of a
+    // Kernel log: the record would land in a file the Kernel does not own.
+    this.ownedDir(path.dirname(file));
+    let fd: number;
+    try {
+      fd = fs.openSync(file, O_WRONLY | O_APPEND | O_CREAT | O_NOFOLLOW, 0o644);
+    } catch (e) {
+      throw new SpoolIntegrityError(`cannot open ${this.rel(file)} (${(e as NodeJS.ErrnoException).code})`);
+    }
+    try {
+      if (!fs.fstatSync(fd).isFile()) throw new SpoolIntegrityError(`${this.rel(file)} is not a regular file`);
+      fs.writeSync(fd, line);
+      if (this.opts.fsync) fs.fsyncSync(fd);
+    } finally {
+      fs.closeSync(fd);
     }
     this.chain[kind] = { count: this.chain[kind].count + 1, mac };
   }

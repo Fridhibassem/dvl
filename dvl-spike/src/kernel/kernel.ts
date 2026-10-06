@@ -347,9 +347,33 @@ export class Kernel {
 
     // The instance id is bound into these closures at spawn time: frames are
     // attributed to the pipe they arrived on, not to whatever instance is current.
-    this.transport = new NdjsonTransport(child, {
+    try {
+      this.transport = this.newTransport(child, adapterInstanceId, spools.kernelDir);
+    } catch (e) {
+      // H2: diagnostics could not be opened safely in the Kernel spool. Never leave the
+      // just-spawned child running without a supervised, drained transport, and never let
+      // the previous instance's transport stand in for it.
+      child.kill("SIGKILL");
+      this.transport = null;
+      this.closed = true;
+      this.terminatedInstances.add(adapterInstanceId);
+      this.kernelEvent("kernel.adapter_spawn_failed", { adapterInstanceId, reason: (e as Error).message });
+      throw e;
+    }
+
+    const spawnedAt = Date.now();
+    this.durationTimer = setTimeout(() => {
+      // Only ever halts the instance it was armed for.
+      if (this.adapterInstanceId !== adapterInstanceId) return;
+      this.haltForSafety(`maxDurationMs ${this.limits.maxDurationMs} exceeded`, { kind: "max_duration", maxDurationMs: this.limits.maxDurationMs, elapsedMs: Date.now() - spawnedAt });
+    }, this.limits.maxDurationMs);
+    this.durationTimer.unref();
+  }
+
+  private newTransport(child: ChildProcess, adapterInstanceId: string, kernelDir: string): NdjsonTransport {
+    return new NdjsonTransport(child, {
       // H2: stderr + non-DVL1 stdout drain into THIS instance's Kernel-owned spool.
-      spoolDir: spools.kernelDir,
+      spoolDir: kernelDir,
       diagnosticsName: "diagnostics",
       // H3: bounded, instance-owned queue; a fresh one for every instance.
       adapterInstanceId,
@@ -360,14 +384,6 @@ export class Kernel {
       onIssue: (i) => this.onTransportIssue(i, adapterInstanceId),
       onClose: (info) => this.onAdapterClosed(info, adapterInstanceId),
     });
-
-    const spawnedAt = Date.now();
-    this.durationTimer = setTimeout(() => {
-      // Only ever halts the instance it was armed for.
-      if (this.adapterInstanceId !== adapterInstanceId) return;
-      this.haltForSafety(`maxDurationMs ${this.limits.maxDurationMs} exceeded`, { kind: "max_duration", maxDurationMs: this.limits.maxDurationMs, elapsedMs: Date.now() - spawnedAt });
-    }, this.limits.maxDurationMs);
-    this.durationTimer.unref();
   }
 
   /** Random, never pid- or counter-derived; checked against ids already in the store. */
@@ -1014,10 +1030,24 @@ export class Kernel {
       // H2: the adapter's claim is never attached. Only bytes the Kernel verified and
       // imported into its own spool are referenced, via a Kernel-issued ref.
       const aid = ev.adapterInstanceId!;
-      const imp = this.store.importAdapterArtifact(outputRef, aid, { runId: run.identity.runId, attempt: run.identity.attempt });
+      const imp = this.store.importAdapterArtifact(outputRef, aid, { runId: run.identity.runId, attempt: run.identity.attempt, sourceEventId: ev.eventId });
       if (imp.ok) {
         refs.push(imp.ref);
-        this.kernelEvent("kernel.artifact_imported", { adapterInstanceId: aid, artifactRef: imp.ref.artifactRef, sourceArtifactRef: imp.ref.sourceArtifactRef, hash: imp.ref.hash, byteSize: imp.ref.byteSize }, run.identity.runId, ev.attempt);
+        this.kernelEvent(
+          "kernel.artifact_imported",
+          {
+            adapterInstanceId: aid,
+            artifactRef: imp.ref.artifactRef,
+            path: imp.ref.path,
+            sourceArtifactRef: imp.ref.sourceArtifactRef,
+            sourcePath: (outputRef as { path: string }).path,
+            sourceEventId: ev.eventId,
+            hash: imp.ref.hash,
+            byteSize: imp.ref.byteSize,
+          },
+          run.identity.runId,
+          ev.attempt,
+        );
       } else {
         status = "CORRUPTED";
         reason = `artifact verification failed: ${imp.reason}`;

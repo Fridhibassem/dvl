@@ -41,6 +41,11 @@ export interface TransportStats {
   queuedBytesHighWater: number;
   /** H3 — frames that arrived after the queue was sealed; spooled, never processed. */
   framesRejected: number;
+  /**
+   * H2 — rejected frames NOT written to the overflow spool because its path was already
+   * occupied (e.g. a planted symlink/hard link). Still counted and never processed.
+   */
+  overflowSpoolRefused: number;
   /** Blocker C — raw bytes charged to maxIncomingBytes: every stdout + stderr byte, once, at read. */
   incomingBytes: number;
 }
@@ -100,6 +105,7 @@ export class NdjsonTransport {
     queuedBytes: 0,
     queuedBytesHighWater: 0,
     framesRejected: 0,
+    overflowSpoolRefused: 0,
     incomingBytes: 0,
   };
   readonly stderrSpoolPath: string;
@@ -110,6 +116,7 @@ export class NdjsonTransport {
   private readonly queue: { frame: Record<string, unknown>; rawBytes: number; adapterInstanceId: string }[] = [];
   private sealed = false;
   private byteLimitBreached = false;
+  /** null = not created yet; -1 = creation refused (path occupied), nothing is written. */
   private overflowFd: number | null = null;
   private processing = false;
   private idleWaiters: (() => void)[] = [];
@@ -131,8 +138,10 @@ export class NdjsonTransport {
     if (!(opts.maxQueuedFrames > 0) || !(opts.maxQueuedBytes > 0)) throw new Error("queue limits must be positive");
     // Synchronous fds: writes complete before the next chunk is handled, so diagnostic
     // spool memory is bounded and ordering is exact. Disk is the backpressure sink.
-    this.stderrFd = fs.openSync(this.stderrSpoolPath, "a");
-    this.noiseFd = fs.openSync(this.noiseSpoolPath, "a");
+    // H2: created exclusively and never through a symlink, so diagnostics can only land in
+    // a fresh regular file inside this instance's Kernel spool.
+    this.stderrFd = openDiagnostic(this.stderrSpoolPath);
+    this.noiseFd = openDiagnostic(this.noiseSpoolPath);
 
     const splitter = new LineSplitter(
       (line) => this.classify(line),
@@ -321,7 +330,20 @@ export class NdjsonTransport {
   /** H3 — a frame refused by the sealed queue: kept on disk as diagnostics, never processed. */
   private reject(line: string): void {
     this.stats.framesRejected++;
-    if (this.overflowFd === null) this.overflowFd = fs.openSync(this.overflowSpoolPath, "a");
+    if (this.overflowFd === null) {
+      // Lazily created (absent unless something overflowed) — and exclusively: an entry
+      // already at this path was not made by the Kernel (planted symlink, hard link, file),
+      // so adapter-controlled frame bytes are never written through it.
+      try {
+        this.overflowFd = openDiagnostic(this.overflowSpoolPath);
+      } catch {
+        this.overflowFd = -1;
+      }
+    }
+    if (this.overflowFd === -1) {
+      this.stats.overflowSpoolRefused++;
+      return;
+    }
     fs.writeSync(this.overflowFd, line + "\n");
   }
 
@@ -336,10 +358,16 @@ export class NdjsonTransport {
     try {
       fs.closeSync(this.stderrFd);
       fs.closeSync(this.noiseFd);
-      if (this.overflowFd !== null) fs.closeSync(this.overflowFd);
+      if (this.overflowFd !== null && this.overflowFd !== -1) fs.closeSync(this.overflowFd);
     } catch {
       /* already closed */
     }
     this.opts.onClose?.(this.exitInfo);
   }
+}
+
+/** H2 — a NEW diagnostics file: O_CREAT|O_EXCL|O_NOFOLLOW, append-only, regular file. */
+function openDiagnostic(p: string): number {
+  const { O_WRONLY, O_APPEND, O_CREAT, O_EXCL, O_NOFOLLOW } = fs.constants;
+  return fs.openSync(p, O_WRONLY | O_APPEND | O_CREAT | O_EXCL | O_NOFOLLOW, 0o644);
 }

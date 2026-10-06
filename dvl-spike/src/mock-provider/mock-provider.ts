@@ -163,6 +163,36 @@ async function runScenario(name: string, runId: string, attempt: number, txRoot:
         });
         break;
       }
+      case "alias_and_finish": {
+        if (!SPOOL_DIR) throw new Error("DVL_ADAPTER_SPOOL_DIR not set");
+        const owner = path.basename(SPOOL_DIR);
+        const kernelDir = path.join(PROJECT_ROOT, ".dvl", "spool", owner);
+        // Wait for the Kernel to import an earlier artifact into this instance's Kernel spool.
+        let target: string | undefined;
+        for (let i = 0; i < 500 && !target; i++) {
+          target = fs.readdirSync(kernelDir).find((n) => /^art_[0-9a-f]{20}\.log$/.test(n));
+          if (!target) await new Promise((r) => setTimeout(r, 10));
+        }
+        if (!target) throw new Error("no Kernel-owned artifact to alias");
+        const alias = path.join(SPOOL_DIR, "alias.log");
+        fs.linkSync(path.join(kernelDir, target), alias); // same inode as the Kernel's file
+        const bytes = fs.readFileSync(alias);
+        await em.emit("action.finished", step.actor, {
+          actionId: step.actionId,
+          kind: "test",
+          exitCode: 0,
+          summary: "aliased output",
+          outputRef: {
+            artifactRef: "art_alias",
+            path: path.relative(PROJECT_ROOT, alias).split(path.sep).join("/"),
+            hash: "sha256:" + crypto.createHash("sha256").update(bytes).digest("hex"),
+            byteSize: bytes.length,
+            mimeType: "text/plain",
+            summary: "aliased output",
+          },
+        });
+        break;
+      }
       case "stdout_noise":
         await writeOut(step.text + "\n");
         break;
