@@ -250,7 +250,7 @@ export class Kernel {
    */
   private adapterInstanceId: string | null = null;
   private readonly lastAdapterSequence = new Map<string, number>(); // adapterInstanceId → last accepted seq
-  private readonly actorSeq = new Map<string, number>(); // instanceKey(adapterInstanceId, runId, actorId) → last seq
+  private readonly actorSeq = new Map<string, number>(); // instanceKey(adapterInstanceId, runId, attempt, actorId) → last seq; binding-admitted frames only
   private readonly lastDeferralKey = new Map<string, string>();
   private lastMutationAt = 0;
   private durationTimer: NodeJS.Timeout | null = null;
@@ -823,42 +823,50 @@ export class Kernel {
     const attempt = env.attempt as number;
     const run = this.runs.get(runId);
 
-    // Per-actor ordering, tracked separately from lifecycle so fork races stay detectable.
-    // Scoped per instance (H1): a restarted adapter legitimately restarts actorSequence.
-    const actorKey = instanceKey(aid, runId, actorId);
-    const lastActorSeq = this.actorSeq.get(actorKey) ?? 0;
-    if (actorSequence !== lastActorSeq + 1) {
-      this.kernelEvent("kernel.protocol_violation", { kind: "actor_sequence_gap", adapterInstanceId: aid, actorId, expected: lastActorSeq + 1, got: actorSequence }, runId, attempt);
-    }
-    this.actorSeq.set(actorKey, Math.max(lastActorSeq, actorSequence));
-
     // 4b) Admission gate (blockers A + 2): identity binding AND a legal transition of the
     //     authoritative run/actor/action state machines. A rejected event is kept as a
     //     violation and mutates nothing — no state change, no Evidence.
-    if (run) {
-      const verdict = this.admit(run, aid, attempt, type, actorId, frame.payload);
-      if (verdict) {
-        this.store.append({ origin: "adapter", trust: "protocol_violation", type, adapterInstanceId: aid, runId, attempt, adapterSequence, actorId, actorSequence, payload: capPayload(this, aid, frame.payload, type, runId) });
-        this.kernelEvent(
-          "kernel.protocol_violation",
-          {
-            kind: "run_binding_violation",
-            ...verdict,
-            type,
-            runId,
-            attempt,
-            actorId,
-            adapterSequence,
-            adapterInstanceId: aid,
-            boundAdapterInstanceId: run.adapterInstanceId,
-            boundAttempt: run.identity.attempt,
-            status: run.status,
-          },
+    const verdict = run ? this.admit(run, aid, attempt, type, actorId, frame.payload) : null;
+
+    // 4c) Per-actor ordering, tracked separately from lifecycle so fork races stay detectable.
+    //     H1: ordering state belongs to one execution stream — (instance, run, ATTEMPT,
+    //     actor) — and only frames that pass the BINDING checks (right owner instance, right
+    //     attempt) may read or advance it. A frame rejected for binding never moves any
+    //     expectation, so it can neither pollute the authorized attempt nor pre-load a future
+    //     Kernel-created attempt; attempt N+1 starts its actor streams at 1 even on the same
+    //     instance. A frame of the authorized stream that is rejected only by the lifecycle
+    //     rules still occupies its slot (the adapter's counter moved), avoiding false gaps.
+    const bindingRejected = verdict?.reason === "run_owned_by_other_instance" || verdict?.reason === "attempt_mismatch";
+    if (!bindingRejected) {
+      const actorKey = instanceKey(aid, runId, String(attempt), actorId);
+      const lastActorSeq = this.actorSeq.get(actorKey) ?? 0;
+      if (actorSequence !== lastActorSeq + 1) {
+        this.kernelEvent("kernel.protocol_violation", { kind: "actor_sequence_gap", adapterInstanceId: aid, actorId, expected: lastActorSeq + 1, got: actorSequence }, runId, attempt);
+      }
+      this.actorSeq.set(actorKey, Math.max(lastActorSeq, actorSequence));
+    }
+
+    if (run && verdict) {
+      this.store.append({ origin: "adapter", trust: "protocol_violation", type, adapterInstanceId: aid, runId, attempt, adapterSequence, actorId, actorSequence, payload: capPayload(this, aid, frame.payload, type, runId) });
+      this.kernelEvent(
+        "kernel.protocol_violation",
+        {
+          kind: "run_binding_violation",
+          ...verdict,
+          type,
           runId,
           attempt,
-        );
-        return;
-      }
+          actorId,
+          adapterSequence,
+          adapterInstanceId: aid,
+          boundAdapterInstanceId: run.adapterInstanceId,
+          boundAttempt: run.identity.attempt,
+          status: run.status,
+        },
+        runId,
+        attempt,
+      );
+      return;
     }
 
     // 5) Unknown event types: stored, never trusted (§56).

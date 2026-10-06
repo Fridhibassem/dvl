@@ -18,6 +18,20 @@ afterEach(async () => {
 });
 const task = (scenario: string) => ({ role: "builder", goal: scenario, acceptanceCriteria: [], scope: ["src/**"], scenario });
 const attemptsCreated = (k: Kernel) => k.store.ofType("kernel.attempt_created").map((e) => (e.payload as { attempt: number }).attempt);
+/**
+ * Dispatch-timeout timing. REQUEST_TIMEOUT_MS also bounds the adapter.describe handshake, so it
+ * must leave real headroom for a cold adapter spawn on slower machines; ACK_DELAY_MS is
+ * comfortably above it so run.start (and only run.start) always times out.
+ */
+const REQUEST_TIMEOUT_MS = 3_000;
+const ACK_DELAY_MS = 4_500;
+async function until(cond: () => boolean, what: string, timeoutMs = 15_000) {
+  const end = Date.now() + timeoutMs;
+  while (!cond()) {
+    if (Date.now() > end) throw new Error(`timed out waiting for ${what}`);
+    await new Promise((r) => setTimeout(r, 25));
+  }
+}
 const dispatchFailed = (k: Kernel) => k.store.ofType("kernel.attempt_dispatch_failed").map((e) => e.payload as Record<string, unknown>);
 
 describe("C16 atomic retry dispatch (blocker 4)", () => {
@@ -42,19 +56,20 @@ describe("C16 atomic retry dispatch (blocker 4)", () => {
 
   it("run.start not acknowledged in time: failed_to_start; the late adapter's events and Evidence are rejected", async () => {
     const env: Record<string, string> = {};
-    const k = makeKernel("c16-timeout", { adapterEnv: env, requestTimeoutMs: 400 });
+    const k = makeKernel("c16-timeout", { adapterEnv: env, requestTimeoutMs: REQUEST_TIMEOUT_MS });
     kernels.push(k);
     const a = await runScenario(k, "crash");
     await k.waitClosed(5_000);
-    env.DVL_MOCK_ACK_DELAY_MS = "900";
+    env.DVL_MOCK_ACK_DELAY_MS = String(ACK_DELAY_MS);
     k.restartAdapter();
     await k.describe();
     await expect(k.retryRun(a.id.runId, task("happy"))).rejects.toThrow(/timed out/);
     expect(k.runStatus(a.id.runId)).toBe("failed_to_start");
     // The adapter did receive run.start: it acks late and emits the whole happy script.
-    await new Promise((r) => setTimeout(r, 1_500));
+    const lateOf = () => k.store.all().filter((e) => e.origin === "adapter" && e.runId === a.id.runId && e.attempt === 2 && e.adapterSequence !== undefined);
+    await until(() => lateOf().some((e) => e.type === "run.finished"), "the late adapter's full script");
     await k.settle();
-    const late = k.store.all().filter((e) => e.origin === "adapter" && e.runId === a.id.runId && e.attempt === 2 && e.adapterSequence !== undefined);
+    const late = lateOf();
     expect(late.length).toBeGreaterThanOrEqual(10);
     expect(late.every((e) => e.trust === "protocol_violation")).toBe(true);
     expect(violations(k, "run_binding_violation").filter((v) => v.attempt === 2).every((v) => v.reason === "run_terminal")).toBe(true);
@@ -63,7 +78,7 @@ describe("C16 atomic retry dispatch (blocker 4)", () => {
   });
 
   it("first-attempt dispatch failure is terminal too (startRun)", async () => {
-    const k = makeKernel("c16-first", { adapterEnv: { DVL_MOCK_ACK_DELAY_MS: "900" }, requestTimeoutMs: 400 });
+    const k = makeKernel("c16-first", { adapterEnv: { DVL_MOCK_ACK_DELAY_MS: String(ACK_DELAY_MS) }, requestTimeoutMs: REQUEST_TIMEOUT_MS });
     kernels.push(k);
     k.start();
     await k.describe();

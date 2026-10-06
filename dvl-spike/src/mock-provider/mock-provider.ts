@@ -8,6 +8,8 @@
  * Env:
  *   DVL_PROJECT_ROOT   — set by Kernel; spool lives at <root>/.dvl/spool
  *   DVL_MOCK_DESCRIBE  — "incomplete" | "wrong-version" | "silent" to test C01 failure paths
+ *   DVL_MOCK_DUMP_ENV — test-only: at startup, write this process's environment as one JSON
+ *                        line to stderr (portable check of what the Kernel handed the adapter)
  *   DVL_MOCK_ACK_DELAY_MS — adversarial: delay the run.start ack by this many ms
  *   DVL_MOCK_STOP_READING — adversarial: after answering adapter.describe, stop reading stdin
  *   DVL_MOCK_EMIT_RUN_ID / DVL_MOCK_EMIT_ATTEMPT — adversarial: emit every event under this
@@ -308,6 +310,8 @@ async function flood(write: (s: string) => Promise<void>, bytes: number, text: s
 }
 
 // ───────────── command loop ─────────────
+
+if (process.env.DVL_MOCK_DUMP_ENV) process.stderr.write(`DVL_MOCK_ENV_DUMP ${JSON.stringify(process.env)}\n`);
 
 /** actorSequence per runId|attempt|actorId for test-injected frames (adapter.ping payload.emit). */
 const injectedActorSeqs = new Map<string, number>();

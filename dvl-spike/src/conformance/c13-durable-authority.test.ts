@@ -140,14 +140,26 @@ describe("C13 durable authority is Kernel-authenticated (blocker 1)", () => {
   });
 
   it("6. the integrity key never reaches the adapter; a Kernel without the host key trusts nothing", async () => {
-    const k = track(makeKernel("c13-key"));
+    const k = track(makeKernel("c13-key", { adapterEnv: { DVL_MOCK_DUMP_ENV: "1" } }));
     k.start();
     await k.describe();
+    const key = keyFor(rootOf(k));
+    const forms = [key, Buffer.from(key.toString("hex")), Buffer.from(key.toString("base64"))];
     const pid = (k as unknown as { child: { pid: number } }).child.pid;
-    const env = fs.readFileSync(`/proc/${pid}/environ`);
-    expect(env.includes(Buffer.from(keyFor(rootOf(k)).toString("hex")))).toBe(false);
-    expect(env.includes(keyFor(rootOf(k)))).toBe(false);
-    await k.shutdown();
+    // Linux only: the child's environment as the OS sees it.
+    if (fs.existsSync(`/proc/${pid}/environ`)) {
+      const procEnv = fs.readFileSync(`/proc/${pid}/environ`);
+      for (const f of forms) expect(procEnv.includes(f)).toBe(false);
+    }
+    await k.shutdown(); // closed ⇒ stderr fully drained to the instance's diagnostics spool
+    // Portable (Linux and macOS): the adapter's own dump of process.env, drained from stderr.
+    const stderr = fs.readFileSync(k.stderrSpoolPath!);
+    const dumpLine = stderr.toString("utf8").split("\n").find((l) => l.startsWith("DVL_MOCK_ENV_DUMP "));
+    expect(dumpLine).toBeDefined(); // non-vacuous: we really saw the adapter's environment
+    const childEnv = JSON.parse(dumpLine!.slice("DVL_MOCK_ENV_DUMP ".length)) as Record<string, string>;
+    expect(childEnv.DVL_PROJECT_ROOT).toBe(rootOf(k));
+    const dump = Buffer.from(dumpLine!);
+    for (const f of forms) expect(dump.includes(f)).toBe(false);
     // Same root, different key (e.g. an attacker's or a misconfigured host): nothing authenticates.
     const stranger = track(new Kernel({ root: rootOf(k), adapterCommand: mockProviderCommand(), integrityKey: Buffer.alloc(32, 7) }));
     expect(stranger.store.integrity.events.accepted).toBe(0);
