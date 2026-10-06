@@ -59,6 +59,9 @@ function smallTest(actor: string, actionId: string): Step[] {
 }
 
 export const SCENARIOS: Record<string, Step[]> = {
+  /** H1 regression (C18): acknowledges run.start and emits nothing; tests inject frames. */
+  idle: [],
+
   /** C02 — ordered happy path. */
   happy: [
     ...start(),

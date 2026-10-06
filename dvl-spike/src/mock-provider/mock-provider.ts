@@ -68,6 +68,10 @@ function writeErr(s: string): Promise<void> {
 class Emitter {
   /** H1: adapterSequence is monotonic for the whole adapter process, across runs. */
   private static adapterSeq = 0;
+  /** Next process-wide adapterSequence (shared by scenario emits and injected frames). */
+  static nextAdapterSequence(): number {
+    return ++Emitter.adapterSeq;
+  }
   private readonly actorSeqs = new Map<string, number>();
   private readonly runId: string;
   private readonly attempt: number;
@@ -305,6 +309,9 @@ async function flood(write: (s: string) => Promise<void>, bytes: number, text: s
 
 // ───────────── command loop ─────────────
 
+/** actorSequence per runId|attempt|actorId for test-injected frames (adapter.ping payload.emit). */
+const injectedActorSeqs = new Map<string, number>();
+
 async function handle(cmd: Record<string, unknown>): Promise<void> {
   const requestId = cmd.requestId as string;
   const payload = (cmd.payload ?? {}) as Record<string, unknown>;
@@ -325,9 +332,21 @@ async function handle(cmd: Record<string, unknown>): Promise<void> {
       }
       return;
     }
-    case "adapter.ping":
+    case "adapter.ping": {
+      // Test-only frame injection: the CURRENT, handshaken adapter emits exactly these frames
+      // with valid adapterSequence (process-wide) and actorSequence (per runId+attempt+actor),
+      // so conformance tests can target any run/attempt identity in valid order. Pong last, so
+      // the Kernel has processed every injected frame when the ping request resolves.
+      const emit = Array.isArray(payload.emit) ? (payload.emit as Record<string, unknown>[]) : [];
+      for (const f of emit) {
+        const key = `${String(f.runId)}|${String(f.attempt)}|${String(f.actorId)}`;
+        const actorSequence = (injectedActorSeqs.get(key) ?? 0) + 1;
+        injectedActorSeqs.set(key, actorSequence);
+        await writeOut(encodeFrame({ adapterSequence: Emitter.nextAdapterSequence(), actorSequence, ...f }));
+      }
       await writeOut(encodeFrame({ type: "adapter.pong", requestId }));
       return;
+    }
     case "run.start": {
       // Adversarial: ack late (after the Kernel's request timeout), then run the scenario anyway.
       const delay = Number(process.env.DVL_MOCK_ACK_DELAY_MS ?? 0);

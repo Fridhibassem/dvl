@@ -76,3 +76,18 @@ export function startRunLenient(k: Kernel, scenario: string): { runId: string; a
   if (!created?.runId) throw new Error("startRun did not create a run (describe() missing?)");
   return { runId: created.runId, acked };
 }
+
+/**
+ * Make the CURRENT adapter instance emit exactly `frames` (mock adapter.ping injection), each
+ * with a valid adapterSequence/actorSequence, and wait until the Kernel processed all of them.
+ * Lets tests target any run/attempt identity from the live, correctly sequenced adapter.
+ */
+export async function injectFrames(k: Kernel, frames: Record<string, unknown>[]): Promise<void> {
+  await (k as unknown as { request: (t: string, p: unknown) => Promise<unknown> }).request("adapter.ping", { emit: frames });
+  await k.settle();
+}
+
+/** A frame for injectFrames(). */
+export function frame(type: string, runId: string, attempt: number, actorId: string, payload?: Record<string, unknown>): Record<string, unknown> {
+  return payload ? { type, runId, attempt, actorId, payload } : { type, runId, attempt, actorId };
+}
