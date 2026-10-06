@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { Kernel } from "../kernel/kernel.js";
 import { mockProviderCommand } from "../kernel/mock-launch.js";
 import type { StoredEvent } from "../kernel/types.js";
-import { makeKernel, runScenario, violations, waitForEvent } from "./harness.js";
+import { makeKernel, runScenario, violations, waitForEvent, kernelOn } from "./harness.js";
 
 let k: Kernel | undefined;
 afterEach(async () => {
@@ -183,14 +183,16 @@ describe("C06 adapterInstanceId (H1)", () => {
     const legacy = { eventId: "evt_legacy", kernelSequence: nextSeq, origin: "adapter", trust: "untrusted_observation", type: "heartbeat", receivedAt: new Date().toISOString(), adapterSequence: 1 };
     fs.appendFileSync(k.store.eventsPath, JSON.stringify(legacy) + "\n" + '{"eventId":"evt_torn","kernelSeq');
 
-    const k2 = new Kernel({ root, adapterCommand: mockProviderCommand() });
+    const k2 = kernelOn(root); // the host hands the same project key to the new Kernel
     const replayed = k2.store.all();
     const replA = adapterEvents(replayed, aidA!).map((e) => e.adapterSequence);
     expect(contiguous(replA)).toBe(true);
     expect(adapterEvents(replayed, aidB!).map((e) => e.adapterSequence)).toEqual(replA);
-    // Legacy record loads but is not merged into any real instance.
-    const leg = replayed.find((e) => e.eventId === "evt_legacy")!;
-    expect(leg.adapterInstanceId).toBeUndefined();
+    // Blocker 1: an unauthenticated (pre-integrity / hand-appended) line is quarantined — it
+    // is never loaded, never merged into an instance, never trusted. The torn tail is a
+    // crash artifact and is simply skipped.
+    expect(replayed.some((e) => e.eventId === "evt_legacy")).toBe(false);
+    expect(k2.store.integrity.events.rejected).toEqual([expect.objectContaining({ eventId: "evt_legacy", reason: "missing_mac" })]);
     expect(replayed.some((e) => e.eventId === "evt_torn")).toBe(false);
 
     // A Kernel restarted on the same root gets an instance id never seen in the log.

@@ -33,6 +33,43 @@ const MIME_RE = /^[A-Za-z0-9][\w.+-]{0,63}\/[A-Za-z0-9][\w.+-]{0,63}$/;
 
 export type ArtifactCheck = { ok: true; ref: ArtifactRef } | { ok: false; reason: string };
 
+/**
+ * Blocker B — Kernel provenance of a spool artifact. Recorded in the event log
+ * (kernel.artifact_registered) at the moment the Kernel writes the bytes, and rebuilt on
+ * replay. A file under .dvl/spool without a matching registration is never trusted.
+ */
+export type ArtifactOrigin = "import" | "kernel_spooled_payload" | "snapshot" | "attempt_archive";
+export interface ArtifactProvenance {
+  origin: ArtifactOrigin;
+  runId?: string;
+  attempt?: number;
+}
+export const ARTIFACT_REGISTERED = "kernel.artifact_registered";
+
+/**
+ * Blocker 1 — durable authority. The adapter runs as the same OS user (no sandbox) and can
+ * write both JSONL logs; JSON fields such as origin/trust prove nothing. Each log is an
+ * HMAC-SHA256 chain keyed by a secret the HOST hands to the Kernel in memory (never env,
+ * disk, or the adapter): mac_i = HMAC(key, mac_{i-1} + "\n" + canonical(record_i)).
+ * Replay accepts a line only if its MAC verifies against the last ACCEPTED line, so forged
+ * or inserted lines are rejected while the legitimate chain continues; a modified, deleted
+ * or reordered line breaks the chain and everything after it is not trusted (fail-closed).
+ * A clean shorter prefix (tail truncation/rollback) is only detectable against a
+ * host-held head anchor (expectedHead).
+ */
+export interface ChainHead {
+  count: number;
+  mac: string;
+}
+export interface ChainReport {
+  ok: boolean;
+  accepted: number;
+  rejected: { line: number; reason: "unparseable" | "missing_mac" | "mac_mismatch"; eventId?: string; type?: string }[];
+  /** True when an expectedHead anchor was given and the log no longer reaches it. */
+  truncated: boolean;
+}
+type LogKind = "events" | "evidence";
+
 export function sha256(data: Buffer | string): string {
   return "sha256:" + crypto.createHash("sha256").update(data).digest("hex");
 }
@@ -44,6 +81,10 @@ export function newId(prefix: string): string {
 export interface EventStoreOptions {
   root: string; // project root; .dvl lives under it
   fsync?: boolean;
+  /** Blocker 1 — host-held secret authenticating durable records. Absent ⇒ ephemeral. */
+  integrityKey?: Buffer;
+  /** Blocker 1 — host-held anchor of the events log head, to detect truncation/rollback. */
+  expectedHead?: ChainHead;
 }
 
 export class EventStore {
@@ -57,8 +98,24 @@ export class EventStore {
   private seq = 0;
   private readonly events: StoredEvent[] = [];
   private readonly evidence = new Map<string, EvidenceRecord>();
+  /** Blocker B — Kernel-issued artifacts by artifactId. The only source of spool trust. */
+  private readonly registry = new Map<string, ArtifactRef & ArtifactProvenance>();
+  private readonly key: Buffer;
+  /** True when no host key was supplied: nothing written now can be trusted after restart. */
+  readonly ephemeralKey: boolean;
+  private readonly chain: Record<LogKind, ChainHead>;
+  /** Blocker 1 — what replay authenticated vs rejected, per log. */
+  readonly integrity: Record<LogKind, ChainReport>;
 
   constructor(private readonly opts: EventStoreOptions) {
+    this.ephemeralKey = !opts.integrityKey;
+    this.key = opts.integrityKey ? Buffer.from(opts.integrityKey) : crypto.randomBytes(32);
+    if (this.key.length < 32) throw new Error("integrityKey must be at least 32 bytes");
+    this.chain = { events: { count: 0, mac: this.genesis("events") }, evidence: { count: 0, mac: this.genesis("evidence") } };
+    this.integrity = {
+      events: { ok: true, accepted: 0, rejected: [], truncated: false },
+      evidence: { ok: true, accepted: 0, rejected: [], truncated: false },
+    };
     this.dvlDir = path.join(opts.root, ".dvl");
     this.spoolDir = path.join(this.dvlDir, "spool");
     this.adapterSpoolDir = path.join(this.dvlDir, "adapter-spool");
@@ -79,7 +136,7 @@ export class EventStore {
       receivedAt: new Date().toISOString(),
       ...e,
     };
-    this.durableAppend(this.eventsPath, stored);
+    this.durableAppend("events", stored);
     this.seq = stored.kernelSequence;
     this.events.push(stored);
     return stored;
@@ -93,15 +150,20 @@ export class EventStore {
     return this.events.filter((e) => e.type === type);
   }
 
-  /** Re-read JSONL from disk — proves persistence independent of memory. */
+  /** Re-read JSONL from disk — only records that authenticate (blocker 1). */
   readFromDisk(): StoredEvent[] {
-    return readJsonl<StoredEvent>(this.eventsPath);
+    return this.readChain<StoredEvent>("events").records;
+  }
+
+  /** Blocker 1 — current head of the events chain; the host may persist it as an anchor. */
+  head(): ChainHead {
+    return { ...this.chain.events };
   }
 
   // ───────────── evidence ─────────────
 
   putEvidence(rec: EvidenceRecord): EvidenceRecord {
-    this.durableAppend(this.evidencePath, rec);
+    this.durableAppend("evidence", rec);
     this.evidence.set(rec.evidenceId, rec);
     return rec;
   }
@@ -110,9 +172,10 @@ export class EventStore {
     return [...this.evidence.values()];
   }
 
+  /** Authenticated EvidenceRecords from disk, latest status per id (blocker 1). */
   readEvidenceFromDisk(): EvidenceRecord[] {
     const latest = new Map<string, EvidenceRecord>();
-    for (const r of readJsonl<EvidenceRecord>(this.evidencePath)) latest.set(r.evidenceId, r);
+    for (const r of this.readChain<EvidenceRecord>("evidence").records) latest.set(r.evidenceId, r);
     return [...latest.values()];
   }
 
@@ -143,7 +206,7 @@ export class EventStore {
   }
 
   /** Kernel writes bytes into its own spool for `owner`. Never called with adapter-chosen paths. */
-  spoolArtifact(content: Buffer | string, opts: { owner: string; mimeType: string; summary: string; sourceArtifactRef?: string }): ArtifactRef {
+  spoolArtifact(content: Buffer | string, opts: { owner: string; mimeType: string; summary: string; sourceArtifactRef?: string; provenance: ArtifactProvenance }): ArtifactRef {
     const artifactId = newId("art");
     const ext = opts.mimeType === "application/json" ? "json" : "log";
     const dir = this.kernelSpoolDirOf(opts.owner);
@@ -159,6 +222,10 @@ export class EventStore {
     const ref: ArtifactRef = { artifactRef: artifactId, path: rel, hash: sha256(buf), summary: opts.summary.slice(0, 280), byteSize: buf.length, mimeType: opts.mimeType };
     if (opts.owner !== KERNEL_SPOOL_OWNER) ref.adapterInstanceId = opts.owner;
     if (opts.sourceArtifactRef !== undefined) ref.sourceArtifactRef = opts.sourceArtifactRef;
+    // Provenance is recorded by the Kernel at write time — never inferred from location.
+    const entry = { ...ref, ...opts.provenance };
+    this.append({ origin: "kernel", trust: "kernel_truth", type: ARTIFACT_REGISTERED, runId: opts.provenance.runId, attempt: opts.provenance.attempt, payload: entry });
+    this.registry.set(artifactId, entry);
     return ref;
   }
 
@@ -175,7 +242,7 @@ export class EventStore {
    * Bytes are read ONCE through an O_NOFOLLOW fd; the hash is computed over exactly the
    * bytes that are then written, so a concurrent rewrite cannot slip in unverified data.
    */
-  importAdapterArtifact(claim: unknown, adapterInstanceId: string): ArtifactCheck {
+  importAdapterArtifact(claim: unknown, adapterInstanceId: string, context: { runId?: string; attempt?: number } = {}): ArtifactCheck {
     const c = claim as Partial<ArtifactRef> | null;
     if (!c || typeof c !== "object") return { ok: false, reason: "malformed artifactRef" };
     if (typeof c.path !== "string" || typeof c.hash !== "string" || typeof c.byteSize !== "number" || !Number.isInteger(c.byteSize) || c.byteSize < 0) {
@@ -237,15 +304,24 @@ export class EventStore {
     const mimeType = typeof c.mimeType === "string" && MIME_RE.test(c.mimeType) ? c.mimeType : "application/octet-stream";
     const summary = typeof c.summary === "string" ? c.summary : "";
     const source = typeof c.artifactRef === "string" ? c.artifactRef.slice(0, 128) : undefined;
-    return { ok: true, ref: this.spoolArtifact(buf, { owner: adapterInstanceId, mimeType, summary, sourceArtifactRef: source }) };
+    return { ok: true, ref: this.spoolArtifact(buf, { owner: adapterInstanceId, mimeType, summary, sourceArtifactRef: source, provenance: { origin: "import", ...context } }) };
   }
 
   /**
-   * H2 — re-verify a Kernel-issued ref against its bytes in the Kernel spool. A missing or
-   * altered file is never valid runtime material.
+   * H2/blocker B — re-verify a ref against (1) the Kernel's own registration of that
+   * artifact and (2) the bytes on disk. Location alone grants nothing: a file planted under
+   * .dvl/spool, or a ref whose id/path/hash/size/owner differs from the registration, is
+   * rejected even if its bytes hash correctly. A missing or altered file is never valid.
    */
   verifyKernelArtifact(ref: ArtifactRef): { ok: true } | { ok: false; reason: string } {
     if (typeof ref?.path !== "string" || typeof ref.hash !== "string") return { ok: false, reason: "malformed artifactRef" };
+    const reg = typeof ref.artifactRef === "string" ? this.registry.get(ref.artifactRef) : undefined;
+    if (!reg) return { ok: false, reason: `artifact ${String(ref.artifactRef)} is not registered by the Kernel` };
+    // Every ArtifactRef field is bound — including mimeType, summary and sourceArtifactRef:
+    // nothing on a Kernel ref is "display-only and unchecked".
+    const fields: (keyof ArtifactRef)[] = ["artifactRef", "path", "hash", "byteSize", "mimeType", "summary", "adapterInstanceId", "sourceArtifactRef"];
+    const diff = fields.filter((f) => reg[f] !== ref[f]);
+    if (diff.length > 0) return { ok: false, reason: `artifactRef does not match the Kernel registration of ${ref.artifactRef} (${diff.join(", ")})` };
     const parts = ref.path.split("/");
     if (parts.length !== 4 || parts[0] !== ".dvl" || parts[1] !== "spool" || !OWNER_RE.test(parts[2]!) || !SAFE_FILENAME_RE.test(parts[3]!)) {
       return { ok: false, reason: `not a Kernel spool path: ${ref.path}` };
@@ -291,8 +367,24 @@ export class EventStore {
 
   // ───────────── internals ─────────────
 
-  private durableAppend(file: string, obj: unknown): void {
-    const line = JSON.stringify(obj) + "\n";
+  private genesis(kind: LogKind): string {
+    return crypto.createHmac("sha256", this.key).update(`dvl-genesis:${kind}`).digest("hex");
+  }
+
+  private mac(prev: string, canonical: string): string {
+    return crypto.createHmac("sha256", this.key).update(prev).update("\n").update(canonical).digest("hex");
+  }
+
+  private pathOf(kind: LogKind): string {
+    return kind === "events" ? this.eventsPath : this.evidencePath;
+  }
+
+  private durableAppend(kind: LogKind, obj: object): void {
+    const canonical = JSON.stringify(obj);
+    const mac = this.mac(this.chain[kind].mac, canonical);
+    // `mac` is the LAST key, so stripping it reproduces `canonical` byte-for-byte on replay.
+    const line = canonical.slice(0, -1) + (canonical === "{}" ? "" : ",") + `"mac":"${mac}"}` + "\n";
+    const file = this.pathOf(kind);
     if (this.opts.fsync) {
       const fd = fs.openSync(file, "a");
       try {
@@ -304,27 +396,60 @@ export class EventStore {
     } else {
       fs.appendFileSync(file, line);
     }
+    this.chain[kind] = { count: this.chain[kind].count + 1, mac };
+  }
+
+  /** Walk one log, accepting only lines whose MAC continues the last accepted line. */
+  private readChain<T>(kind: LogKind, anchor?: ChainHead): { records: T[]; report: ChainReport; head: ChainHead } {
+    const report: ChainReport = { ok: true, accepted: 0, rejected: [], truncated: false };
+    const records: T[] = [];
+    let prev = this.genesis(kind);
+    let anchorMet = !anchor || anchor.count === 0;
+    const file = this.pathOf(kind);
+    const raw = fs.existsSync(file) ? fs.readFileSync(file, "utf8").split("\n") : [];
+    raw.forEach((line, idx) => {
+      if (!line.trim()) return;
+      let obj: Record<string, unknown>;
+      try {
+        obj = JSON.parse(line) as Record<string, unknown>;
+      } catch {
+        // A torn final line is a crash artifact; anywhere else it is a rejected record.
+        const isTail = raw.slice(idx + 1).every((l) => !l.trim());
+        if (!isTail) report.rejected.push({ line: idx + 1, reason: "unparseable" });
+        return;
+      }
+      const { mac, ...rest } = obj;
+      const reject = (reason: "missing_mac" | "mac_mismatch") =>
+        report.rejected.push({ line: idx + 1, reason, eventId: typeof rest.eventId === "string" ? rest.eventId : undefined, type: typeof rest.type === "string" ? rest.type : undefined });
+      if (typeof mac !== "string") return reject("missing_mac");
+      const expected = this.mac(prev, JSON.stringify(rest));
+      if (mac.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(expected))) return reject("mac_mismatch");
+      prev = mac;
+      report.accepted++;
+      records.push(rest as T);
+      if (anchor && report.accepted === anchor.count && mac === anchor.mac) anchorMet = true;
+    });
+    if (!anchorMet) report.truncated = true;
+    report.ok = report.rejected.length === 0 && !report.truncated;
+    return { records, report, head: { count: report.accepted, mac: prev } };
   }
 
   private replay(): void {
-    for (const e of readJsonl<StoredEvent>(this.eventsPath)) {
+    const ev = this.readChain<StoredEvent>("events", this.opts.expectedHead);
+    this.integrity.events = ev.report;
+    this.chain.events = ev.head; // new records continue the authenticated chain
+    for (const e of ev.records) {
       this.events.push(e);
       this.seq = Math.max(this.seq, e.kernelSequence);
+      // Only authenticated Kernel-origin registrations rebuild provenance.
+      if (e.type === ARTIFACT_REGISTERED && e.origin === "kernel" && e.trust === "kernel_truth") {
+        const entry = e.payload as ArtifactRef & ArtifactProvenance;
+        this.registry.set(entry.artifactRef, entry);
+      }
     }
-    for (const r of this.readEvidenceFromDisk()) this.evidence.set(r.evidenceId, r);
+    const evd = this.readChain<EvidenceRecord>("evidence");
+    this.integrity.evidence = evd.report;
+    this.chain.evidence = evd.head;
+    for (const r of evd.records) this.evidence.set(r.evidenceId, r);
   }
-}
-
-function readJsonl<T>(file: string): T[] {
-  if (!fs.existsSync(file)) return [];
-  const out: T[] = [];
-  for (const line of fs.readFileSync(file, "utf8").split("\n")) {
-    if (!line.trim()) continue;
-    try {
-      out.push(JSON.parse(line) as T);
-    } catch {
-      // torn last line after crash: skip, never fabricate
-    }
-  }
-  return out;
 }

@@ -175,7 +175,10 @@ describe("C07 adapter spool isolation (H2)", () => {
       expect(filesIn(dirA).filter((f) => filesIn(dirB).includes(f) && !f.startsWith("diagnostics."))).toEqual([]);
     }
     expect(k1.store.verifyKernelArtifact(ref1)).toEqual({ ok: true });
-    expect(k1.store.verifyKernelArtifact(ref2)).toEqual({ ok: true });
+    expect(k2.store.verifyKernelArtifact(ref2)).toEqual({ ok: true });
+    // Blocker B: location is not provenance — k1 never registered k2's artifact, so it does
+    // not trust it even though the bytes sit at a well-formed .dvl/spool path.
+    expect((k1.store.verifyKernelArtifact(ref2) as { reason: string }).reason).toMatch(/not registered/);
 
     // Cross-instance read attempt: instance 2 cites instance 1's (valid, intact) artifact.
     const claim1 = (k1.store.ofType("action.finished")[0]!.payload as { outputRef: ArtifactRef }).outputRef;

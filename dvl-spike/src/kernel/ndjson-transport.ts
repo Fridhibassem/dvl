@@ -41,6 +41,8 @@ export interface TransportStats {
   queuedBytesHighWater: number;
   /** H3 — frames that arrived after the queue was sealed; spooled, never processed. */
   framesRejected: number;
+  /** Blocker C — raw bytes charged to maxIncomingBytes: every stdout + stderr byte, once, at read. */
+  incomingBytes: number;
 }
 
 export type TransportIssue =
@@ -59,6 +61,16 @@ export type TransportIssue =
       rejectedAdapterSequence: number | null;
       lastQueuedAdapterSequence: number | null;
       overflowSpoolPath: string;
+    }
+  | {
+      kind: "byte_limit";
+      adapterInstanceId: string;
+      stream: "stdout" | "stderr";
+      maxIncomingBytes: number;
+      incomingBytes: number;
+      stdoutBytes: number;
+      stderrBytes: number;
+      triggeringChunkBytes: number;
     };
 
 export interface TransportOptions {
@@ -68,6 +80,8 @@ export interface TransportOptions {
   adapterInstanceId: string;
   maxQueuedFrames: number;
   maxQueuedBytes: number;
+  /** Blocker C — §49 maxIncomingBytes for this instance, charged at the drain boundary. */
+  maxIncomingBytes: number;
   onFrame: (frame: Record<string, unknown>, rawBytes: number, adapterInstanceId: string) => Promise<void> | void;
   onIssue?: (issue: TransportIssue) => void;
   onClose?: (info: { code: number | null; signal: NodeJS.Signals | null }) => void;
@@ -86,6 +100,7 @@ export class NdjsonTransport {
     queuedBytes: 0,
     queuedBytesHighWater: 0,
     framesRejected: 0,
+    incomingBytes: 0,
   };
   readonly stderrSpoolPath: string;
   readonly noiseSpoolPath: string;
@@ -94,6 +109,7 @@ export class NdjsonTransport {
 
   private readonly queue: { frame: Record<string, unknown>; rawBytes: number; adapterInstanceId: string }[] = [];
   private sealed = false;
+  private byteLimitBreached = false;
   private overflowFd: number | null = null;
   private processing = false;
   private idleWaiters: (() => void)[] = [];
@@ -127,9 +143,10 @@ export class NdjsonTransport {
       },
     );
 
-    // ── DRAIN loop: stdout ──
+    // ── DRAIN loop: stdout ── (charged BEFORE splitting/parsing/queueing)
     child.stdout!.on("data", (chunk: Buffer) => {
       this.stats.stdoutBytes += chunk.length;
+      this.charge(chunk.length, "stdout");
       splitter.push(chunk);
     });
     child.stdout!.on("end", () => {
@@ -141,7 +158,8 @@ export class NdjsonTransport {
     // ── DRAIN loop: stderr → diagnostic spool (never parsed) ──
     child.stderr!.on("data", (chunk: Buffer) => {
       this.stats.stderrBytes += chunk.length;
-      fs.writeSync(this.stderrFd, chunk);
+      this.charge(chunk.length, "stderr");
+      fs.writeSync(this.stderrFd, chunk); // still drained after a breach: cleanup/diagnostics only
     });
     child.stderr!.on("end", () => {
       this.stderrEnded = true;
@@ -157,12 +175,34 @@ export class NdjsonTransport {
   }
 
   /** Kernel → Adapter. Honors stdin backpressure. */
-  async send(cmd: CommandFrame): Promise<void> {
-    if (this.closed || !this.child.stdin || this.child.stdin.destroyed) {
+  /**
+   * Kernel → Adapter. Honors stdin backpressure, but never unboundedly: if the adapter stops
+   * reading, the wait for 'drain' ends at `timeoutMs` (rejects) or when stdin closes/errors
+   * (the child died). Nothing in the Kernel can be parked forever on an adapter's pipe.
+   */
+  async send(cmd: CommandFrame, timeoutMs?: number): Promise<void> {
+    const stdin = this.child.stdin;
+    if (this.closed || !stdin || stdin.destroyed) {
       throw new Error(`transport closed; cannot send ${cmd.type}`);
     }
-    const ok = this.child.stdin.write(encodeFrame(cmd));
-    if (!ok) await new Promise<void>((r) => this.child.stdin!.once("drain", () => r()));
+    if (stdin.write(encodeFrame(cmd))) return;
+    await new Promise<void>((resolve, reject) => {
+      const done = (err?: Error) => {
+        stdin.off("drain", onDrain);
+        stdin.off("close", onClose);
+        stdin.off("error", onError);
+        if (timer) clearTimeout(timer);
+        if (err) reject(err);
+        else resolve();
+      };
+      const onDrain = () => done();
+      const onClose = () => done(new Error(`adapter stdin closed before ${cmd.type} was flushed`));
+      const onError = (e: Error) => done(new Error(`adapter stdin error while sending ${cmd.type}: ${e.message}`));
+      const timer = timeoutMs !== undefined ? setTimeout(() => done(new Error(`send of ${cmd.type} timed out after ${timeoutMs}ms (adapter not reading stdin)`)), timeoutMs) : null;
+      stdin.on("drain", onDrain);
+      stdin.on("close", onClose);
+      stdin.on("error", onError);
+    });
   }
 
   /** Resolves when every enqueued frame has been processed by the Kernel. */
@@ -253,6 +293,29 @@ export class NdjsonTransport {
 
   private writeNoise(s: string): void {
     fs.writeSync(this.noiseFd, s);
+  }
+
+  /**
+   * Blocker C — charge raw bytes the moment they are read. The first chunk that pushes the
+   * total past maxIncomingBytes seals the queue (that chunk's frames and everything after
+   * are never enqueued) and reports the breach exactly once. Draining continues so the
+   * child cannot deadlock on a full pipe before it is killed; later bytes are diagnostics.
+   */
+  private charge(n: number, stream: "stdout" | "stderr"): void {
+    this.stats.incomingBytes += n;
+    if (this.byteLimitBreached || this.stats.incomingBytes <= this.opts.maxIncomingBytes) return;
+    this.byteLimitBreached = true;
+    this.sealed = true;
+    this.opts.onIssue?.({
+      kind: "byte_limit",
+      adapterInstanceId: this.opts.adapterInstanceId,
+      stream,
+      maxIncomingBytes: this.opts.maxIncomingBytes,
+      incomingBytes: this.stats.incomingBytes,
+      stdoutBytes: this.stats.stdoutBytes,
+      stderrBytes: this.stats.stderrBytes,
+      triggeringChunkBytes: n,
+    });
   }
 
   /** H3 — a frame refused by the sealed queue: kept on disk as diagnostics, never processed. */

@@ -98,6 +98,43 @@ Add a test that simulates Kernel interruption and verifies replay from JSONL eve
 Acceptance:
 After restart, Kernel can reconstruct enough state to avoid false completion or corrupted truth.
 
+## Post-review fixes (Codex blocker candidates A–C) — pending independent review
+
+- A (H1, run ownership): an adapter event naming a known run is applied only if its
+  (adapterInstanceId, runId, attempt) equals the run's Kernel-created binding, the attempt is not terminal,
+  and the transition is legal (`run.started` only from `starting`). Otherwise: `run_binding_violation`
+  (`run_owned_by_other_instance` | `attempt_mismatch` | `run_terminal` | `illegal_transition`), stored, never
+  applied. Continuation after a terminal attempt only via `Kernel.retryRun()` (attempt N+1, rebound to the
+  current instance, `kernel.attempt_created`). Suite C10.
+- B (H2, spool provenance): no OS sandbox — an adapter can physically write into `.dvl/spool/<id>/`.
+  Location never grants trust: every Kernel spool write records `kernel.artifact_registered` (id, owner, path,
+  hash, size, origin, run/attempt), rebuilt on replay from Kernel-origin records only; `verifyKernelArtifact`
+  requires a matching registration plus a byte re-check. Evidence attaches a Kernel-spooled payload ref only
+  for the exact payload object the Kernel created (adapter `__spooled` keys are data). Suite C11.
+- C (H3, maxIncomingBytes): charged in the transport when stdout/stderr bytes are read — before splitting,
+  parsing, queueing, gates — per instance, once. Breach seals the queue, one `kernel.safety_halt`
+  (`kind: max_incoming_bytes`, stream, byte counts), instance killed and fenced. Suite C12; C09 updated.
+
+## Post-review fixes, round 2 (Codex blockers 1–4) — pending independent review
+
+- 1 (durable authority): the adapter can physically write `.dvl/events/events.jsonl` and
+  `.dvl/evidence/evidence.jsonl` (same OS user, no sandbox). Both logs are HMAC-SHA256 chains keyed by a
+  host-held `integrityKey` passed to the Kernel in memory (never env, disk or adapter). Replay accepts only
+  lines whose MAC continues the last accepted line; forged/inserted lines are rejected, a modified, deleted or
+  reordered line ends trust from that point (fail-closed), `kernel.integrity_violation` is recorded. Tail
+  truncation/rollback is detected only against a host-held `expectedHead`. No key ⇒ ephemeral key: nothing
+  authenticates after restart. Suite C13.
+- 2 (lifecycle FSM): one admission gate (`Kernel.admit`) checks binding, terminal state, run FSM, actor FSM
+  (finished/aborted actors cannot act) and action FSM (requested → started → updated* → finished, owner-actor
+  only). Actor/action state is per attempt. Rejected events mutate nothing and create no Evidence. Suite C14.
+- 3 (attempt workspaces): each attempt owns `.dvl/tx/<runId>/attempt-<n>` and a fresh workspaceId; a superseded
+  workspace is archived (registered manifest) and never reused. Files carry forward only from an explicitly
+  selected VALIDATED FILE_SNAPSHOT of the same run, byte-verified, checked before any attempt exists. Suite C15.
+- 4 (atomic dispatch): a run.start that is not delivered and acknowledged makes the attempt terminal
+  `failed_to_start` (`kernel.attempt_dispatch_failed`); retries stay monotonic. Suite C16.
+- Also: `send()` waits for stdin drain only until a timeout or stdin close/error; every ArtifactRef field
+  (incl. mimeType, summary, sourceArtifactRef) is bound to the Kernel registration. Suite C17.
+
 ## Execution rule
 
 Implement one hardening task at a time.
