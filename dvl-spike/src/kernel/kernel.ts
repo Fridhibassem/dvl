@@ -1196,6 +1196,22 @@ export class Kernel {
       this.kernelEvent("kernel.spool_integrity_violation", { kind: "diagnostics_refused", ...d });
       return;
     }
+    if (issue.kind === "input_rejected") {
+      // H3: an oversized / malformed / partial DVL1 frame never reached ingest. The stream is
+      // no longer trustworthy: fail closed for the instance it came from (halt once; the
+      // transport already sealed its queue). Only bounded, escaped fields are recorded.
+      const { kind: _kind, ...r } = issue;
+      if (adapterInstanceId !== this.adapterInstanceId || this.terminatedInstances.has(adapterInstanceId)) {
+        this.kernelEvent("kernel.transport_issue", { kind: "input_rejected", stale: true, ...r });
+        return;
+      }
+      this.haltForSafety(`transport input rejected (${r.reason})`, {
+        kind: "transport_input_rejected",
+        ...r,
+        lastAcceptedAdapterSequence: this.lastAdapterSequence.get(adapterInstanceId) ?? null,
+      });
+      return;
+    }
     if (issue.kind === "byte_limit") {
       const { kind: _kind, ...b } = issue;
       if (adapterInstanceId !== this.adapterInstanceId || this.terminatedInstances.has(adapterInstanceId)) {

@@ -53,7 +53,9 @@ describe("C03 frame-prefix handling of stdout noise", () => {
 
     const stats = k.transportStats!;
     expect(stats.noiseLines).toBeGreaterThan(1000); // 2MB stdout flood + crafted lines
-    expect(stats.malformedLines).toBe(2);
+    // H3: malformed DVL1 frames fail closed (C26); this scenario now contains only non-frame noise.
+    expect(stats.malformedLines).toBe(0);
+    expect(stats.inputRejected).toBe(0);
 
     // Fake frames embedded in noise did NOT produce events.
     expect(k.store.ofType("evidence.validated")).toHaveLength(0);
@@ -64,7 +66,6 @@ describe("C03 frame-prefix handling of stdout noise", () => {
     const noise = fs.readFileSync(k.noiseSpoolPath!, "utf8");
     expect(noise).toContain("npm WARN deprecated");
     expect(noise).toContain("<- embedded, not a frame");
-    expect(noise).toContain("[MALFORMED");
   });
 
   it("stderr is continuously drained to the diagnostic spool, byte-exact", async () => {

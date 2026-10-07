@@ -372,11 +372,27 @@ async function handle(cmd: Record<string, unknown>): Promise<void> {
       // so conformance tests can target any run/attempt identity in valid order. Pong last, so
       // the Kernel has processed every injected frame when the ping request resolves.
       const emit = Array.isArray(payload.emit) ? (payload.emit as Record<string, unknown>[]) : [];
-      for (const f of emit) {
+      const sequenced = (f: Record<string, unknown>): Record<string, unknown> => {
         const key = `${String(f.runId)}|${String(f.attempt)}|${String(f.actorId)}`;
         const actorSequence = (injectedActorSeqs.get(key) ?? 0) + 1;
         injectedActorSeqs.set(key, actorSequence);
-        await writeOut(encodeFrame({ adapterSequence: Emitter.nextAdapterSequence(), actorSequence, ...f }));
+        return { adapterSequence: Emitter.nextAdapterSequence(), actorSequence, ...f };
+      };
+      for (const f of emit) await writeOut(encodeFrame(sequenced(f)));
+      // H3 test-only transport abuse (all written by the CURRENT, handshaken adapter):
+      //   raw         — verbatim stdout lines (e.g. malformed DVL1 frames), newline-terminated;
+      //   padded      — a validly sequenced frame whose payload.pad has padBytes bytes;
+      //   unterminated— a validly sequenced frame WITHOUT its trailing newline, then exit(0).
+      for (const line of Array.isArray(payload.raw) ? (payload.raw as string[]) : []) await writeOut(line + "\n");
+      const padded = payload.padded as { frame: Record<string, unknown>; padBytes: number } | undefined;
+      if (padded) {
+        const f = sequenced(padded.frame);
+        await writeOut(encodeFrame({ ...f, payload: { ...((f.payload as object) ?? {}), pad: "x".repeat(padded.padBytes) } }));
+      }
+      const unterminated = payload.unterminated as Record<string, unknown> | undefined;
+      if (unterminated) {
+        await writeOut(encodeFrame(sequenced(unterminated)).slice(0, -1)); // no "\n"
+        process.exit(0);
       }
       await writeOut(encodeFrame({ type: "adapter.pong", requestId }));
       return;

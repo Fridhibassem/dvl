@@ -8,8 +8,23 @@ export const CONTRACT_VERSION = "dvl.provider-core/0.3.2";
 export const FRAME_PREFIX = "DVL1:";
 /** §47 — 32KB max inline payload. */
 export const MAX_INLINE_PAYLOAD_BYTES = 32 * 1024;
-/** Hard line cap: anything larger is never buffered whole into memory as a frame. */
-export const MAX_LINE_BYTES = 4 * 1024 * 1024;
+/**
+ * H3 — maximum size of ONE incoming DVL1 frame line, in bytes, prefix included, newline
+ * excluded. Enforced while reading (never from a provider-supplied size), before JSON.parse.
+ * Above the 32 KiB inline-payload cap so a non-conformant oversized inline payload can still be
+ * received and defensively spooled by the Kernel; anything larger is rejected and the transport
+ * fails closed.
+ */
+export const MAX_FRAME_BYTES = 1024 * 1024;
+/** Per-line buffering cap of the stdout splitter (frames and noise alike) = the frame cap. */
+export const MAX_LINE_BYTES = MAX_FRAME_BYTES;
+/**
+ * H3 — per adapter instance and per diagnostic stream (stderr, stdout noise, queue overflow):
+ * at most this many bytes are written to the diagnostic spool; the rest is counted and dropped.
+ */
+export const MAX_DIAGNOSTIC_STREAM_BYTES = 8 * 1024 * 1024;
+/** H3 — maximum bytes of any attacker-derived text in a diagnostic (reason detail / preview). */
+export const MAX_DIAGNOSTIC_DETAIL_BYTES = 256;
 /**
  * H3 — Spike limits for the Kernel-owned protocol frame queue of ONE adapter instance.
  * Parsed DVL1 frames waiting for Kernel processing may never exceed either bound;
