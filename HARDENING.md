@@ -105,7 +105,8 @@ Kernel process mid-run against a synthetic project and the real khedma.tn projec
 copied to a temp root; one harmless probe test staged in the attempt workspace only). See
 `CLAUDE_REPORTS/H4_KERNEL_CRASH_REPLAY_REPORT.md`.
 Split-brain fence (pending review): one live Kernel per root, enforced by an OS-backed lock
-(abstract Unix socket, released on process death, held while paused) taken before any owner write
+(flock(2) on `.dvl/kernel.lock`, Linux + macOS; released on process death, held while paused, not
+inherited by adapter children) taken before any owner write
 in `start()`/`recoverDurableTail()`, plus a stale-replay guard. Suite C28.
 
 ## Post-review fixes (Codex blocker candidates A–C) — pending independent review

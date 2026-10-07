@@ -20,6 +20,9 @@ This repository contains the first executable DVL runtime spike.
 
 ## Run locally
 
+Requires a C toolchain for the small native root-lock addon (macOS: Xcode Command Line Tools;
+Linux: `build-essential`/`make`, `python3`); `npm install` builds it.
+
 ```bash
 cd dvl-spike
 npm install

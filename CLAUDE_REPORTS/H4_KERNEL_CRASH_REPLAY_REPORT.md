@@ -106,7 +106,7 @@ writers forked the log, and which verdict survives depends on write order.
 
 | Piece | What |
 |---|---|
-| `kernel/root-lock.ts` | OS-backed lock: a Linux **abstract-namespace Unix socket** bound by the owning Kernel process. Exclusive (`EADDRINUSE` for every other binder, same process included). The OS drops it when the process dies (SIGKILL included), so there is no lock file and nothing to go stale. Still held by a SIGSTOPped owner. Close-on-exec, so the adapter child never inherits it (checked: a spawned child holds no copy). Named from the root's `(dev, inode)`, so path aliases share one lock. The bind/release runs on a worker thread and the caller blocks on `Atomics.wait` (bounded, 5 s), so `start()` stays synchronous. Non-Linux fails closed (`root_lock_unsupported`) |
+| `kernel/root-lock.ts` | *(Superseded by the flock lock, see "Cross-platform root lock" below.)* OS-backed lock: a Linux **abstract-namespace Unix socket** bound by the owning Kernel process. Exclusive (`EADDRINUSE` for every other binder, same process included). The OS drops it when the process dies (SIGKILL included), so there is no lock file and nothing to go stale. Still held by a SIGSTOPped owner. Close-on-exec, so the adapter child never inherits it (checked: a spawned child holds no copy). Named from the root's `(dev, inode)`, so path aliases share one lock. The bind/release runs on a worker thread and the caller blocks on `Atomics.wait` (bounded, 5 s), so `start()` stays synchronous. Non-Linux fails closed (`root_lock_unsupported`) |
 | `Kernel.start()` | `assertDurable()`, **then acquire**, then any owner write (`kernel.run_interrupted`, spawn records). A refused Kernel writes nothing |
 | `Kernel.recoverDurableTail()` | Acquires before truncating or recording. A refused recovery releases the ownership it took for itself |
 | Stale-replay guard | After acquiring, the log sizes on disk must equal the store's committed bytes (`EventStore.diskBeyondReplay()`). Otherwise `stale_replay`: lock released, nothing written. Without it, a Kernel that replayed while the previous owner was still appending would take over after the owner died and continue the chain from a stale head (a fork) |
@@ -145,7 +145,7 @@ because k2 now replays k1's evidence.
 
 ### Known limits of the fence (not addressed, by request)
 
-- **Network namespaces.** Abstract sockets are per network namespace. Two Kernels in different
+- **Network namespaces** *(resolved by the flock lock)*. Abstract sockets are per network namespace. Two Kernels in different
   containers that share a volume do not see each other's lock.
 - **Constructor-time records.** A Kernel's constructor still writes `kernel.integrity_violation`,
   `kernel.anchor_rollback_accepted` or `kernel.integrity_key_ephemeral` without the lock (H2 tests
@@ -157,3 +157,59 @@ because k2 now replays k1's evidence.
   lines no keyed replay accepts.
 - Not yet addressed: a lagging host anchor, killing a surviving old adapter before archive, and
   khedma.tn coverage in CI.
+
+---
+
+## Cross-platform root lock: flock(2) (follow-up)
+
+The abstract-socket lock was Linux-only. It is replaced by **flock(2) `LOCK_EX|LOCK_NB` on
+`<root>/.dvl/kernel.lock`**, held on one fd for as long as the Kernel owns the root, on Linux and macOS.
+The `RootLock.acquire()`/`release()` API is unchanged, so `kernel.ts`, the stale-replay guard and the
+recovery gating are untouched.
+
+### Pre-implementation proof (standalone, stdlib Python, no DVL code)
+
+| Platform | Second owner refused | SIGSTOP blocks | SIGKILL releases | Child does not retain (+ control) | Symlink alias |
+|---|---|---|---|---|---|
+| macOS 13.7.8 x86_64, Python 3.14.2 (run by the user on their Mac) | PASS | PASS | PASS | PASS | PASS |
+| Linux x86_64 (this session) | PASS | PASS | PASS | PASS | PASS |
+
+Also checked on Linux and rejected: an SQLite/POSIX `fcntl` lock is **silently lost** when the owner
+process opens and closes the lock file through another fd. `flock` is not affected.
+
+### Implementation
+
+| Piece | What |
+|---|---|
+| `native/dvl_flock.c` + `binding.gyp` | The only native code: one N-API function, `tryLockExclusive(fd)` → `flock(fd, LOCK_EX\|LOCK_NB)`, which returns 0 or errno and retries on EINTR. Built by npm's default `node-gyp rebuild` on `npm ci`/`npm install` (no new dependency, lockfile unchanged) |
+| `kernel/root-lock.ts` | JS opens the file `O_RDWR\|O_CREAT\|O_NOFOLLOW` (libuv adds `O_CLOEXEC` atomically). `EWOULDBLOCK` → `root_locked`. `ENOTSUP`/`EOPNOTSUPP`/`ENOLCK` → `root_lock_unsupported`. After locking, the name must still be the locked inode (`fstat` vs `lstat`), else `root_lock_failed`. Release closes the fd. The lock file is never deleted. A missing addon or another OS → `root_lock_unsupported` (fail closed, never unlocked) |
+
+### Tests
+
+C28 now runs against flock. Test 2's alias check acquires through a **symlinked root** (`root_locked`).
+Test 4 SIGSTOPs the owner's **adapter child** so that it is provably alive at takeover, and the
+takeover still succeeds.
+
+| Check | Result |
+|---|---|
+| `npm test` | 28 files, **246/246**, three consecutive runs (Linux) |
+| `npm run typecheck` | clean |
+| `rm -rf build && npm ci` | addon built automatically |
+| Falsify: lock fd deliberately passed to the adapter (extra stdio) | C28 test 4 fails (`root_locked`): retention is detectable |
+| Falsify: flock result forced to 0 | C28 tests 2 and 3 fail |
+
+### Not verified
+
+- **The Node/addon path on macOS.** Only the Python proof ran on a Mac. Run on the Mac:
+  `cd dvl-spike && npm ci && npx vitest run src/conformance/c28-h4-root-ownership.test.ts`.
+  This needs the Xcode Command Line Tools for the build.
+- **No macOS CI job.** Other suites have not been run on macOS, so adding one may surface unrelated
+  failures.
+
+### Limits (unchanged scope, not addressed)
+
+- Replacing the lock file **after** acquisition (same-user unlink) is not detected; that needs a per-commit
+  inode re-check. Only replacement during acquisition is refused.
+- Network filesystems (NFS emulates flock with fcntl locks; SMB may lock locally only) and VM boundaries
+  (e.g. Docker Desktop with the project mounted from the host) are not fenced.
+- Constructor-time records, the size-only stale check and keyless Kernels stay as described above.

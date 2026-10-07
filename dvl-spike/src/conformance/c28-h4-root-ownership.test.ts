@@ -12,10 +12,10 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import readline from "node:readline";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, onTestFinished } from "vitest";
 import type { CommitHeads } from "../kernel/event-store.js";
 import type { Kernel } from "../kernel/kernel.js";
-import { RootLockError, rootLockName } from "../kernel/root-lock.js";
+import { RootLock, RootLockError } from "../kernel/root-lock.js";
 import type { RunIdentity } from "../kernel/types.js";
 import { keyFor, kernelOn, makeKernel, tempRoot } from "./harness.js";
 
@@ -42,15 +42,15 @@ async function liveOwner(root: string) {
   let stderr = "";
   host.stderr.on("data", (d) => (stderr += d));
   host.stdin.write(JSON.stringify({ root, keyHex: keyFor(root).toString("hex"), scenario: "h4-target-probe" }) + "\n");
-  const state = { heads: undefined as CommitHeads | undefined, run: undefined as RunIdentity | undefined };
+  const state = { heads: undefined as CommitHeads | undefined, run: undefined as RunIdentity | undefined, adapterPid: 0 };
   const lines = readline.createInterface({ input: host.stdout });
   await new Promise<void>((resolve, reject) => {
     const t = setTimeout(() => reject(new Error(`owner never became ready; stderr:\n${stderr}`)), 20_000);
     host.once("exit", (code) => reject(new Error(`owner exited early (${code}); stderr:\n${stderr}`)));
     lines.on("line", (line) => {
-      const msg = JSON.parse(line) as { commit?: CommitHeads; run?: RunIdentity; ready?: boolean };
+      const msg = JSON.parse(line) as { commit?: CommitHeads; run?: RunIdentity; adapterPid?: number; ready?: boolean };
       if (msg.commit) state.heads = msg.commit;
-      if (msg.run) state.run = msg.run;
+      if (msg.run) ({ run: state.run, adapterPid: state.adapterPid } = msg as Required<typeof msg>);
       if (msg.ready) {
         clearTimeout(t);
         resolve();
@@ -109,10 +109,10 @@ describe("C28 H4 single-Kernel root ownership", () => {
     const root = tempRoot("c28-live");
     const owner = await liveOwner(root);
     expectRefusedWithoutWrites(root, owner.state.heads, owner.state.run!.runId);
-    // The lock is keyed by the directory itself, not the path used to reach it.
+    // The lock is the file's inode, not the path used to reach it.
     const alias = path.join(tempRoot("c28-alias"), "link");
     fs.symlinkSync(root, alias);
-    expect(rootLockName(alias)).toBe(rootLockName(root));
+    expect(lockCode(() => RootLock.acquire(alias))).toBe("root_locked");
   });
 
   it("3. a paused (SIGSTOP) owner still blocks takeover", async () => {
@@ -122,11 +122,15 @@ describe("C28 H4 single-Kernel root ownership", () => {
     expectRefusedWithoutWrites(root, owner.state.heads, owner.state.run!.runId);
   });
 
-  it("4. after the owner is SIGKILLed a fresh Kernel takes over", async () => {
+  it("4. after the owner is SIGKILLed a fresh Kernel takes over; the owner's live adapter child holds no lock", async () => {
     const root = tempRoot("c28-takeover");
     const owner = await liveOwner(root);
+    const adapter = owner.state.adapterPid;
+    process.kill(adapter, "SIGSTOP"); // keep the child alive through the takeover
     owner.host.kill("SIGKILL");
     await owner.exited;
+    expect(() => process.kill(adapter, 0)).not.toThrow(); // still alive
+    onTestFinished(() => void process.kill(-adapter, "SIGKILL"));
     const runId = owner.state.run!.runId;
     const k = track(kernelOn(root, { expectedHeads: owner.state.heads }));
     k.start();
