@@ -1,4 +1,5 @@
 /** Shared conformance-test harness. Not a test file itself. */
+import { SpoolIntegrityError } from "../kernel/confined-fs.js";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
@@ -90,4 +91,18 @@ export async function injectFrames(k: Kernel, frames: Record<string, unknown>[])
 /** A frame for injectFrames(). */
 export function frame(type: string, runId: string, attempt: number, actorId: string, payload?: Record<string, unknown>): Record<string, unknown> {
   return payload ? { type, runId, attempt, actorId, payload } : { type, runId, attempt, actorId };
+}
+
+/**
+ * H2 — run `fn`, expect it to throw a SpoolIntegrityError, return its stable code. Tests
+ * assert codes (platform/mode independent), never error prose.
+ */
+export function integrityCode(fn: () => unknown): string {
+  try {
+    fn();
+  } catch (e) {
+    if (e instanceof SpoolIntegrityError) return e.code;
+    throw e;
+  }
+  throw new Error("expected a SpoolIntegrityError, nothing was thrown");
 }

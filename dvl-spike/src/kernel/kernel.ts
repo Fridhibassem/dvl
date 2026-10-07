@@ -380,9 +380,12 @@ export class Kernel {
       // H2: stderr + non-DVL1 stdout drain into THIS instance's Kernel-owned spool.
       spoolDir: kernelDir,
       diagnosticsName: "diagnostics",
-      // H2: every diagnostics open (eager stderr/noise and lazy overflow) is confined to this
-      // instance's Kernel spool: ancestors walked without following symlinks, identity re-verified.
-      openDiagnostic: (fileName) => this.store.openDiagnostic(adapterInstanceId, fileName),
+      // H2: every diagnostics create/append (stderr, noise, lazy overflow) is confined to this
+      // instance's Kernel spool and revalidated per write; no descriptor is kept between writes.
+      diagnosticSink: {
+        create: (fileName) => this.store.createDiagnostic(adapterInstanceId, fileName),
+        append: (fileName, data) => this.store.appendDiagnostic(adapterInstanceId, fileName, data),
+      },
       // H3: bounded, instance-owned queue; a fresh one for every instance.
       adapterInstanceId,
       maxQueuedFrames: this.queueLimits.maxQueuedFrames,
@@ -1174,6 +1177,11 @@ export class Kernel {
   private onTransportIssue(issue: TransportIssue, adapterInstanceId: string): void {
     // Noise is expected and already spooled; only count it in the store as a diagnostic.
     if (issue.kind === "noise") return;
+    if (issue.kind === "diagnostics_refused") {
+      const { kind: _k, ...d } = issue;
+      this.kernelEvent("kernel.spool_integrity_violation", { kind: "diagnostics_refused", ...d });
+      return;
+    }
     if (issue.kind === "byte_limit") {
       const { kind: _kind, ...b } = issue;
       if (adapterInstanceId !== this.adapterInstanceId || this.terminatedInstances.has(adapterInstanceId)) {
@@ -1309,9 +1317,24 @@ export class Kernel {
     run.endWaiters.splice(0).forEach((w) => w(status));
   }
 
-  kernelEvent(type: string, payload: unknown, runId?: string, attempt?: number): StoredEvent {
-    return this.store.append({ origin: "kernel", trust: "kernel_truth", type, payload, runId, attempt });
+  /**
+   * Append a Kernel record. H2: if the durable log refuses the write (unsafe log path, or the
+   * store sealed itself after a post-write integrity detection) the Kernel fails closed
+   * WITHOUT throwing into timers/handlers: the record is not durable, it is not added to
+   * history, and the refusal is kept in `durableWriteRefusals` for the host.
+   */
+  kernelEvent(type: string, payload: unknown, runId?: string, attempt?: number): StoredEvent | null {
+    try {
+      return this.store.append({ origin: "kernel", trust: "kernel_truth", type, payload, runId, attempt });
+    } catch (e) {
+      if (!(e instanceof SpoolIntegrityError)) throw e;
+      this.durableWriteRefusals.push({ type, code: e.code, reason: e.message });
+      return null;
+    }
   }
+
+  /** H2 — Kernel records that could not be made durable (see kernelEvent). */
+  readonly durableWriteRefusals: { type: string; code: string; reason: string }[] = [];
 }
 
 // ───────────────────────── helpers ─────────────────────────

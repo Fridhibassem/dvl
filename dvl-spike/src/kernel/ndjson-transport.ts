@@ -46,8 +46,13 @@ export interface TransportStats {
    * occupied (e.g. a planted symlink/hard link). Still counted and never processed.
    */
   overflowSpoolRefused: number;
-  /** H2 — diagnostics files the transport refused to open (unsafe path); see overflowSpoolRefused. */
-  diagnosticOpenRefused: number;
+  /**
+   * H2 — diagnostics operations (create/append) the sink refused. After the first refusal
+   * diagnostics for this instance are disabled (fail closed); later ones are counted here too.
+   */
+  diagnosticWritesRefused: number;
+  /** H2 — diagnostics bytes (stderr, noise, overflow lines) not written because of a refusal. */
+  diagnosticBytesRefused: number;
   /** Blocker C — raw bytes charged to maxIncomingBytes: every stdout + stderr byte, once, at read. */
   incomingBytes: number;
 }
@@ -78,18 +83,28 @@ export type TransportIssue =
       stdoutBytes: number;
       stderrBytes: number;
       triggeringChunkBytes: number;
-    };
+    }
+  /** H2 — the diagnostics sink refused an operation; diagnostics are disabled for this instance. */
+  | { kind: "diagnostics_refused"; adapterInstanceId: string; file: string; code: string | null; reason: string };
+
+/** H2 — a diagnostics writer that refuses (throws) instead of writing to an unsafe target. */
+export interface DiagnosticSink {
+  /** Create the file exclusively (empty). Throws if the path is unsafe or already exists. */
+  create(fileName: string): void;
+  /** Append to the existing file, revalidated for this write. Throws on refusal. */
+  append(fileName: string, data: Buffer): void;
+}
 
 export interface TransportOptions {
   spoolDir: string; // .dvl/spool/<adapterInstanceId>
   diagnosticsName: string; // file stem for stderr/noise spool
   /**
-   * H2 — opens a NEW diagnostics file by name inside spoolDir and returns an append fd. The
-   * Kernel supplies a confined opener (canonical root, every ancestor walked without
-   * following symlinks, directory identity re-verified on EVERY open, including the lazy
-   * overflow file). Default: exclusive no-follow open by path (unit tests).
+   * H2 — where diagnostics go. No descriptor is held between writes: every append re-opens
+   * and re-validates the target. The Kernel supplies a sink confined to the instance's Kernel
+   * spool (EventStore.createDiagnostic/appendDiagnostic). Default: a path-based sink in
+   * spoolDir (exclusive no-follow create; no-follow, single-link append) for unit tests.
    */
-  openDiagnostic?: (fileName: string) => number;
+  diagnosticSink?: DiagnosticSink;
   /** H3 — the instance this transport (and its queue) belongs to. */
   adapterInstanceId: string;
   maxQueuedFrames: number;
@@ -115,7 +130,8 @@ export class NdjsonTransport {
     queuedBytesHighWater: 0,
     framesRejected: 0,
     overflowSpoolRefused: 0,
-    diagnosticOpenRefused: 0,
+    diagnosticWritesRefused: 0,
+    diagnosticBytesRefused: 0,
     incomingBytes: 0,
   };
   readonly stderrSpoolPath: string;
@@ -126,13 +142,16 @@ export class NdjsonTransport {
   private readonly queue: { frame: Record<string, unknown>; rawBytes: number; adapterInstanceId: string }[] = [];
   private sealed = false;
   private byteLimitBreached = false;
-  private readonly openDiag: (fileName: string) => number;
-  /** null = not created yet; -1 = creation refused (unsafe path), nothing is written. */
-  private overflowFd: number | null = null;
+  private readonly sink: DiagnosticSink;
+  /** H2 — set at the first sink refusal: no further diagnostics are written (fail closed). */
+  private diagnosticsDisabled: string | null = null;
+  private overflowCreated = false;
+  /** Noise / overflow lines of the chunk being drained, flushed once per chunk. */
+  private pendingNoise: string[] = [];
+  private pendingOverflow: string[] = [];
+  private pendingOverflowFrames = 0;
   private processing = false;
   private idleWaiters: (() => void)[] = [];
-  private stderrFd: number;
-  private noiseFd: number;
   private closed = false;
   private stdoutEnded = false;
   private stderrEnded = false;
@@ -147,19 +166,13 @@ export class NdjsonTransport {
     this.noiseSpoolPath = path.join(opts.spoolDir, `${opts.diagnosticsName}.stdout-noise.log`);
     this.overflowSpoolPath = path.join(opts.spoolDir, `${opts.diagnosticsName}.queue-overflow.log`);
     if (!(opts.maxQueuedFrames > 0) || !(opts.maxQueuedBytes > 0)) throw new Error("queue limits must be positive");
-    // Synchronous fds: writes complete before the next chunk is handled, so diagnostic
-    // spool memory is bounded and ordering is exact. Disk is the backpressure sink.
-    // H2: created exclusively and never through a symlink, so diagnostics can only land in
-    // a fresh regular file inside this instance's Kernel spool.
-    const open = opts.openDiagnostic ?? ((name: string) => openDiagnostic(path.join(opts.spoolDir, name)));
-    this.openDiag = open;
-    this.stderrFd = this.openOrCount(path.basename(this.stderrSpoolPath));
-    try {
-      this.noiseFd = this.openOrCount(path.basename(this.noiseSpoolPath));
-    } catch (e) {
-      fs.closeSync(this.stderrFd);
-      throw e;
-    }
+    // Synchronous writes: each completes before the next chunk is handled, so diagnostic
+    // spool memory is bounded (one chunk) and ordering is exact. Disk is the backpressure sink.
+    // H2: stderr/noise files are created exclusively up front (a refusal here fails the
+    // spawn); no descriptor is kept — every later append is revalidated by the sink.
+    this.sink = opts.diagnosticSink ?? pathSink(opts.spoolDir);
+    this.sink.create(path.basename(this.stderrSpoolPath));
+    this.sink.create(path.basename(this.noiseSpoolPath));
 
     const splitter = new LineSplitter(
       (line) => this.classify(line),
@@ -175,9 +188,11 @@ export class NdjsonTransport {
       this.stats.stdoutBytes += chunk.length;
       this.charge(chunk.length, "stdout");
       splitter.push(chunk);
+      this.flushDiagnostics();
     });
     child.stdout!.on("end", () => {
       splitter.end();
+      this.flushDiagnostics();
       this.stdoutEnded = true;
       this.maybeClose();
     });
@@ -186,7 +201,7 @@ export class NdjsonTransport {
     child.stderr!.on("data", (chunk: Buffer) => {
       this.stats.stderrBytes += chunk.length;
       this.charge(chunk.length, "stderr");
-      fs.writeSync(this.stderrFd, chunk); // still drained after a breach: cleanup/diagnostics only
+      this.writeDiagnostic(path.basename(this.stderrSpoolPath), chunk); // still drained after a breach: diagnostics only
     });
     child.stderr!.on("end", () => {
       this.stderrEnded = true;
@@ -319,7 +334,65 @@ export class NdjsonTransport {
   }
 
   private writeNoise(s: string): void {
-    fs.writeSync(this.noiseFd, s);
+    this.pendingNoise.push(s);
+  }
+
+  /** H2 — write one diagnostics buffer through the sink; false (counted) if refused/disabled. */
+  private writeDiagnostic(file: string, data: Buffer): boolean {
+    if (this.diagnosticsDisabled === null) {
+      try {
+        this.sink.append(file, data);
+        return true;
+      } catch (e) {
+        this.disableDiagnostics(file, e);
+        // Detected only AFTER the bytes were written (final-window race): they are not
+        // "refused" — they landed. Diagnostics are disabled from here on (fail closed).
+        if ((e as { code?: unknown }).code === "after_write") return true;
+      }
+    }
+    this.stats.diagnosticWritesRefused++;
+    this.stats.diagnosticBytesRefused += data.length;
+    return false;
+  }
+
+  private disableDiagnostics(file: string, e: unknown): void {
+    this.diagnosticsDisabled = (e as Error).message;
+    const code = (e as { code?: unknown }).code;
+    this.opts.onIssue?.({ kind: "diagnostics_refused", adapterInstanceId: this.opts.adapterInstanceId, file, code: typeof code === "string" ? code : null, reason: (e as Error).message });
+  }
+
+  /** Flush the noise / overflow lines collected while draining one stdout chunk. */
+  private flushDiagnostics(): void {
+    if (this.pendingNoise.length > 0) {
+      const data = Buffer.from(this.pendingNoise.join(""));
+      this.pendingNoise = [];
+      this.writeDiagnostic(path.basename(this.noiseSpoolPath), data);
+    }
+    if (this.pendingOverflow.length > 0) {
+      const data = Buffer.from(this.pendingOverflow.join(""));
+      const frames = this.pendingOverflowFrames;
+      this.pendingOverflow = [];
+      this.pendingOverflowFrames = 0;
+      const file = path.basename(this.overflowSpoolPath);
+      let ok = this.diagnosticsDisabled === null;
+      if (ok && !this.overflowCreated) {
+        // Lazily created (absent unless something overflowed) — and exclusively: an entry
+        // already at this path was not made by the Kernel, so frame bytes never go through it.
+        try {
+          this.sink.create(file);
+          this.overflowCreated = true;
+        } catch (e) {
+          this.disableDiagnostics(file, e);
+          ok = false;
+        }
+      }
+      if (ok) ok = this.writeDiagnostic(file, data);
+      else {
+        this.stats.diagnosticWritesRefused++;
+        this.stats.diagnosticBytesRefused += data.length;
+      }
+      if (!ok) this.stats.overflowSpoolRefused += frames; // counted, never processed
+    }
   }
 
   /**
@@ -348,31 +421,8 @@ export class NdjsonTransport {
   /** H3 — a frame refused by the sealed queue: kept on disk as diagnostics, never processed. */
   private reject(line: string): void {
     this.stats.framesRejected++;
-    if (this.overflowFd === null) {
-      // Lazily created (absent unless something overflowed) — and exclusively: an entry
-      // already at this path was not made by the Kernel (planted symlink, hard link, file),
-      // so adapter-controlled frame bytes are never written through it.
-      try {
-        this.overflowFd = this.openOrCount(path.basename(this.overflowSpoolPath));
-      } catch {
-        this.overflowFd = -1;
-      }
-    }
-    if (this.overflowFd === -1) {
-      this.stats.overflowSpoolRefused++;
-      return;
-    }
-    fs.writeSync(this.overflowFd, line + "\n");
-  }
-
-  /** H2 — open a diagnostics file via the (confined) opener; a refusal is counted, then rethrown. */
-  private openOrCount(name: string): number {
-    try {
-      return this.openDiag(name);
-    } catch (e) {
-      this.stats.diagnosticOpenRefused++;
-      throw e;
-    }
+    this.pendingOverflow.push(line + "\n");
+    this.pendingOverflowFrames++;
   }
 
   /** H3 — true once the queue refused a frame; nothing further is ever enqueued. */
@@ -383,19 +433,30 @@ export class NdjsonTransport {
   private maybeClose(): void {
     if (this.closed || !this.stdoutEnded || !this.stderrEnded || !this.exitInfo || this.processing || this.queue.length > 0) return;
     this.closed = true;
-    try {
-      fs.closeSync(this.stderrFd);
-      fs.closeSync(this.noiseFd);
-      if (this.overflowFd !== null && this.overflowFd !== -1) fs.closeSync(this.overflowFd);
-    } catch {
-      /* already closed */
-    }
+    this.flushDiagnostics();
     this.opts.onClose?.(this.exitInfo);
   }
 }
 
-/** H2 — a NEW diagnostics file: O_CREAT|O_EXCL|O_NOFOLLOW, append-only, regular file. */
-function openDiagnostic(p: string): number {
+/**
+ * H2 — default (unit-test) sink: path-based, no root confinement. Create is exclusive and
+ * no-follow; append opens no-follow, requires a single-link regular file, writes, closes.
+ */
+function pathSink(dir: string): DiagnosticSink {
   const { O_WRONLY, O_APPEND, O_CREAT, O_EXCL, O_NOFOLLOW } = fs.constants;
-  return fs.openSync(p, O_WRONLY | O_APPEND | O_CREAT | O_EXCL | O_NOFOLLOW, 0o644);
+  return {
+    create(fileName) {
+      fs.closeSync(fs.openSync(path.join(dir, fileName), O_WRONLY | O_APPEND | O_CREAT | O_EXCL | O_NOFOLLOW, 0o644));
+    },
+    append(fileName, data) {
+      const fd = fs.openSync(path.join(dir, fileName), O_WRONLY | O_APPEND | O_NOFOLLOW);
+      try {
+        const st = fs.fstatSync(fd);
+        if (!st.isFile() || st.nlink !== 1) throw Object.assign(new Error(`${fileName} is not a single-link regular file`), { code: st.isFile() ? "hard_link" : "not_regular" });
+        fs.writeSync(fd, data);
+      } finally {
+        fs.closeSync(fd);
+      }
+    },
+  };
 }

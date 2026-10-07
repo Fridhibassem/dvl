@@ -25,7 +25,7 @@ import { encodeFrame } from "../kernel/frame.js";
 import type { Kernel } from "../kernel/kernel.js";
 import { NdjsonTransport } from "../kernel/ndjson-transport.js";
 import type { ArtifactRef, StoredEvent } from "../kernel/types.js";
-import { kernelOn, makeKernel, runScenario } from "./harness.js";
+import { integrityCode, kernelOn, makeKernel, runScenario } from "./harness.js";
 
 let kernels: Kernel[] = [];
 afterEach(async () => {
@@ -188,7 +188,9 @@ describe("C20 H2 adapter/Kernel spool isolation", () => {
     // (d) A Kernel-owned directory replaced by a symlink: a new Kernel refuses to open the store.
     const root2 = rootOf(track(makeKernel("c20-dir-swap")));
     swapDirForSymlink(path.join(root2, ".dvl", "evidence"), outsideDir());
-    expect(() => kernelOn(root2)).toThrow(/spool integrity: .*evidence is not a real directory/);
+    // Stable code, not prose: the walk reports "symlink" in both confinement modes (it was
+    // "not a real directory" vs "is a symlink" wording that differed between platforms).
+    expect(integrityCode(() => kernelOn(root2))).toBe("symlink");
   });
 
   it("5. queue-overflow diagnostics are never written through a planted symlink; stderr/noise files must be fresh", async () => {

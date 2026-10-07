@@ -4,6 +4,12 @@ Scope: H2 only — adapter/Kernel spool isolation. Base `main` at `f376652` (H1 
 `claude/h2-adapter-spool-isolation`. No H1/H3/H4 work, no architecture redesign, no Stable
 Contract change.
 
+> **Guarantee correction (second re-review):** statements in §4, §7 and §9 that the Kernel
+> "never writes through" or "cannot be redirected" to adapter-moved/aliased targets **overstate**
+> what userspace code can guarantee against a same-user process. The authoritative statement of
+> what H2 guarantees — and what needs OS isolation — is **§10.1**. Earlier sections are kept as
+> the historical record of each review round.
+
 ## 1. Inspection findings (before any code change)
 
 ### Already implemented on `main`
@@ -91,7 +97,7 @@ These came from a scratch probe against `EventStore`. Each probe below was a suc
    - Both areas are created fresh per instance. The store refuses to open if any Kernel-owned directory isn't a real directory at its canonical location.
    - Pre-existing on `main`; containment is now checked against the canonical root.
 2. **Kernel-owned evidence/spool/truth files can't be directly overwritten by adapter output.**
-   - The Kernel never writes through anything the adapter could plant:
+   - The Kernel never writes through anything the adapter could plant *(overstated; see §10.1 for the actual guarantee)*:
      - spool files use exclusive no-follow create plus identity checks;
      - log appends are no-follow and require a regular file;
      - diagnostics files are exclusive and no-follow.
@@ -320,7 +326,7 @@ The test then restores the logs and shows a clean replay.
 - **C20-6 strengthened:** while the adapter's hard-link alias of a Kernel artifact exists, `verifyKernelArtifact` now refuses it (`hard-linked`), because the alias is a write path into a Kernel-owned inode. After the alias is removed, it verifies again.
 - **C20-4:** the expected message wording for a symlinked Kernel directory changed; the refusal itself is the same.
 
-### 9.6 Results (final tree)
+### 9.6 Results (at `57a6797`; current results: §10.4)
 
 | Command | Result |
 |---|---|
@@ -349,7 +355,7 @@ Per suite: C01 6, C02 4, C03 6, C04 4, C05 4, C06 13, C07 10, C08 14, C09 4, C10
 | Store conversion **and** the Kernel-level catch | additionally C21 4e (both modes) |
 | Path-mode `realpath` equality check | **none**: redundant with the per-component `lstat` walk (belt and braces) |
 
-### 9.7 Remaining limitations (honest)
+### 9.7 Remaining limitations at `57a6797` (incomplete: missed the long-lived diagnostics descriptors and the final write window; superseded by §10.5)
 
 - **Strictness depends on the mode.**
   - **`procfd` mode** (Linux, the default, and CI) gives directory-relative confinement for the operations the Kernel performs. Two caveats remain:
@@ -364,7 +370,7 @@ Per suite: C01 6, C02 4, C03 6, C04 4, C05 4, C06 13, C07 10, C08 14, C09 4, C10
   - the path-mode `realpath` belt-and-braces check (see mutations);
   - errno failures other than the mapped ones (e.g. `EIO`), which are handled by the generic conversion but can't be produced deterministically.
 
-### 9.8 Ready for Codex re-review?
+### 9.8 Ready for Codex re-review? (at `57a6797` — result: H2 RE-REVIEW FAIL, see §10)
 
 **Yes — ready for Codex re-review of H2.**
 - All four blockers are fixed, each with deterministic regression tests in both confinement modes, pinned by mutation.
@@ -374,5 +380,170 @@ Per suite: C01 6, C02 4, C03 6, C04 4, C05 4, C06 13, C07 10, C08 14, C09 4, C10
 - an H2 PASS;
 - strict confinement outside `procfd` mode;
 - protection that needs OS-level isolation.
+
+`main` was not pushed and nothing was merged.
+
+## 10. Second Codex Re-review Fixes
+
+Codex re-reviewed `57a6797` and returned **H2 RE-REVIEW FAIL** with three blockers. The instruction was to implement a real enforceable boundary or downgrade the guarantee honestly. **The boundary cannot be made strict in userspace Node against a same-user process.** This round therefore:
+1. makes every check that *can* be enforced happen before every write;
+2. adds detection after every write, with a fail-closed latch;
+3. downgrades the stated guarantee to exactly what the tests prove.
+
+### 10.1 What H2 guarantees (authoritative), and what requires OS isolation
+
+**Threat model:** the adapter runs as the same OS user. Between any two syscalls of the Kernel, it can rename, symlink, hard-link or delete anything under the project root, and move Kernel inodes elsewhere on the same filesystem.
+
+**H2 guarantees, enforced by code and pinned by tests:**
+
+1. **Separate areas and trust.**
+   - Adapters are told to write only to `.dvl/adapter-spool/<id>/`.
+   - Kernel truth lives in `.dvl/spool`, `.dvl/events` and `.dvl/evidence`.
+   - Location never confers trust: artifacts must match the Kernel registration and hash, and log records must authenticate in the HMAC chain.
+2. **Reads.**
+   - The Kernel reads adapter material only from the sender's own area, through a confined no-follow walk.
+   - Files must be single-link regular files whose name still maps to the opened inode.
+   - Imports are Kernel-made copies with recorded provenance.
+   - The Kernel reads its own logs only through bound no-follow descriptors. Replay and disk reads fail closed on a symlinked, hard-linked or relocated log.
+3. **Pre-write refusal.**
+   - Before **every** Kernel write (artifact create, log record, diagnostics append), the target is re-opened and re-validated:
+     - confined walk from the canonical root;
+     - no symlink in any component;
+     - regular file, `nlink == 1`, name ↔ inode, directory still at its canonical path.
+   - No diagnostics descriptor is kept between writes.
+   - Any state that exists **before** a write is refused: nothing is written, and the refusal is counted or recorded with a stable code.
+4. **Post-write detection with fail-closed latch.** After **every** log record and diagnostics append, the target is re-bound. If it was moved or aliased in the final window:
+   - **Durable store:** it is **sealed**. Head and in-memory history don't advance, and every later events/evidence append is refused (`sealed`). The Kernel records refusals in `durableWriteRefusals` and does not throw into handlers or timers.
+   - **Diagnostics:** writing is **disabled** for that adapter instance. One `kernel.spool_integrity_violation{kind:"diagnostics_refused"}` is recorded. Later bytes and overflow frames are counted as refused, and rejected frames are never processed.
+5. **Errors** carry stable codes, e.g. `symlink`, `hard_link`, `replaced`, `after_write`, `sealed`. Expected filesystem failures during import are rejections (`CORRUPTED` evidence), never handler exceptions.
+
+**H2 does NOT guarantee — this requires OS isolation:**
+
+- **The final write itself.** A same-user process that moves or hard-links the inode **between the last check and `write(2)`** makes that **one** write land in the relocated or aliased inode: the Kernel's own file, now also visible elsewhere. Node has no `openat2(RESOLVE_BENEATH)` and no way to pin an inode's location or link count across a syscall. H2 *detects* this immediately and writes nothing further, but cannot prevent that write. C22 asserts exactly this.
+- **Adapter writes and deletions.** The adapter process can write, overwrite or delete files under the root directly. H2 detects overwrites (hash/HMAC) and treats deletions as availability failures; it does not prevent them.
+- **Remedies:** strict no-outside-write and tamper prevention need the adapter under a different OS user, or in a mount namespace or container where the Kernel areas are absent or read-only, e.g. a read-only bind mount of `.dvl/` except its own `adapter-spool/<id>`.
+
+**Mode note:** `procfd` (Linux, the default) removes path-resolution races for the open/create/rename itself; `path` (macOS/others) narrows them. **In both modes the guarantee is the one above: pre-write refusal plus post-write detection plus fail closed, not strict prevention.**
+
+### 10.2 Exact fixes
+
+**Blocker 1 — diagnostics kept writing after open.**
+- **`ndjson-transport.ts`:**
+  - Long-lived `stderrFd`/`noiseFd`/`overflowFd` are **removed**.
+  - New `DiagnosticSink { create, append }` option. The default `pathSink` (unit tests) creates exclusively and no-follow, and appends no-follow to a single-link file, opening and closing per write.
+  - stderr is written per chunk. Noise and overflow lines are buffered per stdout chunk and flushed once per chunk, so memory stays bounded by one chunk.
+  - **The first sink refusal disables diagnostics for the instance** and emits one `diagnostics_refused` issue with the code.
+  - New stats `diagnosticWritesRefused` and `diagnosticBytesRefused`; `overflowSpoolRefused` counts frames not written. Rejected frames are never enqueued.
+  - An `after_write` detection counts as written (the bytes landed) but still disables.
+- **`event-store.ts`:**
+  - `createDiagnostic(owner, file)` does a confined exclusive create, keeping no fd.
+  - `appendDiagnostic(owner, file, data)`, per write:
+    1. confined walk;
+    2. `openBound` of the existing file;
+    3. re-bind (`replaced`);
+    4. probe point `diagnostic:before-write`;
+    5. write;
+    6. re-bind (`after_write`);
+    7. close.
+  - `openDiagnostic` (which returned a long-lived fd) is removed.
+- **`kernel.ts`:** the transport gets a sink bound to the instance (`store.createDiagnostic`/`appendDiagnostic`). `diagnostics_refused` is recorded as `kernel.spool_integrity_violation`.
+
+**Blocker 2 — durable-log final window.**
+- **`event-store.ts durableAppend`** (shared by events and evidence, so behaviour is identical), per record:
+  1. sealed check;
+  2. confined walk;
+  3. `openBound` (existing file, never created here);
+  4. re-bind before the write (`replaced`);
+  5. probe point `log:before-write`;
+  6. write and optional fsync;
+  7. **post-write re-bind** (`after_write`), which on failure **seals the store**;
+  8. close.
+- Head and history advance only after a clean post-write check. `EventStore.sealed` exposes the latch.
+- **`kernel.ts kernelEvent`:** on a `SpoolIntegrityError` it returns `null` and appends to `durableWriteRefusals` instead of throwing, so a sealed store can't crash timers or transport handlers.
+
+**Blocker 3 — platform-specific error prose.**
+- **`confined-fs.ts`:** stable `SpoolIntegrityCode` values: `symlink`, `not_dir`, `missing`, `not_regular`, `hard_link`, `replaced`, `after_write`, `sealed`, `root_replaced`, `exists`, `unsafe_name`, `io`.
+- Import failure mapping now uses codes, not message regexes.
+- `harness.integrityCode(fn)` returns the code of the thrown `SpoolIntegrityError`.
+- C20-4 and C21 (2, 3, 4b, 1d) assert codes instead of prose.
+- **`DVL_FS_CONFINEMENT=path`** (host environment, downgrade-only) forces the fallback mode used on macOS, so the **entire suite** can be run in that mode on Linux.
+
+**Kept behaviour:**
+- import-area disappearance gives `CORRUPTED` evidence, no handler exception (C21-4d/4e);
+- replay and read refusal for symlinked or hard-linked logs (C21-3);
+- C18/C19 green.
+
+### 10.3 Tests added / changed
+
+**New suite C22** (`c22-h2-second-review-fixes.test.ts`): 9 tests × 2 confinement modes = 18.
+
+| Test | Scenario | Asserted (implemented guarantee) |
+|---|---|---|
+| 1a | End to end: owner spool dir moved outside after eager diagnostics create, then the `noisy` scenario (2 MiB stderr + 2 MiB noise) | Relocated files byte-identical; `diagnosticWritesRefused > 0`; `diagnosticBytesRefused > 2 MiB`; exactly one `diagnostics_refused` violation; run `finished` |
+| 1b | Overflow file written once, then hard-linked outside; more frames rejected | Alias unchanged; `framesRejected` 6; `overflowSpoolRefused` 3; queue depth 0 (never processed); refusal code `hard_link` |
+| 1c | Owner dir relocated outside after the first overflow write; more frames plus stderr | Relocated files unchanged; `overflowSpoolRefused` 3; refusals counted; one issue |
+| 1d | Alias created in the final window before a stderr write | **That write lands** (alias = "FIRST"), code `after_write`; next write refused; alias unchanged after |
+| 2a ×2 | Events / evidence log hard-linked in the final window | Code `after_write`; **the alias gains exactly the one racing record**; history and head unchanged; `store.sealed` set; later events **and** evidence appends `sealed`; alias unchanged after |
+| 2b ×2 | Events / evidence log directory relocated outside in the final window | Same, for the relocated log |
+| 2c | Kernel-level | `kernelEvent` returns `null` (no throw); refusals `after_write`, then `sealed`; nothing in history |
+
+**Changed tests:**
+- **C20-4(d):** asserts code `symlink` instead of prose (the macOS failure).
+- **C21:**
+  - 1a counts `diagnosticWritesRefused` plus one `diagnostics_refused` violation (replacing the removed `diagnosticOpenRefused`);
+  - 1d uses `createDiagnostic` plus code `symlink`;
+  - 2, 3, 4b assert codes `hard_link`/`symlink`/`replaced`;
+  - test 0 honours the `DVL_FS_CONFINEMENT` override.
+
+**Mutation check** (each applied alone against C22, then restored byte-for-byte):
+
+| Mutation | Failing C22 tests |
+|---|---|
+| D1 diagnostics append keeps a long-lived fd (old behaviour) | 1b, 1c, 1d (both modes) |
+| D2 no post-write check on diagnostics | 1d (both modes) |
+| L1 no post-write check on log append | 2a, 2b (events and evidence), 2c (both modes) |
+| L2 post-write detection without sealing | 2a, 2b, 2c (both modes) |
+| K1 `kernelEvent` rethrows integrity errors | 2c (both modes) |
+
+### 10.4 Exact results (final tree)
+
+| Command | Result |
+|---|---|
+| `npm test` run 1 | exit 0 — 22 files, **170/170 passed** |
+| `npm test` run 2 | exit 0 — 22 files, **170/170 passed** |
+| `npm test` run 3 | exit 0 — 22 files, **170/170 passed** |
+| `npm run typecheck` | exit 0 |
+| `npm run spike` | exit 0 — "SPIKE OK — every scenario reached its expected terminal state" |
+| `npx vitest run src/conformance/c18* src/conformance/c19* src/conformance/c20* src/conformance/c21*` | exit 0 — 4 files, **44/44 passed** (C18 8, C19 3, C20 7, C21 26) |
+| `DVL_FS_CONFINEMENT=path npm test` (macOS fallback mode, on Linux) | exit 0 — 22 files, **170/170 passed** |
+
+Per suite: C01 6, C02 4, C03 6, C04 4, C05 4, C06 13, C07 10, C08 14, C09 4, C10 7, C11 7, C12 5, C13 6, C14 8, C15 5, C16 3, C17 2, C18 8, C19 3, C20 7, C21 26, **C22 18**.
+
+**macOS:** the suite was **not executed on macOS**; no macOS host was available. The fallback mode macOS uses was exercised for the full suite via `DVL_FS_CONFINEMENT=path`. Assertions now use stable codes, and the remaining prose assertions match Kernel-defined rejection reasons (identical in both modes) or Node errno names (`EEXIST`).
+
+### 10.5 Remaining limitations
+
+- **No strict no-outside-write.** See §10.1: the one write racing the final check can land in a relocated or aliased Kernel inode. It is detected; the writer then fails closed. Strict prevention requires OS isolation.
+- **Unacknowledged record after sealing.** When the store seals after an `after_write` detection, the racing record is on disk (in the Kernel's own inode) with a valid MAC, but isn't in the in-memory history. A later replay may accept that one record. It is a genuine Kernel record (the Kernel produced it) that was never acknowledged; no adapter-authored content can enter this way.
+- **Sealing is fail-closed availability.** After sealing, the Kernel records nothing durable until restarted on a clean tree; refusals are kept in memory (`durableWriteRefusals`). An adapter that can trigger this can stop the Kernel's durable logging. That is an availability effect: the adapter could equally delete the logs.
+- **Disabled diagnostics are fail-closed availability.** Once disabled for an instance, stderr/noise/overflow bytes are dropped (counted). Protocol processing continues.
+- **Diagnostics cost.** Diagnostics now re-validate per write: one stderr chunk, or one flush of a stdout chunk's noise/overflow lines. The full suite and spike timings stayed within existing limits.
+- **Carried over:**
+  - root trusted by inode only;
+  - spawn-failure cleanup kills only the direct child;
+  - no dedicated test for unmapped errno failures (e.g. `EIO`) or the redundant path-mode `realpath` check;
+  - the original Codex probe file is not in the repository.
+
+### 10.6 Ready for Codex?
+
+**Yes — ready for Codex review of this round.**
+- All three blockers are addressed.
+- The guarantee is downgraded to what is enforceable and tested: pre-write refusal, post-write detection, fail closed, with OS isolation named as the requirement for strict prevention.
+- Results are as in §10.4.
+
+**Not claimed:**
+- an H2 PASS;
+- strict no-outside-write prevention;
+- a run on a macOS host.
 
 `main` was not pushed and nothing was merged.

@@ -23,7 +23,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { Confinement, DirHandle, SpoolIntegrityError, openBound, type FsProbe } from "./confined-fs.js";
+import { Confinement, DirHandle, SpoolIntegrityError, openBound, rebind, writeAll, type FsProbe } from "./confined-fs.js";
 import { KERNEL_SPOOL_OWNER, MAX_IMPORT_ARTIFACT_BYTES, type ArtifactRef, type EvidenceRecord, type StoredEvent } from "./types.js";
 
 /** H2 — spool owner dir names: Kernel-assigned instance ids or the Kernel itself. */
@@ -117,6 +117,8 @@ export class EventStore {
    * at construction, no symlinked component ever followed, inode-bound directory handles.
    */
   readonly fsc: Confinement;
+  /** H2 — set when a post-write check failed; all further durable appends are refused. */
+  private sealedReason: string | null = null;
   private seq = 0;
   private readonly events: StoredEvent[] = [];
   private readonly evidence = new Map<string, EvidenceRecord>();
@@ -179,6 +181,11 @@ export class EventStore {
     return this.readChain<StoredEvent>("events").records;
   }
 
+  /** H2 — non-null once the store has failed closed (post-write integrity detection). */
+  get sealed(): string | null {
+    return this.sealedReason;
+  }
+
   /** Blocker 1 — current head of the events chain; the host may persist it as an anchor. */
   head(): ChainHead {
     return { ...this.chain.events };
@@ -234,17 +241,39 @@ export class EventStore {
   }
 
   /**
-   * H2 — create and open a NEW diagnostics file in `owner`'s Kernel spool (append-only). The
-   * owner directory and every ancestor are walked without following symlinks, the file is
-   * created exclusively, and it is bound (regular, single link, name ↔ inode, directory still
-   * canonical) before the fd is returned. Throws SpoolIntegrityError; nothing is created
-   * outside the spool.
+   * H2 — create a NEW, empty diagnostics file in `owner`'s Kernel spool: owner directory and
+   * every ancestor walked without following symlinks, exclusive create, bound (regular,
+   * single link, name ↔ inode, directory still canonical). No descriptor is kept.
    */
-  openDiagnostic(owner: string, fileName: string): number {
+  createDiagnostic(owner: string, fileName: string): void {
     this.kernelSpoolDirOf(owner); // validates the owner name
-    return this.withDir([".dvl", "spool", owner], (d) => {
+    this.withDir([".dvl", "spool", owner], (d) => {
       this.fsc.probe("diagnostic:before-open", d.kernelPath(fileName));
-      return openBound(d, fileName, O_WRONLY | O_APPEND | O_CREAT | O_EXCL).fd;
+      fs.closeSync(openBound(d, fileName, O_WRONLY | O_APPEND | O_CREAT | O_EXCL).fd);
+    });
+  }
+
+  /**
+   * H2 — append diagnostics bytes: confined open of the EXISTING file, bound and re-bound
+   * immediately before the write, written, closed. There is no long-lived descriptor, so a
+   * moved/aliased directory or file is refused at the next write (code replaced/hard_link/
+   * symlink/missing; nothing written). A mutation landing between the last check and the
+   * write itself is detected right after it (code "after_write"); the caller must then stop
+   * writing diagnostics for this owner.
+   */
+  appendDiagnostic(owner: string, fileName: string, data: Buffer): void {
+    this.kernelSpoolDirOf(owner);
+    this.withDir([".dvl", "spool", owner], (d) => {
+      this.fsc.probe("diagnostic:before-open", d.kernelPath(fileName));
+      const { fd } = openBound(d, fileName, O_WRONLY | O_APPEND);
+      try {
+        rebind(d, fileName, fd, "replaced");
+        this.fsc.probe("diagnostic:before-write", d.kernelPath(fileName));
+        writeAll(fd, data);
+        rebind(d, fileName, fd, "after_write");
+      } finally {
+        fs.closeSync(fd);
+      }
     });
   }
 
@@ -455,8 +484,8 @@ export class EventStore {
         if (e.code === "missing") throw new ImportRejection("artifact missing");
         if (e.code === "symlink") throw new ImportRejection("artifact is a symlink");
         if (e.code === "replaced") throw new ImportRejection(`adapter instance area changed during import (${e.message})`);
-        if (/hard-linked/.test(e.message)) throw new ImportRejection(`artifact is hard-linked; not exclusively in the adapter area (${e.message})`);
-        if (/not a regular file/.test(e.message)) throw new ImportRejection("artifact is not a regular file");
+        if (e.code === "hard_link") throw new ImportRejection(`artifact is hard-linked; not exclusively in the adapter area (${e.message})`);
+        if (e.code === "not_regular") throw new ImportRejection("artifact is not a regular file");
         throw new ImportRejection(e.message);
       }
       try {
@@ -496,22 +525,30 @@ export class EventStore {
     const mac = this.mac(this.chain[kind].mac, canonical);
     // `mac` is the LAST key, so stripping it reproduces `canonical` byte-for-byte on replay.
     const line = canonical.slice(0, -1) + (canonical === "{}" ? "" : ",") + `"mac":"${mac}"}` + "\n";
-    // H2: the log is opened relative to its verified directory, never created here, never
-    // through a symlink, and bound (regular file, single link, name ↔ inode, directory still
-    // canonical) BEFORE anything is written. On refusal nothing is written and neither the
-    // chain nor the in-memory history advances.
+    // H2: open/write/close per record. The log is opened relative to its verified
+    // directory (never created here, never through a symlink) and bound (regular file, one
+    // link, name ↔ inode, directory still canonical) at open AND immediately before the
+    // write — a refusal there writes nothing. After the write it is re-bound again: if the
+    // inode was moved or aliased in the final window (which no userspace check can exclude
+    // against a same-user process), the record may have landed in that inode, so the store
+    // is SEALED (fail closed): the chain head and in-memory history do not advance, and every
+    // later append is refused.
+    if (this.sealedReason) throw new SpoolIntegrityError(`store sealed after an integrity failure: ${this.sealedReason}`, "sealed");
     this.withLogDir(kind, (d, name) => {
       this.fsc.probe("log:before-open", d.kernelPath(name));
       const { fd } = openBound(d, name, O_WRONLY | O_APPEND);
       try {
         this.fsc.probe("log:after-open", d.kernelPath(name));
-        // Re-bind after the probe point: a swap between open and write is refused too.
-        const now = fs.lstatSync(d.entry(name));
-        const held = fs.fstatSync(fd);
-        if (now.ino !== held.ino || now.dev !== held.dev || held.nlink !== 1) throw new SpoolIntegrityError(`${d.kernelPath(name)} was swapped or aliased before the write`, "replaced");
-        d.verify();
-        fs.writeSync(fd, line);
+        rebind(d, name, fd, "replaced");
+        this.fsc.probe("log:before-write", d.kernelPath(name));
+        writeAll(fd, Buffer.from(line));
         if (this.opts.fsync) fs.fsyncSync(fd);
+        try {
+          rebind(d, name, fd, "after_write");
+        } catch (e) {
+          this.sealedReason = (e as Error).message;
+          throw e;
+        }
       } finally {
         fs.closeSync(fd);
       }

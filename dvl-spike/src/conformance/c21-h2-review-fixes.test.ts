@@ -17,7 +17,7 @@ import type { FsProbe, FsStage } from "../kernel/confined-fs.js";
 import { SpoolIntegrityError, sha256 } from "../kernel/event-store.js";
 import type { Kernel, KernelOptions } from "../kernel/kernel.js";
 import type { ArtifactRef, EvidenceRecord } from "../kernel/types.js";
-import { kernelOn, makeKernel, runScenario, waitForEvent } from "./harness.js";
+import { integrityCode, kernelOn, makeKernel, runScenario, waitForEvent } from "./harness.js";
 
 let kernels: Kernel[] = [];
 let releases: (() => void)[] = [];
@@ -59,7 +59,7 @@ for (const mode of ["auto", "path"] as const) {
   describe(`C21 H2 review fixes [confinement=${mode}]`, () => {
     it("0. confinement mode in effect", () => {
       const k = track(makeKernel(`c21-mode-${mode}`, opts()));
-      expect(k.store.fsc.mode).toBe(mode === "auto" && process.platform === "linux" ? "procfd" : "path");
+      expect(k.store.fsc.mode).toBe(mode === "auto" && process.platform === "linux" && process.env.DVL_FS_CONFINEMENT !== "path" ? "procfd" : "path");
     });
 
     // ───────── Blocker 1: diagnostics and symlinked parent directories ─────────
@@ -89,7 +89,9 @@ for (const mode of ["auto", "path"] as const) {
       const s = k.transportStats!;
       expect(s.framesRejected).toBeGreaterThan(0);
       expect(s.overflowSpoolRefused).toBe(s.framesRejected); // counted, never processed, never written
-      expect(s.diagnosticOpenRefused).toBe(1);
+      // Once the owner directory is unsafe every diagnostics write is refused (stderr too).
+      expect(s.diagnosticWritesRefused).toBeGreaterThanOrEqual(1);
+      expect(k.store.ofType("kernel.spool_integrity_violation").filter((e) => (e.payload as { kind: string }).kind === "diagnostics_refused")).toHaveLength(1);
       expect(tree(out)).toEqual([]);
     });
 
@@ -129,7 +131,7 @@ for (const mode of ["auto", "path"] as const) {
       k.store.createInstanceSpools(aid);
       const out = outsideDir();
       swapForSymlink(k.store.kernelSpoolDirOf(aid), out);
-      expect(() => k.store.openDiagnostic(aid, "diagnostics.stderr.log")).toThrow(/spool integrity: .*(is not a real directory|is a symlink)/);
+      expect(integrityCode(() => k.store.createDiagnostic(aid, "diagnostics.stderr.log"))).toBe("symlink");
       expect(tree(out)).toEqual([]);
     });
 
@@ -147,7 +149,7 @@ for (const mode of ["auto", "path"] as const) {
         const nEvents = k.store.all().length;
         const nEvidence = k.store.allEvidence().length;
         const write = () => (kind === "events" ? k.store.append({ origin: "kernel", trust: "kernel_truth", type: "kernel.probe", payload: {} }) : k.store.putEvidence(evidenceRec("evd_probe")));
-        expect(write).toThrow(/spool integrity: .*hard-linked/);
+        expect(integrityCode(write)).toBe("hard_link");
         expect(fs.readFileSync(victim, "utf8")).toBe("victim\n");
         expect(k.store.head()).toEqual(head);
         expect(k.store.all()).toHaveLength(nEvents);
@@ -156,7 +158,7 @@ for (const mode of ["auto", "path"] as const) {
       // An adapter-made alias of the real log (log now has 2 links) is refused too (fail closed).
       const k = track(makeKernel(`c21-log-alias-${mode}`, opts()));
       fs.linkSync(k.store.eventsPath, path.join(outsideDir(), "alias.jsonl"));
-      expect(() => k.store.append({ origin: "kernel", trust: "kernel_truth", type: "kernel.probe", payload: {} })).toThrow(/hard-linked/);
+      expect(integrityCode(() => k.store.append({ origin: "kernel", trust: "kernel_truth", type: "kernel.probe", payload: {} }))).toBe("hard_link");
     });
 
     // ───────── Blocker 3: replay and disk reads of symlinked logs ─────────
@@ -172,12 +174,12 @@ for (const mode of ["auto", "path"] as const) {
         fs.copyFileSync(log, copy); // authentic, correctly MAC'd bytes — but outside the Kernel area
         fs.renameSync(log, `${log}.orig`);
         fs.symlinkSync(copy, log);
-        expect(() => kernelOn(root, opts())).toThrow(new RegExp(`spool integrity: .*${name.replace(".", "\\.")} is a symlink`));
+        expect(integrityCode(() => kernelOn(root, opts()))).toBe("symlink");
         expect(() => (name.startsWith("events") ? k.store.readFromDisk() : k.store.readEvidenceFromDisk())).toThrow(SpoolIntegrityError);
         // Hard link instead of symlink: also refused.
         fs.rmSync(log);
         fs.linkSync(copy, log);
-        expect(() => kernelOn(root, opts())).toThrow(/hard-linked/);
+        expect(integrityCode(() => kernelOn(root, opts()))).toBe("hard_link");
         fs.rmSync(log);
         fs.renameSync(`${log}.orig`, log); // restore for the next log
       }
@@ -210,7 +212,7 @@ for (const mode of ["auto", "path"] as const) {
       const k = track(makeKernel(`c21-swap-logname-${mode}`, opts({ fsProbe: p.probe })));
       const before = { n: k.store.all().length, head: k.store.head(), bytes: fs.readFileSync(k.store.eventsPath) };
       p.state.armed = true;
-      expect(() => k.store.append({ origin: "kernel", trust: "kernel_truth", type: "kernel.probe", payload: {} })).toThrow(/swapped or aliased/);
+      expect(integrityCode(() => k.store.append({ origin: "kernel", trust: "kernel_truth", type: "kernel.probe", payload: {} }))).toBe("replaced");
       expect(fs.readFileSync(`${k.store.eventsPath}.moved`)).toEqual(before.bytes);
       expect(fs.readFileSync(k.store.eventsPath, "utf8")).toBe("attacker file\n");
       expect(k.store.all()).toHaveLength(before.n);

@@ -24,7 +24,22 @@ import path from "node:path";
 
 const { O_RDONLY, O_DIRECTORY, O_NOFOLLOW } = fs.constants;
 
-export type SpoolIntegrityCode = "symlink" | "missing" | "not_dir" | "replaced" | "root_replaced" | "unsafe_file" | "exists" | "io";
+/**
+ * Stable, platform-independent refusal codes (tests and callers match on these, not on prose):
+ *   symlink        a path component or the final entry is a symlink
+ *   not_dir        a path component is not a directory
+ *   missing        an expected entry does not exist
+ *   not_regular    the entry is not a regular file
+ *   hard_link      the file has more than one link (aliased elsewhere)
+ *   replaced       the directory/name no longer maps to the inode the Kernel holds (checked BEFORE writing)
+ *   after_write    the same, detected only AFTER a write (the write may have landed in the relocated/aliased inode)
+ *   sealed         a previous after_write detection disabled further writes (fail closed)
+ *   root_replaced  the project root inode changed
+ *   exists         an exclusive create found an existing entry
+ *   unsafe_name    a name is not a single plain path component
+ *   io             any other I/O failure
+ */
+export type SpoolIntegrityCode = "symlink" | "missing" | "not_dir" | "not_regular" | "hard_link" | "replaced" | "after_write" | "sealed" | "root_replaced" | "exists" | "unsafe_name" | "io";
 
 /**
  * A Kernel-owned file or directory is not where the Kernel expects it (symlinked component,
@@ -51,7 +66,9 @@ export type FsStage =
   | "artifact:before-open"
   | "diagnostic:before-open"
   | "import:after-area-check"
-  | "import:before-open";
+  | "import:before-open"
+  | "log:before-write"
+  | "diagnostic:before-write";
 export type FsProbe = (stage: FsStage, target: string) => void;
 export type ConfinementMode = "procfd" | "path";
 
@@ -85,7 +102,7 @@ export class DirHandle {
 
   /** Path to use in a syscall for `name` inside this directory (directory-relative in procfd mode). */
   entry(name: string): string {
-    if (!isPlainName(name)) throw new SpoolIntegrityError(`unsafe entry name ${JSON.stringify(name)}`, "unsafe_file");
+    if (!isPlainName(name)) throw new SpoolIntegrityError(`unsafe entry name ${JSON.stringify(name)}`, "unsafe_name");
     return this.c.mode === "procfd" ? `/proc/self/fd/${this.fd}/${name}` : path.join(this.abs, name);
   }
 
@@ -130,7 +147,9 @@ export class Confinement {
     readonly root: string,
     opts: { mode?: "auto" | "path"; probe?: FsProbe } = {},
   ) {
-    this.mode = opts.mode === "path" || !PROCFD ? "path" : "procfd";
+    // DVL_FS_CONFINEMENT=path (host environment) can only DOWNGRADE to the fallback — used to
+    // run the whole suite in the mode non-Linux platforms (e.g. macOS) get.
+    this.mode = opts.mode === "path" || process.env.DVL_FS_CONFINEMENT === "path" || !PROCFD ? "path" : "procfd";
     this.probeFn = opts.probe;
     this.realRoot = fs.realpathSync(root);
     this.rootSt = fs.statSync(this.realRoot);
@@ -249,8 +268,8 @@ export function openBound(dir: DirHandle, name: string, flags: number, mode = 0o
   }
   try {
     const st = fs.fstatSync(fd);
-    if (!st.isFile()) throw new SpoolIntegrityError(`${dir.kernelPath(name)} is not a regular file`, "unsafe_file");
-    if (st.nlink !== 1) throw new SpoolIntegrityError(`${dir.kernelPath(name)} is hard-linked (nlink=${st.nlink})`, "unsafe_file");
+    if (!st.isFile()) throw new SpoolIntegrityError(`${dir.kernelPath(name)} is not a regular file`, "not_regular");
+    if (st.nlink !== 1) throw new SpoolIntegrityError(`${dir.kernelPath(name)} is hard-linked (nlink=${st.nlink})`, "hard_link");
     let now: fs.Stats;
     try {
       now = fs.lstatSync(dir.entry(name));
@@ -277,4 +296,34 @@ export function openBound(dir: DirHandle, name: string, flags: number, mode = 0o
     fs.closeSync(fd);
     throw e;
   }
+}
+
+/**
+ * Re-check that an open descriptor is still bound to `dir/name` with a single link and that
+ * the directory is still at its canonical path. Used immediately before a write (code
+ * "replaced": nothing written) and immediately after it (code "after_write": the write may
+ * already have landed in a relocated or aliased inode — the caller must fail closed).
+ */
+export function rebind(dir: DirHandle, name: string, fd: number, code: "replaced" | "after_write"): void {
+  const held = fs.fstatSync(fd);
+  let now: fs.Stats | undefined;
+  try {
+    now = fs.lstatSync(dir.entry(name));
+  } catch {
+    now = undefined;
+  }
+  if (!now || !sameInode(now, held) || held.nlink !== 1) {
+    throw new SpoolIntegrityError(`${dir.kernelPath(name)} was moved, swapped or aliased (nlink=${held.nlink})${code === "after_write" ? " — detected after write" : " before the write"}`, code);
+  }
+  try {
+    dir.verify();
+  } catch (e) {
+    throw new SpoolIntegrityError(`${(e as Error).message}${code === "after_write" ? " — detected after write" : ""}`, code);
+  }
+}
+
+/** Write all of `data` to `fd`. */
+export function writeAll(fd: number, data: Buffer): void {
+  let off = 0;
+  while (off < data.length) off += fs.writeSync(fd, data, off, data.length - off);
 }
