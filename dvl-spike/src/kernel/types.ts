@@ -1,6 +1,6 @@
 /**
  * DVL Phase 1 Spike — shared types.
- * Source of truth: DVL_CORE_STABLE_CONTRACT_FINAL_V0_3_2_FROZEN_FOR_SPIKE.md
+ * Source of truth: Core Contract reference removed from spike repo
  * Contract version: dvl.provider-core/0.3.2
  */
 

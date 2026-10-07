@@ -2,7 +2,7 @@
 
 **Status:** Spike implementation target  
 **Scope:** H2 only  
-**Contract authority:** `DVL_CORE_STABLE_CONTRACT_FINAL_V0_3_2_FROZEN_FOR_SPIKE.md`  
+**Contract authority:** `Core Contract reference removed from spike repo`  
 **Must not modify the Stable Contract.**
 
 ## 1. Goal
