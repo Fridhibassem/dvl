@@ -44,9 +44,11 @@ function hostOptions(root: string, extra: Partial<KernelOptions>): KernelOptions
     requestTimeoutMs: 5_000,
     integrityKey: keyFor(root),
     ...extra,
+    // The test's own onCommit runs first: if it throws, the harness "host" did not store the
+    // boundary (publication failed before the host saved it).
     onCommit: (h) => {
-      hostHeads.set(root, h);
       extra.onCommit?.(h);
+      hostHeads.set(root, h);
     },
   };
 }

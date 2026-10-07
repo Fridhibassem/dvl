@@ -38,12 +38,17 @@ const { O_RDONLY, O_DIRECTORY, O_NOFOLLOW } = fs.constants;
  *   sealed         a previous uncertain write / after_write detection disabled further appends
  *   recovery_required  the store opened with an uncommitted tail or a persisted seal: appends are
  *                  refused until the host runs explicit recovery
+ *   publication_failed  the record is durable and checked, but publishing the new commit boundary
+ *                  to the host failed: not committed live, store sealed (the host's boundary decides on restart)
+ *   anchor_mismatch  the log cannot reach the commit boundary (shorter, or MAC differs): no
+ *                  authority is installed; only an explicit host decision can proceed
+ *   recovery_failed  recovery found an unsafe/changed log or quarantine target: seal/recovery state kept
  *   root_replaced  the project root inode changed
  *   exists         an exclusive create found an existing entry
  *   unsafe_name    a name is not a single plain path component
  *   io             any other I/O failure
  */
-export type SpoolIntegrityCode = "symlink" | "missing" | "not_dir" | "not_regular" | "hard_link" | "replaced" | "after_write" | "uncommitted" | "sealed" | "recovery_required" | "root_replaced" | "exists" | "unsafe_name" | "io";
+export type SpoolIntegrityCode = "symlink" | "missing" | "not_dir" | "not_regular" | "hard_link" | "replaced" | "after_write" | "uncommitted" | "sealed" | "recovery_required" | "publication_failed" | "anchor_mismatch" | "recovery_failed" | "root_replaced" | "exists" | "unsafe_name" | "io";
 
 /**
  * A Kernel-owned file or directory is not where the Kernel expects it (symlinked component,
@@ -73,6 +78,9 @@ export type FsStage =
   | "import:before-open"
   | "log:before-write"
   | "log:after-write"
+  | "recover:before-quarantine"
+  | "recover:before-truncate"
+  | "recover:before-clear"
   | "diagnostic:before-write";
 export type FsProbe = (stage: FsStage, target: string) => void;
 export type ConfinementMode = "procfd" | "path";

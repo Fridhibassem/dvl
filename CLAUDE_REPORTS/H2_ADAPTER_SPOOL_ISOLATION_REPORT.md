@@ -8,7 +8,9 @@ Contract change.
 > - **Second re-review:** statements in §4, §7 and §9 that the Kernel "never writes through" or "cannot be redirected" to adapter-moved/aliased targets **overstate** what userspace code can guarantee against a same-user process.
 > - **Third review:** §10.1's claim that final-window mutations are "detected immediately" also **overstates**. Validation observes the *current* state only, so a transient mutation that is undone before the post-write check is not detected. In addition, a record refused live could regain authority on replay. Both are fixed or downgraded in §11.
 >
-> The authoritative statement of what H2 guarantees, and what needs OS isolation, is **§11.1**. Earlier sections are kept as the historical record of each review round.
+> - **Fourth review:** §11's model let an unreachable host anchor still install authority, let an `onCommit` failure diverge live state from the host boundary, and recovered without re-binding the logs. All three are fixed in §12.
+>
+> The authoritative statement of what H2 guarantees, and what needs OS isolation, is **§11.1 as amended by §12.1**. Earlier sections are kept as the historical record of each review round.
 
 ## 1. Inspection findings (before any code change)
 
@@ -548,7 +550,7 @@ Per suite: C01 6, C02 4, C03 6, C04 4, C05 4, C06 13, C07 10, C08 14, C09 4, C10
 
 `main` was not pushed and nothing was merged.
 
-## 11. Durable Commit Semantics Fix
+## 11. Durable Commit Semantics Fix (reviewed at `1380e76` — result: H2 DURABLE COMMIT REVIEW FAIL, see §12)
 
 **Context:**
 - Codex reviewed `4c53a43` and returned **H2 SECOND RE-REVIEW FAIL**.
@@ -689,7 +691,7 @@ The Kernel never throws into handlers or timers on these paths: `kernelEvent` re
   - no macOS host run (fallback mode exercised via `DVL_FS_CONFINEMENT=path`);
   - the original Codex probe file is not in the repository.
 
-### 11.6 Exact results (final tree)
+### 11.6 Exact results (at `1380e76`; current results: §12.5)
 
 | Command | Result |
 |---|---|
@@ -713,6 +715,140 @@ Per suite: C01 6, C02 4, C03 6, C04 4, C05 4, C06 13, C07 10, C08 14, C09 4, C10
 **Not claimed:**
 - an H2 PASS;
 - strict no-outside-write prevention;
+- guaranteed detection;
+- a macOS host run.
+
+`main` was not pushed and nothing was merged.
+
+## 12. Anchor Publication and Recovery Fixes
+
+Codex reviewed `1380e76` and returned **H2 DURABLE COMMIT REVIEW FAIL** with three High blockers. The commit model stays **Option A (refused means not committed)**, with the host-held commit boundary as the authority. This round closes the three gaps in how that authority is reached, published and restored.
+
+### 12.1 Amended guarantees
+
+- **The host anchor gates authority.**
+  - If a commit boundary cannot be reached, nothing from either log becomes authority. That covers a host anchor or a seal marker where the log is shorter, or the MAC at the boundary count differs (including a valid-MAC chain behind a wrong anchor).
+  - That means no history, no evidence and no artifact registrations. Nothing is written, the host anchor isn't replaced, and startup, append, evidence, normal recovery and Kernel records (`kernelEvent` → `null`) are all refused.
+  - The only ways forward are restoring the logs, or the explicit host decision `hostDecision: "accept_disk_rollback"`. That decision adopts the authenticated disk chain, publishes it via `onCommit`, removes the stale marker, and records `kernel.anchor_rollback_accepted`.
+- **Publication is part of the commit.** A record commits only after `onCommit(newHeads)` returns.
+  - Until then the internal head, committed size and live history do not advance.
+  - If `onCommit` throws, the store seals (`publication_failed`) before any later append, so nothing can be appended across an unpublished boundary.
+  - If the host may have saved the boundary but failed to confirm, the **host's stored boundary decides on restart**:
+    - old boundary → the record is quarantined;
+    - new boundary → the record is committed.
+
+    Either way the seal marker forces an explicit recovery step, and kernel sequence numbers stay contiguous.
+- **Recovery is fail-closed and rebinding.** `recover()` / `recoverDurableTail()` runs in four phases:
+  1. Validate **both** logs: bound reads, committed prefix re-verified against the commit head, exact tail bytes captured with short reads looped.
+  2. Write the quarantine copies (confined, exclusive) and read them back.
+  3. Per log: re-bind, re-check size and tail bytes, truncate, fsync, re-bind, check size.
+  4. Re-bind **both** logs before removing the marker and clearing the seal.
+
+  Any hard link, symlink, relocation, unsafe quarantine target, changed bytes or truncation error throws `recovery_failed` and keeps the seal, recovery state and marker. A failed recovery can be retried after the unsafe condition is removed. An anchor mismatch is refused (`anchor_mismatch`), never handled as ordinary recovery.
+- **Unchanged from §11.1:** the "does NOT guarantee" list (transient mutations, the final racing write, boundary loss without host anchors once the marker is deleted, adapter writes or deletes) still holds and still requires OS/access isolation.
+
+### 12.2 Blockers, fixes, before/after
+
+**B1 — host-anchor mismatch/rollback did not gate authority** (`event-store.ts replay`, `kernel.ts`).
+- **Fix:**
+  - If either log reports `truncated` against its boundary, the store sets `RecoveryState{source:"anchor_mismatch", mismatch:{<log>:{expected, reachedRecords, boundary:"host_anchor"|"seal_marker"}}}`, returns without installing anything, and keeps the chains at genesis.
+  - `durableAppend` and `Kernel.start`/`startRun`/`retryRun` throw `anchor_mismatch`; `recover()` refuses with the same code.
+  - New option `hostDecision: "accept_disk_rollback"` and store field `rollbackAccepted`.
+- **Before:** reported the mismatch, but installed records, history, evidence and registrations, appended a diagnostic event to the wrong chain, and allowed startup.
+- **After:** fail closed, as above.
+
+**B2 — `onCommit` failure created live/disk disagreement** (`event-store.ts durableAppend`).
+- **Fix:**
+  1. Compute `next` heads.
+  2. Call `onCommit(next)`.
+  3. Only if it returns, advance `committedBytes` and the head (the caller then updates history/evidence).
+  4. If it throws, `seal(kind, "publication_failed", …)` persists the marker with the **old** boundary, and the append throws `publication_failed`.
+- **Harness:** the test's own `onCommit` now runs before the harness "host" stores the boundary, so a throwing callback models "host did not save".
+- **Before:** head and committed size advanced before `onCommit`; on a throw, history wasn't updated, the store wasn't sealed, and later appends published over the refused record.
+- **After:** no divergence and no crossing.
+
+**B3 — recovery truncated through a retained descriptor** (`event-store.ts recover`, `readLogRange`, `readFully`).
+- **Fix:** the four-phase recovery in §12.1. New probe points `recover:before-quarantine`, `recover:before-truncate`, `recover:before-clear`; test-only `ioFaults.recover` truncation fault; new codes `recovery_failed`, `anchor_mismatch`, `publication_failed`.
+- **Before:** validated once, then truncated through an fd held after the directory handle closed, so an aliased or relocated inode could be truncated and the seal cleared.
+- **After:** every mutation happens through a freshly bound fd and is re-bound after; nothing clears until both logs re-verify.
+
+**Changed test:** C13-4 now asserts the fail-closed semantics for an anchored rollback:
+- `anchor_mismatch`;
+- empty history;
+- **no** new `kernel.integrity_violation` appended;
+- log bytes unchanged;
+- `start()` refused.
+
+Previously it expected a diagnostic record to be appended to the shortened chain, which is exactly what B1 forbids.
+
+### 12.3 Tests added: C24 `c24-h2-anchor-publication-recovery.test.ts` (18 tests)
+
+| Test | Scenario | Asserts |
+|---|---|---|
+| B1a ×2 | events / evidence log shorter than the host anchor | `anchor_mismatch`; empty history and evidence; artifact not registered; `start`, appends to both logs, `recoverDurableTail` and `kernelEvent` all refused; both log files byte-identical; host anchor unchanged |
+| B1b ×2 | count-matched anchor, wrong MAC | same |
+| B1c ×2 | anchor behind on a different chain (every disk record MAC-valid) | zero rejected lines, and still the same fail-closed state |
+| B1d | log rolled back below the **seal marker** boundary, no host anchors | `anchor_mismatch` with `boundary: "seal_marker"`; nothing installed; recovery refused |
+| B1e | explicit `accept_disk_rollback` | chain adopted; artifact verifies; `kernel.anchor_rollback_accepted` recorded; host now holds the adopted heads; `start` works |
+| B2a ×2 | `onCommit` throws for events / evidence (host did not save) | `publication_failed`; sealed; heads == host boundary; history/evidence counts unchanged; record on disk but not in same-instance disk reads; later appends to both logs `sealed`; restart with old boundary → quarantined (1 record); after recovery and a new append: `ok`, no rejected lines, contiguous `kernelSequence`, unpublished record absent |
+| B2b ×2 | host saved the boundary but confirmation failed | live: `publication_failed`, sealed. Restart with the saved boundary: record present (committed by host decision), recovery still required (marker), nothing quarantined; afterwards contiguous sequence |
+| B3a ×2 | events / evidence log hard-linked just before truncation | `recovery_failed`; seal, marker and append refusal kept; outside alias size unchanged (not truncated); retry after removing the alias succeeds and the tail is gone from the log |
+| B3b | events dir relocated outside just before truncation | `recovery_failed`; seal kept; relocated log size unchanged |
+| B3c | integrity dir swapped for a symlink just before the quarantine write | `recovery_failed`; outside dir empty; neither log truncated; seal kept |
+| B3d | injected truncation error | `recovery_failed`; seal kept; log bytes byte-identical; retry without the fault succeeds |
+| B3e | tails in **both** logs; evidence aliased after events was truncated; then an alias created just before clearing | both attempts `recovery_failed` with seal and marker kept and the victim unchanged; final retry clears the seal and removes the marker |
+
+**Mutation check** (each applied alone against C24, then restored byte-for-byte):
+
+| Mutation | Failing C24 tests |
+|---|---|
+| A1 no anchor-mismatch gate | B1a, B1b, B1c (events and evidence), B1d |
+| P1 `onCommit` after advancing the head, no seal | B2a, B2b (events and evidence) |
+| R1 no re-bind before truncation | B3a (events and evidence), B3b, B3e |
+| R2 no final bound check before clearing | B3e |
+| R3 seal/recovery cleared on a recovery failure | B3a (events and evidence), B3b, B3c, B3d, B3e |
+
+### 12.4 Preserved
+
+All earlier behaviour still passes:
+- Option A semantics, the uncommitted-tail quarantine and torn-fragment auto-quarantine (C23);
+- import disappearance → `CORRUPTED` evidence (C21-4d/4e);
+- static symlink/hard-link replay refusal (C21-3, C23-3);
+- per-write diagnostics validation (C22);
+- C20 stable codes;
+- C18/C19.
+
+### 12.5 Exact command results (final tree)
+
+| Command | Result |
+|---|---|
+| `npm test` run 1 | exit 0 — 24 files, **198/198 passed** |
+| `npm test` run 2 | exit 0 — 24 files, **198/198 passed** |
+| `npm test` run 3 | exit 0 — 24 files, **198/198 passed** |
+| `npm run typecheck` | exit 0 |
+| `npm run spike` | exit 0 — "SPIKE OK — every scenario reached its expected terminal state" |
+| `npx vitest run src/conformance/c18* src/conformance/c19* src/conformance/c20* src/conformance/c21* src/conformance/c22* src/conformance/c23*` | exit 0 — 6 files, **72/72 passed** (C18 8, C19 3, C20 7, C21 26, C22 18, C23 10) |
+| `npx vitest run src/conformance/c24*` | **18/18 passed** |
+| `DVL_FS_CONFINEMENT=path npm test` (macOS fallback mode, on Linux) | exit 0 — 24 files, **198/198 passed** |
+
+Per suite: C01 6, C02 4, C03 6, C04 4, C05 4, C06 13, C07 10, C08 14, C09 4, C10 7, C11 7, C12 5, C13 6, C14 8, C15 5, C16 3, C17 2, C18 8, C19 3, C20 7, C21 26, C22 18, C23 10, **C24 18**.
+
+### 12.6 Remaining limitations
+
+- **The host decision for a mismatch is coarse.** `accept_disk_rollback` adopts the whole authenticated disk chain. There is no partial reconciliation; restoring the logs from a backup is the alternative.
+- **A seal marker that is unreachable or deleted** without host anchors: unchanged from §11.5. The supported configuration is host anchors held out of the adapter's reach.
+- **Recovery check-to-use windows remain** for transient mutations. A move or alias done and undone *between* a recovery re-bind and the following truncate/unlink syscall isn't observed: validation sees current state only. Changes that persist across a re-bind are refused.
+- **Publication ambiguity is resolved only on restart.** In the live process a failed `onCommit` is always "not committed, sealed"; whether the record ends up committed is decided by whichever boundary the host actually stored.
+- **A failed recovery can leave work half done**, which is safe and idempotent. A quarantine file may already be written, and the first log already truncated, while the second failed. The seal and marker stay, and a retry continues: an already-truncated log has no tail left.
+- **Carried over:** transient mutation detection and the final racing write both need OS/access isolation; there was no macOS host run (fallback mode exercised via `DVL_FS_CONFINEMENT=path`); the original Codex probe file is not in the repository.
+
+### 12.7 Ready for Codex?
+
+**Yes — ready for Codex review of the anchor/publication/recovery fixes.**
+
+**Not claimed:**
+- an H2 PASS;
+- strict prevention;
 - guaranteed detection;
 - a macOS host run.
 

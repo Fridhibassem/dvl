@@ -115,10 +115,17 @@ describe("C13 durable authority is Kernel-authenticated (blocker 1)", () => {
     writeLines(k.store.eventsPath, lines(k.store.eventsPath).slice(0, -3));
     // Without an anchor, a clean prefix is indistinguishable from a shorter history (documented limit).
     expect(kernelOn(rootOf(k)).store.integrity.events.ok).toBe(true);
-    // With the host's anchor, the rollback is detected.
+    // With the host's anchor, the rollback is detected — and fails closed (H2 commit model):
+    // no authority is installed from the shortened chain, and nothing new is appended to it
+    // (no diagnostic record that could replace the host checkpoint). Startup is refused.
+    const bytesBefore = fs.readFileSync(k.store.eventsPath);
     const anchored = track(kernelOn(rootOf(k), { expectedHead: head }));
     expect(anchored.store.integrity.events).toMatchObject({ ok: false, truncated: true });
-    expect(integrityEvents(anchored)).toHaveLength(1);
+    expect(anchored.store.recovery?.source).toBe("anchor_mismatch");
+    expect(anchored.store.all()).toEqual([]);
+    expect(integrityEvents(anchored)).toHaveLength(0);
+    expect(fs.readFileSync(k.store.eventsPath)).toEqual(bytesBefore);
+    expect(() => anchored.start()).toThrow(/anchor mismatch/);
   });
 
   it("5. legitimate Kernel records replay completely; evidence and provenance are rebuilt", async () => {

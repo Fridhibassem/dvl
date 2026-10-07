@@ -78,6 +78,8 @@ export interface KernelOptions {
   onCommit?: EventStoreOptions["onCommit"];
   /** H2 — receives the incident when the store seals after an uncertain durable write. */
   onIncident?: EventStoreOptions["onIncident"];
+  /** H2 — explicit host decision for an anchor mismatch (see EventStoreOptions.hostDecision). */
+  hostDecision?: EventStoreOptions["hostDecision"];
   /** H2 — test-only durable-write fault injection. */
   ioFaults?: EventStoreOptions["ioFaults"];
   /** H2 — filesystem confinement mode for Kernel-owned paths ("path" forces the fallback). */
@@ -274,13 +276,14 @@ export class Kernel {
   readonly projectId: string;
 
   constructor(private readonly opts: KernelOptions) {
-    this.store = new EventStore({ root: opts.root, fsync: opts.fsync, integrityKey: opts.integrityKey, expectedHead: opts.expectedHead, expectedHeads: opts.expectedHeads, onCommit: opts.onCommit, onIncident: opts.onIncident, ioFaults: opts.ioFaults, confinement: opts.confinement, fsProbe: opts.fsProbe });
+    this.store = new EventStore({ root: opts.root, fsync: opts.fsync, integrityKey: opts.integrityKey, expectedHead: opts.expectedHead, expectedHeads: opts.expectedHeads, hostDecision: opts.hostDecision, onCommit: opts.onCommit, onIncident: opts.onIncident, ioFaults: opts.ioFaults, confinement: opts.confinement, fsProbe: opts.fsProbe });
     const { events, evidence } = this.store.integrity;
     if (!events.ok || !evidence.ok) {
       // Fail closed: rejected records stay on disk as inert bytes and confer nothing.
       const summarize = (r: ChainReport) => ({ ok: r.ok, accepted: r.accepted, truncated: r.truncated, rejectedCount: r.rejected.length, rejected: r.rejected.slice(0, 50) });
       this.kernelEvent("kernel.integrity_violation", { events: summarize(events), evidence: summarize(evidence) });
     }
+    if (this.store.rollbackAccepted) this.kernelEvent("kernel.anchor_rollback_accepted", this.store.rollbackAccepted);
     if (this.store.ephemeralKey) this.kernelEvent("kernel.integrity_key_ephemeral", { note: "no host integrityKey: durable records will not authenticate after restart" });
     this.limits = { maxDurationMs: 60_000, maxIncomingBytes: 256 * 1024 * 1024, ...opts.limits };
     this.queueLimits = { maxQueuedFrames: MAX_QUEUED_FRAMES, maxQueuedBytes: MAX_QUEUED_BYTES, ...opts.queueLimits };
@@ -1351,6 +1354,7 @@ export class Kernel {
   private assertDurable(): void {
     if (this.store.sealed) throw new SpoolIntegrityError(`durable store sealed: ${this.store.sealed}`, "sealed");
     const r = this.store.recovery;
+    if (r?.source === "anchor_mismatch") throw new SpoolIntegrityError("durable store cannot reach the host commit boundary (anchor mismatch): restore the logs or reopen with an explicit host rollback decision", "anchor_mismatch");
     if (r) throw new SpoolIntegrityError(`durable store requires recovery (${r.source}); call recoverDurableTail()`, "recovery_required");
   }
 

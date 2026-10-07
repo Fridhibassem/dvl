@@ -116,9 +116,17 @@ export interface DurableIncident {
   markerPersisted: boolean;
 }
 export interface RecoveryState {
-  source: "host_anchor" | "seal_marker" | "torn_tail";
+  /**
+   * host_anchor / seal_marker: an uncommitted tail beyond a reachable boundary (recover()).
+   * anchor_mismatch: the boundary (host anchor, or marker) cannot be reached — the log is
+   * shorter or the MAC at the boundary differs. NO authority is installed from either log and
+   * ordinary recovery is refused; only an explicit host decision (restore the logs, or reopen
+   * with hostDecision "accept_disk_rollback") can proceed.
+   */
+  source: "host_anchor" | "seal_marker" | "torn_tail" | "anchor_mismatch";
   uncommitted: Record<LogKind, { records: number; bytes: number }>;
   incident?: DurableIncident;
+  mismatch?: Partial<Record<LogKind, { expected: ChainHead; reachedRecords: number; boundary: "host_anchor" | "seal_marker" }>>;
 }
 
 export function sha256(data: Buffer | string): string {
@@ -145,8 +153,17 @@ export interface EventStoreOptions {
   onCommit?: (heads: CommitHeads) => void;
   /** H2 — called once when the store seals after an uncertain durable write. */
   onIncident?: (incident: DurableIncident) => void;
-  /** H2 — test-only I/O fault injection for durable log writes. */
-  ioFaults?: { log?: (kind: LogKind, phase: "write" | "fsync", record: Record<string, unknown>) => "fail" | "partial" | undefined };
+  /** H2 — test-only I/O fault injection for durable log writes and recovery truncation. */
+  ioFaults?: {
+    log?: (kind: LogKind, phase: "write" | "fsync", record: Record<string, unknown>) => "fail" | "partial" | undefined;
+    recover?: (kind: LogKind, phase: "truncate") => "fail" | undefined;
+  };
+  /**
+   * H2 — explicit host decision for an anchor mismatch: adopt the authenticated on-disk chain
+   * as the new truth (a rollback the host accepts). The store then publishes the adopted
+   * heads via onCommit and reports `rollbackAccepted`. Never applied implicitly.
+   */
+  hostDecision?: "accept_disk_rollback";
   /**
    * H2 — "auto" (default) uses directory-relative confinement where available (Linux
    * /proc/self/fd), else path checks; "path" forces the path-check fallback (tests).
@@ -173,6 +190,8 @@ export class EventStore {
   private sealedReason: string | null = null;
   /** H2 — the store opened with an uncommitted tail / persisted seal; recover() required. */
   private recoveryState: RecoveryState | null = null;
+  /** H2 — set when the host explicitly accepted a disk rollback at open (hostDecision). */
+  rollbackAccepted: { previous: Partial<CommitHeads>; adopted: CommitHeads } | null = null;
   /** H2 — live incident (this process). */
   private incidentRec: DurableIncident | null = null;
   /** H2 — byte length of each log up to (and including) its last committed record. */
@@ -262,54 +281,135 @@ export class EventStore {
   }
 
   /**
-   * H2 — explicit recovery decision: quarantine every byte beyond the commit boundary of
-   * both logs into .dvl/integrity/quarantine-<log>-<ts>.jsonl, truncate the logs to the
-   * boundary, remove the seal marker, and re-open for appends. Refuses (throws) if a log is
-   * SHORTER than its boundary (rollback: needs a host decision) or a path is unsafe.
+   * H2 — explicit recovery decision: quarantine every byte beyond the commit boundary of both
+   * logs into .dvl/integrity/quarantine-<log>-<ts>.jsonl, truncate the logs to the boundary,
+   * remove the seal marker, and re-open for appends.
+   *
+   * Phases (any failure → SpoolIntegrityError "recovery_failed", seal/recovery state KEPT):
+   *   1. validate BOTH logs (bound read: dir identity, name ↔ inode, one link) — size not below
+   *      the boundary, committed prefix re-verified against the commit head — and capture the
+   *      exact tail bytes (short reads handled);
+   *   2. write each tail to a NEW quarantine file in the confined integrity dir and read it
+   *      back (bytes must match);
+   *   3. per log: bind again, re-check size and tail bytes unchanged, truncate, fsync, re-bind
+   *      (still the same single-link inode at its canonical place) and check the new size;
+   *   4. re-bind both logs once more, then remove the marker and clear seal/recovery.
+   * Refused outright for an anchor mismatch (requires a host decision, not recovery).
    */
   recover(): { quarantined: Record<LogKind, { bytes: number; file: string | null }> } {
     if (!this.recoveryState && !this.sealedReason) return { quarantined: { events: { bytes: 0, file: null }, evidence: { bytes: 0, file: null } } };
+    if (this.recoveryState?.source === "anchor_mismatch") {
+      throw new SpoolIntegrityError("commit boundary cannot be reached (anchor mismatch): restore the logs or make an explicit host rollback decision", "anchor_mismatch");
+    }
+    const fail = (e: unknown): never => {
+      if (e instanceof SpoolIntegrityError && e.code === "recovery_failed") throw e;
+      throw new SpoolIntegrityError(`recovery refused, seal/recovery state kept: ${(e as Error).message}`, "recovery_failed");
+    };
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    // Phase 1: validate both logs and capture exact tails — no mutation yet.
+    const tails = {} as Record<LogKind, Buffer>;
+    try {
+      for (const kind of LOG_KINDS) {
+        const committed = this.committedBytes[kind];
+        const check = this.readChain(kind, this.chain[kind]);
+        // The boundary record must still be reachable with the committed MAC, inside the
+        // committed range (inert rejected lines may sit between it and the committed offset).
+        if (check.report.truncated || check.committedBytes > committed) {
+          throw new SpoolIntegrityError(`${kind} committed prefix no longer matches the commit head`, "recovery_failed");
+        }
+        tails[kind] = this.readLogRange(kind, committed);
+      }
+    } catch (e) {
+      fail(e);
+    }
+    // Phase 2: quarantine copies (confined, exclusive), verified by read-back.
     const quarantined = {} as Record<LogKind, { bytes: number; file: string | null }>;
-    for (const kind of LOG_KINDS) {
-      const committed = this.committedBytes[kind];
-      const tail = this.withLogDir(kind, (d, name) => {
-        const { fd } = openBound(d, name, fs.constants.O_RDWR);
-        try {
-          const size = fs.fstatSync(fd).size;
-          if (size < committed) throw new SpoolIntegrityError(`${kind} log is shorter than its commit boundary (${size} < ${committed})`, "recovery_required");
-          const buf = Buffer.alloc(size - committed);
-          if (buf.length > 0) fs.readSync(fd, buf, 0, buf.length, committed);
-          return { buf, fd, d, name };
-        } catch (e) {
+    try {
+      for (const kind of LOG_KINDS) {
+        let file: string | null = null;
+        if (tails[kind].length > 0) {
+          file = `quarantine-${kind}-${stamp}.jsonl`;
+          this.fsc.probe("recover:before-quarantine", path.join(this.dvlDir, "integrity", file));
+          this.writeKernelFile(INTEGRITY_DIR, file, tails[kind]);
+          const back = this.withDir(INTEGRITY_DIR, (d) => {
+            const { fd } = openBound(d, file!, O_RDONLY);
+            try {
+              return fs.readFileSync(fd);
+            } finally {
+              fs.closeSync(fd);
+            }
+          });
+          if (!back.equals(tails[kind])) throw new SpoolIntegrityError(`quarantine copy of ${kind} tail does not match`, "recovery_failed");
+        }
+        quarantined[kind] = { bytes: tails[kind].length, file };
+      }
+    } catch (e) {
+      fail(e);
+    }
+    // Phase 3: truncate each log through a freshly bound descriptor, re-bound after.
+    try {
+      for (const kind of LOG_KINDS) {
+        if (tails[kind].length === 0) continue;
+        const committed = this.committedBytes[kind];
+        this.withLogDir(kind, (d, name) => {
+          const { fd } = openBound(d, name, fs.constants.O_RDWR);
+          try {
+            this.fsc.probe("recover:before-truncate", d.kernelPath(name));
+            rebind(d, name, fd, "replaced");
+            const size = fs.fstatSync(fd).size;
+            if (size !== committed + tails[kind].length) throw new SpoolIntegrityError(`${kind} log changed since validation (${size} bytes)`, "recovery_failed");
+            const now = Buffer.alloc(tails[kind].length);
+            readFully(fd, now, committed);
+            if (!now.equals(tails[kind])) throw new SpoolIntegrityError(`${kind} tail bytes changed since validation`, "recovery_failed");
+            if (this.opts.ioFaults?.recover?.(kind, "truncate") === "fail") throw Object.assign(new Error("EIO: injected truncate error"), { code: "EIO" });
+            fs.ftruncateSync(fd, committed);
+            if (this.opts.fsync) fs.fsyncSync(fd);
+            rebind(d, name, fd, "after_write");
+            if (fs.fstatSync(fd).size !== committed) throw new SpoolIntegrityError(`${kind} log size after truncation is wrong`, "recovery_failed");
+          } finally {
+            fs.closeSync(fd);
+          }
+        });
+      }
+      // Phase 4: both logs must be safe (bound, exact committed size) before anything clears.
+      this.fsc.probe("recover:before-clear", this.dvlDir);
+      for (const kind of LOG_KINDS) {
+        this.withLogDir(kind, (d, name) => {
+          const { fd, st } = openBound(d, name, O_RDONLY);
           fs.closeSync(fd);
-          throw e;
+          if (st.size !== this.committedBytes[kind]) throw new SpoolIntegrityError(`${kind} log is not at its commit boundary after recovery`, "recovery_failed");
+        });
+      }
+      this.withDir(INTEGRITY_DIR, (d) => {
+        try {
+          fs.unlinkSync(d.entry(SEAL_MARKER));
+        } catch (e) {
+          if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
         }
       });
-      try {
-        let file: string | null = null;
-        if (tail.buf.length > 0) {
-          file = `quarantine-${kind}-${stamp}.jsonl`;
-          this.writeKernelFile(INTEGRITY_DIR, file, tail.buf);
-          fs.ftruncateSync(tail.fd, committed);
-          if (this.opts.fsync) fs.fsyncSync(tail.fd);
-        }
-        quarantined[kind] = { bytes: tail.buf.length, file };
-      } finally {
-        fs.closeSync(tail.fd);
-      }
+    } catch (e) {
+      fail(e);
     }
-    this.withDir(INTEGRITY_DIR, (d) => {
-      try {
-        fs.unlinkSync(d.entry(SEAL_MARKER));
-      } catch (e) {
-        if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
-      }
-    });
     this.sealedReason = null;
     this.recoveryState = null;
     this.incidentRec = null;
     return { quarantined };
+  }
+
+  /** H2 — exact bytes of a log from `from` to its end, through a bound descriptor. */
+  private readLogRange(kind: LogKind, from: number): Buffer {
+    return this.withLogDir(kind, (d, name) => {
+      const { fd } = openBound(d, name, O_RDONLY);
+      try {
+        const size = fs.fstatSync(fd).size;
+        if (size < from) throw new SpoolIntegrityError(`${kind} log is shorter than its commit boundary (${size} < ${from})`, "recovery_failed");
+        const buf = Buffer.alloc(size - from);
+        readFully(fd, buf, from);
+        return buf;
+      } finally {
+        fs.closeSync(fd);
+      }
+    });
   }
 
   /** Blocker 1 — current head of the events chain; the host may persist it as an anchor. */
@@ -659,7 +759,13 @@ export class EventStore {
     // UNCERTAIN outcome: the record may be on disk, so it is NOT committed and the store SEALS
     // before any later append — it never appends again from the old head (no chain fork).
     if (this.sealedReason) throw new SpoolIntegrityError(`store sealed after an uncertain durable write: ${this.sealedReason}`, "sealed");
-    if (this.recoveryState) throw new SpoolIntegrityError(`store requires recovery (${this.recoveryState.source}); appends are refused until recover()`, "recovery_required");
+    if (this.recoveryState) {
+      const mismatch = this.recoveryState.source === "anchor_mismatch";
+      throw new SpoolIntegrityError(
+        mismatch ? "commit boundary cannot be reached (anchor mismatch); appends are refused until the host restores the logs or decides a rollback" : `store requires recovery (${this.recoveryState.source}); appends are refused until recover()`,
+        mismatch ? "anchor_mismatch" : "recovery_required",
+      );
+    }
     const bytes = Buffer.from(line);
     let committedSize = 0;
     this.withLogDir(kind, (d, name) => {
@@ -693,9 +799,21 @@ export class EventStore {
         fs.closeSync(fd);
       }
     });
+    // H2: publishing the new boundary to the host is PART of the commit. Only after the host
+    // accepted it do the internal head, committed size and (in the caller) live history
+    // advance. If publication fails, the host may or may not have stored it: the record is not
+    // committed in this process, and the store seals before any later append, so nothing can
+    // ever be appended across an unpublished boundary. On restart the HOST's boundary decides
+    // (old boundary → quarantined tail; new boundary → committed).
+    const next: CommitHeads = { ...this.heads(), [kind]: { count: this.chain[kind].count + 1, mac } };
+    try {
+      this.opts.onCommit?.(next);
+    } catch (e) {
+      this.seal(kind, "publication_failed", `commit-boundary publication failed: ${(e as Error).message}`);
+      throw new SpoolIntegrityError(`commit-boundary publication to the host failed (${(e as Error).message}); record not committed, store sealed`, "publication_failed");
+    }
     this.committedBytes[kind] = committedSize;
-    this.chain[kind] = { count: this.chain[kind].count + 1, mac };
-    this.opts.onCommit?.(this.heads());
+    this.chain[kind] = next[kind];
   }
 
   /** H2 — fail closed after an uncertain durable write: seal, persist marker, tell the host. */
@@ -843,10 +961,31 @@ export class EventStore {
     const host: Partial<CommitHeads> = { ...this.opts.expectedHeads };
     if (this.opts.expectedHead && !host.events) host.events = this.opts.expectedHead;
     const boundaryOf = (k: LogKind): ChainHead | undefined => host[k] ?? (marker ? { count: marker.committed[k].count, mac: marker.committed[k].mac } : undefined);
-    const ev = this.readChain<StoredEvent>("events", boundaryOf("events"));
-    const evd = this.readChain<EvidenceRecord>("evidence", boundaryOf("evidence"));
+    let ev = this.readChain<StoredEvent>("events", boundaryOf("events"));
+    let evd = this.readChain<EvidenceRecord>("evidence", boundaryOf("evidence"));
     this.integrity.events = ev.report;
     this.integrity.evidence = evd.report;
+    const anyHostBoundary = host.events !== undefined || host.evidence !== undefined;
+    if (ev.report.truncated || evd.report.truncated) {
+      const mismatch: NonNullable<RecoveryState["mismatch"]> = {};
+      for (const [k, r] of [["events", ev], ["evidence", evd]] as const) {
+        const b = boundaryOf(k);
+        if (r.report.truncated && b) mismatch[k] = { expected: b, reachedRecords: r.report.accepted, boundary: host[k] ? "host_anchor" : "seal_marker" };
+      }
+      if (this.opts.hostDecision !== "accept_disk_rollback") {
+        // Fail closed: the boundary that defines Project Truth cannot be reached. Install NO
+        // authority from either log (history, evidence, artifact registry stay empty), keep
+        // the chains at genesis so nothing can be appended over the host's checkpoint.
+        this.recoveryState = { source: "anchor_mismatch", uncommitted: { events: { records: 0, bytes: 0 }, evidence: { records: 0, bytes: 0 } }, incident: marker ?? undefined, mismatch };
+        return;
+      }
+      // Explicit host decision: adopt the authenticated on-disk chain (full, no boundary).
+      ev = this.readChain<StoredEvent>("events");
+      evd = this.readChain<EvidenceRecord>("evidence");
+      this.integrity.events = ev.report;
+      this.integrity.evidence = evd.report;
+      this.rollbackAccepted = { previous: { events: boundaryOf("events"), evidence: boundaryOf("evidence") }, adopted: { events: ev.head, evidence: evd.head } };
+    }
     this.chain.events = ev.head; // new records continue the committed chain
     this.chain.evidence = evd.head;
     this.committedBytes.events = ev.committedBytes;
@@ -864,8 +1003,23 @@ export class EventStore {
 
     const unc = (r: ChainReport) => r.uncommitted ?? { records: 0, bytes: 0 };
     const hasTail = unc(ev.report).bytes > 0 || unc(evd.report).bytes > 0;
-    const anyHost = host.events !== undefined || host.evidence !== undefined;
-    if (marker || (hasTail && anyHost)) {
+    const anyHost = anyHostBoundary && !this.rollbackAccepted;
+    if (this.rollbackAccepted) {
+      // The host decided: the adopted chain is the new boundary. Publish it explicitly and
+      // drop the stale marker (its boundary was part of what the host overrode).
+      this.withDir(INTEGRITY_DIR, (d) => {
+        try {
+          fs.unlinkSync(d.entry(SEAL_MARKER));
+        } catch (e) {
+          if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
+        }
+      });
+      this.opts.onCommit?.(this.heads());
+      if (hasTail) {
+        this.recoveryState = { source: "torn_tail", uncommitted: { events: unc(ev.report), evidence: unc(evd.report) } };
+        this.recover();
+      }
+    } else if (marker || (hasTail && anyHost)) {
       this.recoveryState = { source: anyHost ? "host_anchor" : "seal_marker", uncommitted: { events: unc(ev.report), evidence: unc(evd.report) }, incident: marker ?? undefined };
     } else if (hasTail) {
       // No boundary at all: only a torn final fragment can be identified as uncommitted. It
@@ -879,3 +1033,13 @@ export class EventStore {
 
 /** H2 — an adapter claim that fails a Kernel check during import (reported, never thrown out). */
 class ImportRejection extends Error {}
+
+/** Read exactly buf.length bytes at `pos` (short reads looped; premature EOF is an error). */
+function readFully(fd: number, buf: Buffer, pos: number): void {
+  let off = 0;
+  while (off < buf.length) {
+    const n = fs.readSync(fd, buf, off, buf.length - off, pos + off);
+    if (n === 0) throw new SpoolIntegrityError(`short read: ${off} of ${buf.length} bytes`, "recovery_failed");
+    off += n;
+  }
+}
