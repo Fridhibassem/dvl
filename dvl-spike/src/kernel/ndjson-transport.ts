@@ -399,13 +399,24 @@ export class NdjsonTransport {
     // count and drop instead of building a chunk-sized buffer only to discard it.
     const n = Buffer.byteLength(s);
     // Whole lines only: a line is collected only if it fits the remaining budget in full.
-    if (this.budgetLeft(path.basename(this.noiseSpoolPath)) - this.pendingNoiseBytes < n) {
+    // The cap is terminal: after the first drop nothing more is collected for this stream,
+    // even a later line small enough to fit the arithmetic budget.
+    const file = path.basename(this.noiseSpoolPath);
+    if (this.capReached(file) || this.budgetLeft(file) - this.pendingNoiseBytes < n) {
       this.stats.diagnosticBytesDropped += n;
-      this.capDue.add(path.basename(this.noiseSpoolPath)); // marker written after the pending payload
+      this.capDue.add(file); // marker written after the pending payload
       return;
     }
     this.pendingNoise.push(s);
     this.pendingNoiseBytes += n;
+  }
+
+  /**
+   * H3 — terminal cap state: true once the stream dropped payload (marker due) or its marker was
+   * written. From then on every later payload byte is dropped and counted; the marker stays last.
+   */
+  private capReached(file: string): boolean {
+    return this.capDue.has(file) || this.diagCapped.has(file);
   }
 
   /** H3 — payload bytes a diagnostic file may still receive (its budget excludes the marker reserve). */
@@ -448,6 +459,11 @@ export class NdjsonTransport {
    * the payload budget are counted in diagnosticBytesDropped and not written.
    */
   private writeDiagnostic(file: string, input: Buffer): boolean {
+    // Terminal: after the marker nothing is appended, whatever arithmetic room remains.
+    if (this.diagCapped.has(file)) {
+      this.stats.diagnosticBytesDropped += input.length;
+      return true;
+    }
     const room = this.budgetLeft(file);
     if (input.length <= room) return this.sinkWrite(file, input);
     this.stats.diagnosticBytesDropped += input.length - room;
@@ -555,9 +571,12 @@ export class NdjsonTransport {
     // overflow file exists (budgetLeft counts nothing written yet). Whole records only: a record
     // is collected only if it fits the remaining payload budget in full, so the file never holds
     // a cut record, pending memory never exceeds the budget, and every dropped byte is counted.
-    if (this.budgetLeft(path.basename(this.overflowSpoolPath)) - this.pendingOverflowBytes < n) {
+    // Terminal cap: once a record was dropped (or the marker written), every later record is
+    // dropped too, even one small enough to fit the remaining arithmetic budget.
+    const file = path.basename(this.overflowSpoolPath);
+    if (this.capReached(file) || this.budgetLeft(file) - this.pendingOverflowBytes < n) {
       this.stats.diagnosticBytesDropped += n; // stream full: counted, not collected
-      this.capDue.add(path.basename(this.overflowSpoolPath));
+      this.capDue.add(file);
       return;
     }
     this.pendingOverflow.push(rec);

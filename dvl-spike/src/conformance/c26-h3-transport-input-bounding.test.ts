@@ -491,3 +491,190 @@ describe("C26 H3 transport input bounding — review fixes", () => {
     expect(fs.statSync(x.t.overflowSpoolPath).size).toBeLessThanOrEqual(MAX_DIAG);
   });
 });
+
+describe("C26 H3 transport input bounding — terminal diagnostic cap", () => {
+  const B = MAX_DIAG - RESERVE; // payload allowance per stream
+  const MARK = "\n[DVL: diagnostic cap of";
+  /** The marker is present exactly once and is the final bytes; file ≤ cap. */
+  function expectMarkerLast(file: string) {
+    const txt = fs.readFileSync(file, "utf8");
+    expect(fs.statSync(file).size).toBeLessThanOrEqual(MAX_DIAG);
+    expect(txt.split(MARK).length, file).toBe(2);
+    expect(txt.endsWith("further bytes dropped]\n"), file).toBe(true);
+    return txt;
+  }
+  /** Noise lines totalling exactly `bytes` (each < MAX_LINE_BYTES, never DVL1). */
+  function noiseOf(bytes: number): string {
+    const parts: string[] = [];
+    for (let left = bytes; left > 0; ) {
+      const n = Math.min(left, 100_000);
+      parts.push("n".repeat(n - 1) + "\n");
+      left -= n;
+    }
+    return parts.join("");
+  }
+  const recOf = (line: string) => `[REFUSED input_rejected bytes=${Buffer.byteLength(line)}] ${boundedText(line)}\n`;
+  /** A DVL1 frame line (with "\n") whose bounded refused record is exactly `size` bytes. */
+  function refusedOfSize(size: number): string {
+    for (let pad = 0; pad < 400; pad++) {
+      const line = encodeFrame({ type: "heartbeat", p: "q".repeat(pad) });
+      if (Buffer.byteLength(recOf(line.slice(0, -1))) === size) return line;
+    }
+    throw new Error(`no refused record of ${size} bytes`);
+  }
+  const BIG = encodeFrame(hb(1, { payload: { pad: "p".repeat(400) } })); // preview fully used
+  const rBig = Buffer.byteLength(recOf(BIG.slice(0, -1)));
+  const SMALL = encodeFrame({ type: "heartbeat" });
+  const rSmall = Buffer.byteLength(recOf(SMALL.slice(0, -1)));
+  const markerLen = Buffer.byteLength(`\n[DVL: diagnostic cap of ${MAX_DIAG} bytes reached for diagnostics.queue-overflow.log; further bytes dropped]\n`);
+  /** Room left so that the big record does not fit, but the small one still fits AFTER the marker. */
+  const ROOM = 250;
+  /** Whole refused records totalling exactly B - room (room left in the arithmetic budget). */
+  function refusedFill(room: number): string {
+    const k = Math.floor((B - room) / rBig) - 1;
+    const rem = B - room - k * rBig; // in [rBig, 2·rBig): split into two tailored records
+    return BIG.repeat(k) + refusedOfSize(Math.floor(rem / 2)) + refusedOfSize(Math.ceil(rem / 2));
+  }
+
+  it("21. stdout noise: after the marker a later smaller line (that fits the arithmetic budget) is dropped and counted; marker stays last", async () => {
+    // a) trigger and later line in separate chunks
+    const x = fakeTransport();
+    x.out(noiseOf(B - 1000)); // 1000 bytes of payload allowance left
+    await flush();
+    expect(fs.statSync(x.t.noiseSpoolPath).size).toBe(B - 1000);
+    x.out("t".repeat(1999) + "\n"); // does not fit: dropped, marker written
+    await flush();
+    const capped = expectMarkerLast(x.t.noiseSpoolPath);
+    expect(payloadOf(x.t.noiseSpoolPath)).toBe(B - 1000);
+    const dropped = x.t.stats.diagnosticBytesDropped;
+    expect(dropped).toBe(2000);
+    x.out("s".repeat(99) + "\n"); // 100 bytes: fits the 1000 left, but the stream is capped
+    await flush();
+    expect(fs.readFileSync(x.t.noiseSpoolPath, "utf8")).toBe(capped);
+    expect(x.t.stats.diagnosticBytesDropped).toBe(dropped + 100);
+    // An over-long noise line's [OVERFLOW] record and an input rejection's [REJECTED] record are
+    // payload too: dropped and counted, while the rejection still seals and reports.
+    const before = x.t.stats.diagnosticBytesDropped;
+    x.out("o".repeat(MAX_FRAME_BYTES + 10) + "\n");
+    x.out("DVL1:{bad\n");
+    await flush();
+    expect(fs.readFileSync(x.t.noiseSpoolPath, "utf8")).toBe(capped);
+    expect(x.t.stats.diagnosticBytesDropped).toBeGreaterThan(before);
+    expect(x.rejected()).toEqual([expect.objectContaining({ reason: "malformed_frame" })]);
+    expect(x.t.isSealed).toBe(true);
+    x.out(encodeFrame(hb(2)));
+    x.end();
+    await flush();
+    expect(x.frames).toEqual([]);
+    expect(fs.readFileSync(x.t.noiseSpoolPath, "utf8")).toBe(capped); // close/flush adds nothing
+    // Other streams are independent: stderr is not capped by the noise cap.
+    x.err("stderr still written\n");
+    expect(fs.readFileSync(x.t.stderrSpoolPath, "utf8")).toBe("stderr still written\n");
+
+    // b) trigger and later smaller line in the SAME chunk: the earlier collected lines are kept,
+    //    nothing after the first drop is collected.
+    const y = fakeTransport();
+    y.out(noiseOf(B - 1000));
+    await flush();
+    y.out("keep".repeat(10) + "\n" + "t".repeat(1999) + "\n" + "s".repeat(99) + "\n");
+    await flush();
+    const txt = expectMarkerLast(y.t.noiseSpoolPath);
+    expect(txt.slice(0, payloadOf(y.t.noiseSpoolPath))).toBe(noiseOf(B - 1000) + "keep".repeat(10) + "\n");
+    expect(y.t.stats.diagnosticBytesDropped).toBe(2100);
+  });
+
+  it("22. refused DVL1 records, LATER batch: after the marker a later smaller refused record is dropped and counted; marker stays last", async () => {
+    const x = fakeTransport();
+    x.out("DVL1:{bad\n"); // seal
+    const fill = refusedFill(ROOM);
+    // The small record fits the arithmetic budget even after the marker is counted: only the
+    // terminal cap state keeps it out.
+    expect(rSmall + markerLen).toBeLessThan(ROOM);
+    expect(rBig).toBeGreaterThan(ROOM);
+    x.out(fill);
+    await flush();
+    const file = x.t.overflowSpoolPath;
+    expect(fs.statSync(file).size).toBe(B - ROOM);
+    expect(x.t.stats.diagnosticBytesDropped).toBe(0);
+    x.out(BIG); // later batch: does not fit → dropped, marker
+    await flush();
+    const capped = expectMarkerLast(file);
+    expect(payloadOf(file)).toBe(B - ROOM);
+    expect(fs.statSync(file).size).toBe(B - ROOM + markerLen); // the precondition's marker length is the real one
+    expect(x.t.stats.diagnosticBytesDropped).toBe(rBig);
+    x.out(SMALL); // fits the arithmetic budget — must still be dropped
+    await flush();
+    expect(fs.readFileSync(file, "utf8")).toBe(capped);
+    expect(x.t.stats.diagnosticBytesDropped).toBe(rBig + rSmall);
+    x.out(SMALL.repeat(5));
+    x.end();
+    await flush();
+    expect(fs.readFileSync(file, "utf8")).toBe(capped);
+    expect(x.t.stats.diagnosticBytesDropped).toBe(rBig + 6 * rSmall);
+    expect(x.frames).toEqual([]);
+    expect(x.rejected()).toHaveLength(1);
+  });
+
+  it("23. refused DVL1 records, FIRST batch: trigger and a smaller record in the batch that creates the file; and trigger first, smaller record later", async () => {
+    // a) everything in the first batch (overflow file does not exist yet)
+    const x = fakeTransport();
+    x.out("DVL1:{bad\n");
+    const fill = refusedFill(ROOM);
+    expect(rSmall + markerLen).toBeLessThan(ROOM);
+    x.out(fill + BIG + SMALL);
+    await flush();
+    const file = x.t.overflowSpoolPath;
+    const txt = expectMarkerLast(file);
+    expect(payloadOf(file)).toBe(B - ROOM);
+    const expectedPayload = fill
+      .split("\n")
+      .filter(Boolean)
+      .map((l) => recOf(l))
+      .join("");
+    expect(txt.slice(0, payloadOf(file))).toBe(expectedPayload); // collected whole records kept, in order
+    expect(x.t.stats.diagnosticBytesDropped).toBe(rBig + rSmall);
+    // b) trigger in the first batch, smaller record in a later batch
+    const y = fakeTransport();
+    y.out("DVL1:{bad\n");
+    y.out(fill + BIG);
+    await flush();
+    const capped = expectMarkerLast(y.t.overflowSpoolPath);
+    y.out(SMALL);
+    await flush();
+    expect(fs.readFileSync(y.t.overflowSpoolPath, "utf8")).toBe(capped);
+    expect(y.t.stats.diagnosticBytesDropped).toBe(rBig + rSmall);
+  });
+
+  it("24. stderr: after the marker nothing is appended; every later byte is counted as dropped", async () => {
+    const x = fakeTransport();
+    x.err(Buffer.alloc(B - 1000, 0x61));
+    expect(fs.statSync(x.t.stderrSpoolPath).size).toBe(B - 1000);
+    x.err(Buffer.alloc(2000, 0x62)); // 1000 written up to the allowance, 1000 dropped, marker
+    const capped = expectMarkerLast(x.t.stderrSpoolPath);
+    expect(payloadOf(x.t.stderrSpoolPath)).toBe(B);
+    expect(x.t.stats.diagnosticBytesDropped).toBe(1000);
+    for (const n of [1, 10, 100, 5000]) x.err(Buffer.alloc(n, 0x63));
+    expect(fs.readFileSync(x.t.stderrSpoolPath, "utf8")).toBe(capped);
+    expect(x.t.stats.diagnosticBytesDropped).toBe(1000 + 5111);
+  });
+
+  it("25. the terminal state also holds without arithmetic exhaustion: a capped stream with room left never writes payload or a second marker", async () => {
+    // Force the capped state on a stream with plenty of arithmetic room (white-box): every
+    // writer path must consult the terminal state, not only the byte counter.
+    const x = fakeTransport();
+    x.out("DVL1:{bad\n"); // seal; one [REJECTED] noise line written
+    await flush();
+    const t = x.t as unknown as { markCapped: (f: string) => void };
+    for (const f of [x.t.noiseSpoolPath, x.t.stderrSpoolPath]) t.markCapped(path.basename(f));
+    const noise = expectMarkerLast(x.t.noiseSpoolPath);
+    const stderr = expectMarkerLast(x.t.stderrSpoolPath);
+    const before = x.t.stats.diagnosticBytesDropped;
+    x.out("noise\n");
+    x.err("err\n");
+    x.end();
+    await flush();
+    expect(fs.readFileSync(x.t.noiseSpoolPath, "utf8")).toBe(noise);
+    expect(fs.readFileSync(x.t.stderrSpoolPath, "utf8")).toBe(stderr);
+    expect(x.t.stats.diagnosticBytesDropped).toBe(before + 6 + 4);
+  });
+});

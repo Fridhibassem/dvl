@@ -8,7 +8,8 @@
 | Base commit | `6390bdca48f5df037d9fbf9c0335d87dc0d87b31` (`main`, "merge H2 closed branch") |
 | First implementation (reviewed) | `43f5784d1e348de60d981bd7726055b8fba5ad41`: **REVIEW FAIL** |
 | First fix round (re-reviewed) | `4130f8cea8eb49319dd29f8bd0ccd94d3c79d1d5`: **RE-REVIEW FAIL** (2 defects, see "Second re-review fixes") |
-| Final commit | the commit that adds this revision of the report together with the second fix round. A file cannot contain its own hash; it is the branch head and is given in the hand-off reply |
+| Second fix round (re-reviewed) | `ad2ce621bac225ccd05554b253a6523d8ec43c60`: **SECOND RE-REVIEW FAIL** (1 defect: the cap marker did not terminate a stream, see "Third fix: terminal diagnostic cap") |
+| Final commit | the commit that adds this revision of the report together with the third fix round, on top of `ad2ce62`. A file cannot contain its own hash; it is the branch head and is given in the hand-off reply |
 | Scope | H3 only. H1/H2 behaviour unchanged (see "H1/H2 statement"). **H4 not touched.** `main` not pushed, nothing merged |
 
 ## Investigation (base commit)
@@ -76,10 +77,10 @@ These come on top of the existing limits: `MAX_QUEUED_FRAMES` 1024, `MAX_QUEUED_
 
 ## Exact diagnostic truncation rule
 
-`boundedText(input, maxBytes = 256)` in `frame.ts`:
-1. Take at most `maxBytes` characters.
-2. `JSON.stringify` them, without the outer quotes, so control characters, quotes and backslashes are escaped and never raw.
-3. Shorten the result until it is ≤ `maxBytes` UTF-8 bytes.
+`boundedText(input, maxBytes = 256)` in `frame.ts` (escape-safe since `ad2ce62`):
+1. Walk the input one code point at a time.
+2. Escape each code point on its own with `JSON.stringify` (outer quotes removed), so control characters, quotes, backslashes and lone surrogates are escaped and never raw.
+3. Append the escaped unit only if the total stays ≤ `maxBytes` UTF-8 bytes; stop at the first unit that does not fit. An escape is therefore never split, and the result always decodes (`JSON.parse('"' + out + '"')`) to a prefix of the input.
 
 It is used for:
 - rejection `detail` (from a sample of ≤ 1024 characters);
@@ -164,10 +165,68 @@ Both defects were **reproduced on `4130f8c` before any change**, with a scratch 
 
 **C09:**
 - **Not reproduced.**
-- In every full run on this tree (3 × 231/231, plus path mode), and in the dedicated `c08/c09/c26` run, C09 passed.
+- In every full run on the `ad2ce62` tree (3 × 231/231, plus path mode; that round's count), and in the dedicated `c08/c09/c26` run, C09 passed.
 - Isolated: **10/10**. Under 6 concurrent CPU-busy loops: **5/5**.
 - **Why it can still fail elsewhere:** its duration checks are wall-clock windows (the halt fires no earlier than `maxDurationMs` − 50 ms and no later than `maxDurationMs` + 5 s, with gated processing). A heavily loaded full run can exceed such a window.
 - **Not caused by H3:** the H3 diff doesn't touch the duration timer, the halt path or the gating it measures. I classify it as a known timing-sensitive test (a flake), **not an H3 regression**, and made no C09 change.
+
+## Third fix: terminal diagnostic cap (defect found at `ad2ce62`)
+
+**Defect (confirmed):** `markCapped()` recorded the stream in `diagCapped` and wrote the marker, but the collectors (`writeNoise`, `reject`) and the writer (`writeDiagnostic`) decided only from the byte counter (`budgetLeft`). When an item was dropped because it did not fit, the arithmetic budget could still have room for a *smaller* later item. That item was then collected and written:
+- in a later chunk: **after the marker**, so the marker was no longer the final bytes;
+- in the same chunk: before the marker, but after a gap left by the dropped item.
+
+Both cases were reproduced on `ad2ce62` with the new tests (below): on stdout noise, and on refused `DVL1:` records in the first batch and in later batches.
+
+**Terminal cap semantics (now):**
+1. A stream reaches the capped state the first time any payload item for it is dropped (`capDue`), or when its marker is written (`diagCapped`). The new helper `capReached(file)` = `capDue.has(file) || diagCapped.has(file)`.
+2. From that point, **every later payload item for that stream is dropped and counted** in `diagnosticBytesDropped`, whatever arithmetic room `budgetLeft` reports. This covers all writers and collectors:
+   - `writeNoise`: stdout noise lines, `[OVERFLOW …]` records of over-long non-frame lines, and `[REJECTED …]` records of input rejections;
+   - `reject`: `[REFUSED …]` queue-overflow / refused-frame records, first batch and later batches;
+   - `writeDiagnostic`: if the marker is already written, nothing is appended. This applies to stderr chunks and to any flush.
+3. Items collected **before** the first drop are not discarded. `flushDiagnostics` writes them first, in order, and then writes the marker (`capDue` → `markCapped`).
+4. The marker is written **exactly once** (`markCapped` is idempotent through `diagCapped`), always last, and inside the reserved `DIAGNOSTIC_CAP_MARKER_RESERVE`. The file never exceeds `MAX_DIAGNOSTIC_STREAM_BYTES`.
+5. The cap is per stream. Capping stdout noise does not cap stderr or the overflow file.
+6. Unchanged:
+   - no-parse after the seal;
+   - seal on rejection;
+   - one `input_rejected` issue and the Kernel halt;
+   - stale-instance fencing.
+
+   A rejection still seals and reports when its diagnostic line is dropped.
+
+**Code (`dvl-spike/src/kernel/ndjson-transport.ts`):**
+- New: `capReached(file)`.
+- `writeNoise` and `reject`: `if (this.capReached(file) || this.budgetLeft(file) - pending < n)` → drop, count, `capDue.add(file)`.
+- `writeDiagnostic`: `if (this.diagCapped.has(file)) { diagnosticBytesDropped += input.length; return true; }`. Only then does the arithmetic budget apply.
+- `budgetLeft` stays purely arithmetic. A pending flush that is already due must still be able to write the records collected before the drop.
+
+**Why stderr was not affected in practice:** stderr is a byte stream. Its first over-budget chunk is cut at the exact payload allowance, so `budgetLeft` was already 0 after its marker. The new `writeDiagnostic` guard makes this explicit rather than an arithmetic coincidence (test 25). Test 24 documents the semantics, and it also passes on `ad2ce62`.
+
+**New tests (C26 21–25, describe "terminal diagnostic cap"):**
+
+| # | Scenario | Asserts |
+|---|---|---|
+| 21 | stdout noise, filled to allowance − 1000 bytes. (a) A 2000-byte line in its own chunk triggers the marker; a later 100-byte line follows. (b) Same chunk: a kept line, then the trigger, then the small line | (a) payload = allowance − 1000; marker once and at EOF; file byte-identical after the later line; dropped grows by exactly 100. Later `[OVERFLOW]` and `[REJECTED]` records are also dropped; the rejection still seals and reports; a later valid frame is not delivered; stdout end/close adds nothing; stderr is still written. (b) payload = filler + kept line exactly; dropped = 2100 |
+| 22 | Refused records, **later batch**. Seal with `DVL1:{bad`; fill the overflow file with whole bounded records to allowance − 250 (precondition: small record + marker < 250 < big record); a big record triggers the marker; then a small refused `DVL1:` record, then 5 more | size = payload + real marker length; marker once and at EOF; file byte-identical after each later batch; dropped = big + 6 × small exactly; no frame delivered; one rejection |
+| 23 | Refused records, **first batch** (overflow file not yet created). (a) Fill, trigger and small record in one chunk. (b) Fill and trigger in the first batch; small record in a later batch | (a) payload = exactly the fill's records, in order; marker once and at EOF; dropped = big + small. (b) file byte-identical after the later batch; dropped = big + small |
+| 24 | stderr filled to allowance − 1000; a 2000-byte chunk (1000 written, 1000 dropped, marker); then 1, 10, 100 and 5000-byte chunks | payload = allowance; marker once and at EOF; file byte-identical; dropped = 1000 + 5111 |
+| 25 | Capped state forced (white-box `markCapped`) on noise and stderr while plenty of arithmetic room remains; then noise, stderr and stdout end | Both files byte-identical; no second marker; dropped grows by exactly the later payload (10 bytes) |
+
+Every test checks that the file is ≤ `MAX_DIAGNOSTIC_STREAM_BYTES`, that the marker occurs exactly once, and that the file ends with the marker.
+
+**Verification of the tests:**
+- Against `ad2ce62`'s `ndjson-transport.ts` (new tests unchanged): **21, 22, 23 and 25 fail**; 24 passes (stderr, see above). All other C26 tests pass.
+- Mutations of the fixed code, one at a time:
+
+  | Mutation | Failing tests |
+  |---|---|
+  | M1: remove the `capReached` guard from `writeNoise` | 21 |
+  | M2: remove the `capReached` guard from `reject` | 23 (the later-batch case 22 is also caught by the `writeDiagnostic` guard) |
+  | M3: remove the `diagCapped` guard from `writeDiagnostic` | 25 |
+  | M4: `capReached` checks only `diagCapped` | 21 and 23 |
+
+- An earlier draft of test 22 left only 150 bytes of room. The marker itself (counted in the written bytes) then consumed the room, so the test passed on `ad2ce62`. The room was raised to 250, and the precondition small record + marker < room < big record is now asserted in the test.
 
 ## Files changed (base → final commit)
 
@@ -175,17 +234,17 @@ Both defects were **reproduced on `4130f8c` before any change**, with a scratch 
 |---|---|
 | `dvl-spike/src/kernel/types.ts` | `MAX_FRAME_BYTES`, `MAX_DIAGNOSTIC_STREAM_BYTES`, `DIAGNOSTIC_CAP_MARKER_RESERVE`, `MAX_DIAGNOSTIC_DETAIL_BYTES`; `MAX_LINE_BYTES` = `MAX_FRAME_BYTES` |
 | `dvl-spike/src/kernel/frame.ts` | `isFrameLine`, `boundedText`, `OVERFLOW_PREVIEW_BYTES`; size check before parse with non-echoing reasons; `LineSplitter` gains `onPartial` and `onOverflowStart` (immediate, owned preview) |
-| `dvl-spike/src/kernel/ndjson-transport.ts` | Frame cap; reject at the crossing; `rejectInput` (seal, bounded line, one issue); no parse after seal; bounded `[REFUSED …]` records; exact per-stream caps with a reserved, last-written marker; no collection once a stream is full; stats `inputRejected` and `diagnosticBytesDropped` |
+| `dvl-spike/src/kernel/ndjson-transport.ts` | Frame cap; reject at the crossing; `rejectInput` (seal, bounded line, one issue); no parse after seal; bounded `[REFUSED …]` records; exact per-stream caps with a reserved, last-written marker; terminal cap state (`capReached`: after the first drop or the marker, every later payload item is dropped and counted; the marker stays last); stats `inputRejected` and `diagnosticBytesDropped` |
 | `dvl-spike/src/kernel/kernel.ts` | `onTransportIssue` handles `input_rejected`: halt the current instance; stale → record only |
 | `dvl-spike/src/mock-provider/mock-provider.ts` | Test-only `adapter.ping` options: `raw`, `padded`, `unterminated`, `openLine` |
 | `dvl-spike/src/mock-provider/scenarios.ts` | `noisy` no longer contains malformed `DVL1:` lines (they fail closed now) |
-| `dvl-spike/src/conformance/c26-h3-transport-input-bounding.test.ts` | **New**, 22 tests |
+| `dvl-spike/src/conformance/c26-h3-transport-input-bounding.test.ts` | **New**, 27 tests |
 | `dvl-spike/src/conformance/c03-frame-prefix-noise.test.ts` | `noisy` expects 0 malformed lines and 0 rejections; the `[MALFORMED` noise check is removed |
 | `dvl-spike/src/conformance/c07-adapter-spool-isolation.test.ts` | Incidental `[MALFORMED` assertion removed (subject unchanged) |
 | `dvl-spike/src/conformance/c08-queue-limits.test.ts` | The overflow reader decodes the bounded `[REFUSED …]` records (sequence number from the escaped preview). All FIFO and accounting assertions are unchanged |
 | `CLAUDE_REPORTS/H3_TRANSPORT_INPUT_BOUNDING_REPORT.md` | This report |
 
-## Tests: C26 (22)
+## Tests: C26 (27)
 
 | # | Asserts |
 |---|---|
@@ -203,29 +262,36 @@ Both defects were **reproduced on `4130f8c` before any change**, with a scratch 
 | 11 | 100 KiB inline payload, `happy`, `oversized-spooled`, `noisy` all finish with no halt |
 | 12–17 | First review fixes, as in the table above |
 | 18–20 | Second re-review fixes (first-batch budgeting, escape-safe previews), see "Second re-review fixes" |
+| 21–25 | Third fix (terminal diagnostic cap), see "Third fix: terminal diagnostic cap" |
 
 ## Exact command results (final tree)
 
+All runs below are on the final tree (the `ad2ce62` code plus the third fix). The suite now has **236** tests: 231 at `ad2ce62` plus the five new C26 tests 21–25. The earlier figures 228 and 231 belong to previous rounds and no longer apply.
+
 | Command | Result |
 |---|---|
-| `npm test` run 1 | exit 0 — 26 files, **231/231 passed** |
-| `npm test` run 2 | exit 0 — 26 files, **231/231 passed** |
-| `npm test` run 3 | exit 0 — 26 files, **231/231 passed** |
+| `npm test` run 1 | exit 0 — 26 files, **236/236 passed** |
+| `npm test` run 2 | exit 0 — 26 files, **236/236 passed** |
 | `npm run typecheck` | exit 0 |
 | `npm run spike` | exit 0 — "SPIKE OK — every scenario reached its expected terminal state" |
-| `npx vitest run src/conformance/c18* … c26*` (focused) | exit 0 — 9 files, **123/123 passed** (C18 8, C19 3, C20 7, C21 26, C22 18, C23 10, C24 18, C25 11, C26 22) |
-| `npx vitest run src/conformance/c08* src/conformance/c09* src/conformance/c26*` | exit 0 — 3 files, **40/40 passed** (C08 14, C09 4, C26 22) |
-| C09 alone ×10 / under 6 busy loops ×5 | 10/10 and 5/5 passed |
-| `DVL_FS_CONFINEMENT=path npm test` (H2 fallback mode, as on macOS) | exit 0 — 26 files, **231/231 passed** |
+| `npx vitest run src/conformance/c18* … c26*` (focused) | exit 0 — 9 files, **128/128 passed** (C18 8, C19 3, C20 7, C21 26, C22 18, C23 10, C24 18, C25 11, C26 27) |
+| `npx vitest run src/conformance/c08* src/conformance/c09* src/conformance/c26*` | exit 0 — 3 files, **45/45 passed** (C08 14, C09 4, C26 27) |
+| `npx vitest run src/conformance/c09*` ×5 | 5/5 runs, 4/4 each |
+| `DVL_FS_CONFINEMENT=path npm test` (H2 fallback mode, as on macOS) | exit 0 — 26 files, **236/236 passed** |
+| C26 21–25 against `ad2ce62`'s transport | 21, 22, 23, 25 fail; 24 passes (expected, see the third fix) |
 
-Per suite: C01 6, C02 4, C03 6, C04 4, C05 4, C06 13, C07 10, C08 14, C09 4, C10 7, C11 7, C12 5, C13 6, C14 8, C15 5, C16 3, C17 2, C18 8, C19 3, C20 7, C21 26, C22 18, C23 10, C24 18, C25 11, **C26 22**.
+Per suite: C01 6, C02 4, C03 6, C04 4, C05 4, C06 13, C07 10, C08 14, C09 4, C10 7, C11 7, C12 5, C13 6, C14 8, C15 5, C16 3, C17 2, C18 8, C19 3, C20 7, C21 26, C22 18, C23 10, C24 18, C25 11, **C26 27**.
+
+**C09 timing:** C09 passed in every run of this round: 2 full runs, path mode, the c08/c09/c26 run, and 5 isolated runs. An earlier round reported one C09 failure that was not reproduced (see "Second re-review fixes"). Its windows are wall-clock (halt ≥ `maxDurationMs` − 50 ms and ≤ `maxDurationMs` + 5 s), so a heavily loaded host can still miss them. The H3 diff does not touch the duration timer, halt path or gating, so this is classified as timing sensitivity, not an H3 regression. No C09 change was made.
 
 The runs were on Linux (procfd confinement), plus the full suite in path mode; there was no macOS host run.
 
 ## Known limitations
 
 - **Whole-record budgeting can leave the payload just under the budget.** Up to one record or line (≤ ~1 MiB for a noise line, ~300 bytes for a refused record) of payload budget can stay unused when the next whole item doesn't fit. The file is still ≤ the cap, and the unwritten bytes are counted as dropped. stderr is not line-structured and is trimmed at the exact budget.
-- **C09** is timing-sensitive under heavy load (see above). It was not reproduced, and H3 doesn't touch it.
+- **C09** is timing-sensitive under heavy load (see above). It was not reproduced in this round, and H3 doesn't touch it.
+- **Terminal cap is per instance and per stream, and is final.** After a stream's first dropped item, nothing more is recorded for it, even when far smaller later items would fit. Diagnostics after that point exist only as counters (`diagnosticBytesDropped`, `framesRejected`, `inputRejected`), not as file content. This is deliberate: the marker must stay the last bytes.
+- **The cap state is in memory.** It lives as long as the transport instance. A new instance (respawn) starts new diagnostic files with fresh budgets, as before.
 - **Behaviour changes:**
   - A malformed `DVL1:` frame now halts the instance; before, it was logged and processing continued (C03).
   - Refused frames in the overflow spool are bounded previews, not raw lines (C08 reader adapted).
@@ -242,7 +308,8 @@ The runs were on Linux (procfd confinement), plus the full suite in path mode; t
 
 ## H1/H2 statement
 
-- H1 (C06, C10, C14–C19) and H2 (C04, C07, C11, C13, C20–C25) **remain green**: 228/228 in all three full runs, the focused run, and path mode.
+- H1 (C06, C10, C14–C19) and H2 (C04, C07, C11, C13, C20–C25) **remain green**: every one of their tests passed in both full runs (236/236), the focused C18–C26 run (128/128) and path mode (236/236).
+- The third fix changes only diagnostic-file writing in `ndjson-transport.ts` and adds C26 tests. No H1/H2 test or logic was touched in this round.
 - The only H1/H2-era test edits follow directly from the deliberate H3 changes:
   - C03's malformed-count expectation;
   - C07-3's `[MALFORMED` check;
@@ -253,4 +320,4 @@ The runs were on Linux (procfd confinement), plus the full suite in path mode; t
 
 **H4 is not touched.**
 
-H3 SECOND FIX READY FOR CODEX RE-REVIEW
+H3 THIRD FIX READY FOR CODEX RE-REVIEW
