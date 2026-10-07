@@ -4,7 +4,7 @@
  * Wire format: one frame per line, `DVL1:<json>\n`.
  * Any stdout line without the prefix is diagnostic noise and is NEVER parsed as protocol.
  */
-import { FRAME_PREFIX, MAX_LINE_BYTES } from "./types.js";
+import { FRAME_PREFIX, MAX_DIAGNOSTIC_DETAIL_BYTES, MAX_FRAME_BYTES, MAX_LINE_BYTES } from "./types.js";
 
 export function encodeFrame(obj: unknown): string {
   const json = JSON.stringify(obj);
@@ -17,22 +17,53 @@ export type ParsedLine =
   | { kind: "noise"; line: string }
   | { kind: "malformed"; reason: string; preview: string };
 
+/** True if `line` (one stdout line, "\r" tolerated) is a DVL1 frame by prefix. */
+export function isFrameLine(line: string): boolean {
+  return line.startsWith(FRAME_PREFIX);
+}
+
+/**
+ * H3 — attacker-derived text made safe for diagnostics: control characters and quotes
+ * escaped (JSON string escaping, never raw bytes), and at most `maxBytes` UTF-8 bytes.
+ */
+export function boundedText(input: string, maxBytes = MAX_DIAGNOSTIC_DETAIL_BYTES): string {
+  // Built one code point at a time from complete escape units, so truncation can only happen
+  // BETWEEN escapes: the result is always a valid JSON string body (JSON.parse('"' + r + '"')
+  // decodes it), never ends in a partial "\uXX" or a dangling backslash, and contains no raw
+  // control characters. A lone surrogate is escaped as "\udXXX" by JSON.stringify.
+  let out = "";
+  let bytes = 0;
+  for (const ch of input) {
+    const esc = JSON.stringify(ch).slice(1, -1);
+    const n = Buffer.byteLength(esc);
+    if (bytes + n > maxBytes) break;
+    out += esc;
+    bytes += n;
+  }
+  return out;
+}
+
 export function parseLine(line: string): ParsedLine {
   const trimmed = line.endsWith("\r") ? line.slice(0, -1) : line;
   if (!trimmed.startsWith(FRAME_PREFIX)) return { kind: "noise", line: trimmed };
   const body = trimmed.slice(FRAME_PREFIX.length);
+  const rawBytes = Buffer.byteLength(trimmed);
+  // H3: the size is checked BEFORE JSON.parse (the splitter already enforces it while
+  // reading; this keeps parseLine safe on its own). Reasons never echo input bytes.
+  if (rawBytes > MAX_FRAME_BYTES) return { kind: "malformed", reason: "frame_too_large", preview: boundedText(body) };
   try {
     const value: unknown = JSON.parse(body);
     if (value === null || typeof value !== "object" || Array.isArray(value)) {
-      return { kind: "malformed", reason: "frame body is not a JSON object", preview: body.slice(0, 200) };
+      return { kind: "malformed", reason: "frame body is not a JSON object", preview: boundedText(body) };
     }
     const type = (value as Record<string, unknown>).type;
     if (typeof type !== "string" || type.length === 0) {
-      return { kind: "malformed", reason: "frame missing string 'type'", preview: body.slice(0, 200) };
+      return { kind: "malformed", reason: "frame missing string 'type'", preview: boundedText(body) };
     }
-    return { kind: "frame", value: value as Record<string, unknown>, rawBytes: Buffer.byteLength(trimmed) };
+    return { kind: "frame", value: value as Record<string, unknown>, rawBytes };
   } catch (e) {
-    return { kind: "malformed", reason: `invalid JSON: ${(e as Error).message}`, preview: body.slice(0, 200) };
+    const pos = /position (\d+)/.exec((e as Error).message)?.[1];
+    return { kind: "malformed", reason: pos !== undefined ? `invalid JSON at position ${pos}` : "invalid JSON", preview: boundedText(body) };
   }
 }
 
@@ -44,6 +75,9 @@ export function parseLine(line: string): ParsedLine {
  * to make the Kernel buffer an unbounded line. Oversized lines are discarded
  * (prefix preview retained) and reported via onOverflow.
  */
+/** H3 — bytes of an over-cap line kept as its diagnostic preview. */
+export const OVERFLOW_PREVIEW_BYTES = 256;
+
 export class LineSplitter {
   private parts: Buffer[] = [];
   private size = 0;
@@ -55,6 +89,14 @@ export class LineSplitter {
     private readonly onLine: (line: string) => void,
     private readonly onOverflow: (info: { bytes: number; head: string }) => void,
     private readonly maxLineBytes = MAX_LINE_BYTES,
+    /** H3 — a final line WITHOUT its terminating newline at EOF (never a complete frame). */
+    private readonly onPartial?: (line: string) => void,
+    /**
+     * H3 — called ONCE, synchronously, at the moment a line first crosses the cap (no newline
+     * or EOF needed), with the bytes seen so far and an owned preview of at most
+     * OVERFLOW_PREVIEW_BYTES. `onOverflow` still reports the final size when the line ends.
+     */
+    private readonly onOverflowStart?: (info: { bytes: number; head: string }) => void,
   ) {}
 
   push(chunk: Buffer): void {
@@ -73,7 +115,13 @@ export class LineSplitter {
 
   /** Emit any trailing partial line (stream ended without newline). */
   end(): void {
-    if (this.size > 0 || this.overflowing) this.flushLine();
+    if (this.overflowing) return this.flushLine();
+    if (this.size === 0) return;
+    if (!this.onPartial) return this.flushLine();
+    const line = Buffer.concat(this.parts, this.size).toString("utf8");
+    this.parts = [];
+    this.size = 0;
+    this.onPartial(line);
   }
 
   private append(buf: Buffer): void {
@@ -84,10 +132,19 @@ export class LineSplitter {
     }
     if (this.size + buf.length > this.maxLineBytes) {
       this.overflowing = true;
-      this.overflowHead = Buffer.concat([...this.parts, buf]).subarray(0, 256);
+      // H3: copy at most the preview into a small, independently owned buffer — never
+      // concatenate (or keep a view into) the whole over-cap line or chunk.
+      const head = Buffer.alloc(Math.min(OVERFLOW_PREVIEW_BYTES, this.size + buf.length));
+      let off = 0;
+      for (const part of [...this.parts, buf]) {
+        if (off >= head.length) break;
+        off += part.copy(head, off, 0, Math.min(part.length, head.length - off));
+      }
+      this.overflowHead = head;
       this.overflowBytes = this.size + buf.length;
       this.parts = [];
       this.size = 0;
+      this.onOverflowStart?.({ bytes: this.overflowBytes, head: head.toString("utf8") });
       return;
     }
     this.parts.push(Buffer.from(buf)); // copy: caller may reuse chunk memory

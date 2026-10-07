@@ -68,8 +68,27 @@ async function until(cond: () => boolean, what: string, timeoutMs = 10_000) {
 const halts = (k: Kernel) => k.store.ofType("kernel.safety_halt").map((e) => e.payload as Record<string, unknown>);
 const adapterRecords = (k: Kernel, aid: string) => k.store.all().filter((e) => e.origin === "adapter" && e.adapterInstanceId === aid);
 const accepted = (k: Kernel, aid: string) => adapterRecords(k, aid).filter((e) => e.trust === "untrusted_observation" && e.adapterSequence !== undefined);
+/**
+ * H3: the overflow spool holds one bounded record per refused frame —
+ * `[REFUSED <why> bytes=<n>] <JSON-escaped preview ≤ 256 bytes>` — never the raw line. These
+ * frames start with their type and adapterSequence, so the (possibly truncated) preview still
+ * identifies each refused frame and preserves the FIFO / accounting checks.
+ */
 const overflowLines = (file: string) =>
-  fs.existsSync(file) ? fs.readFileSync(file, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l.slice("DVL1:".length)) as Record<string, unknown>) : [];
+  fs.existsSync(file)
+    ? fs
+        .readFileSync(file, "utf8")
+        .split("\n")
+        .filter(Boolean)
+        .map((l) => {
+          const m = /^\[REFUSED \S+ bytes=(\d+)\] (.*)$/.exec(l);
+          if (!m) throw new Error(`unexpected overflow record: ${l.slice(0, 80)}`);
+          const text = JSON.parse(`"${m[2]}"`) as string; // may be truncated to the preview bound
+          expect(text.startsWith("DVL1:")).toBe(true);
+          const seq = /"adapterSequence":(\d+)/.exec(text);
+          return { bytes: Number(m[1]), adapterSequence: seq ? Number(seq[1]) : null } as Record<string, unknown>;
+        })
+    : [];
 
 /** Drive an overflow: capacity Q, burst-100, wait for the halt, release, wait for close. */
 async function overflowRun(tag: string, extra: Partial<KernelOptions> = {}) {

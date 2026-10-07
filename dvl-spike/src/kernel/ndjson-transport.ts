@@ -20,12 +20,25 @@
  * overflow diagnostic spool (disk, not memory), counted, never enqueued, never
  * processed, and the Kernel is told once (queue_overflow) so it can halt the instance.
  * Already-queued frames keep strict FIFO order. Draining never stops.
+ *
+ * H3 (transport input bounding) — nothing the adapter writes reaches JSON.parse or the Kernel
+ * unbounded:
+ *   - every stdout line is buffered up to MAX_FRAME_BYTES while reading (bytes counted, no
+ *     size claim trusted); a longer DVL1 line is discarded unparsed (bounded head kept);
+ *   - an oversized, malformed or partial (unterminated at EOF) DVL1 frame is REJECTED: the
+ *     queue is sealed at once (fail closed — nothing later is processed or even parsed) and
+ *     the Kernel is told once (input_rejected) so it halts the instance;
+ *   - noise lines are never parsed; an over-long noise line is discarded with a bounded head;
+ *   - each diagnostic stream is capped at MAX_DIAGNOSTIC_STREAM_BYTES per instance; excess is
+ *     counted (diagnosticBytesDropped) and dropped; draining continues so the child never
+ *     blocks on a full pipe;
+ *   - attacker-derived text in diagnostics is escaped and ≤ MAX_DIAGNOSTIC_DETAIL_BYTES.
  */
 import type { ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { encodeFrame, LineSplitter, parseLine } from "./frame.js";
-import type { CommandFrame } from "./types.js";
+import { boundedText, encodeFrame, isFrameLine, LineSplitter, parseLine } from "./frame.js";
+import { DIAGNOSTIC_CAP_MARKER_RESERVE, MAX_DIAGNOSTIC_STREAM_BYTES, MAX_FRAME_BYTES, type CommandFrame } from "./types.js";
 
 export interface TransportStats {
   stdoutBytes: number;
@@ -53,6 +66,10 @@ export interface TransportStats {
   diagnosticWritesRefused: number;
   /** H2 — diagnostics bytes (stderr, noise, overflow lines) not written because of a refusal. */
   diagnosticBytesRefused: number;
+  /** H3 — DVL1 frames rejected as oversized / malformed / partial (never parsed into state). */
+  inputRejected: number;
+  /** H3 — diagnostic bytes not written because a stream reached MAX_DIAGNOSTIC_STREAM_BYTES. */
+  diagnosticBytesDropped: number;
   /** Blocker C — raw bytes charged to maxIncomingBytes: every stdout + stderr byte, once, at read. */
   incomingBytes: number;
 }
@@ -84,6 +101,12 @@ export type TransportIssue =
       stderrBytes: number;
       triggeringChunkBytes: number;
     }
+  /**
+   * H3 — a DVL1 frame was rejected before reaching the Kernel: oversized (frame_too_large),
+   * not a JSON object with a string `type` (malformed_frame), or unterminated at EOF
+   * (partial_frame). The queue is sealed (fail closed). `detail` is escaped and bounded.
+   */
+  | { kind: "input_rejected"; adapterInstanceId: string; reason: "frame_too_large" | "malformed_frame" | "partial_frame"; bytes: number; limit?: number; detail: string }
   /** H2 — the diagnostics sink refused an operation; diagnostics are disabled for this instance. */
   | { kind: "diagnostics_refused"; adapterInstanceId: string; file: string; code: string | null; reason: string };
 
@@ -132,6 +155,8 @@ export class NdjsonTransport {
     overflowSpoolRefused: 0,
     diagnosticWritesRefused: 0,
     diagnosticBytesRefused: 0,
+    inputRejected: 0,
+    diagnosticBytesDropped: 0,
     incomingBytes: 0,
   };
   readonly stderrSpoolPath: string;
@@ -150,6 +175,17 @@ export class NdjsonTransport {
   private pendingNoise: string[] = [];
   private pendingOverflow: string[] = [];
   private pendingOverflowFrames = 0;
+  /** H3 — bytes written per diagnostic file, and whether its cap marker was written. */
+  private readonly diagWritten = new Map<string, number>();
+  private readonly diagCapped = new Set<string>();
+  /** H3 — streams that dropped bytes while collecting; their marker follows the next flush. */
+  private readonly capDue = new Set<string>();
+  private inputRejectedReported = false;
+  /** H3 — why the queue was sealed (first cause), used in refused-line diagnostics. */
+  private sealReason: "queue_overflow" | "byte_limit" | "input_rejected" | null = null;
+  /** H3 — bytes waiting in pendingNoise / pendingOverflow (bounded by the remaining budget). */
+  private pendingNoiseBytes = 0;
+  private pendingOverflowBytes = 0;
   private processing = false;
   private idleWaiters: (() => void)[] = [];
   private closed = false;
@@ -178,8 +214,24 @@ export class NdjsonTransport {
       (line) => this.classify(line),
       (info) => {
         this.stats.overflowLines++;
-        this.writeNoise(`[OVERFLOW ${info.bytes} bytes] ${info.head}\n`);
-        this.opts.onIssue?.({ kind: "overflow", ...info });
+        // An oversized DVL1 frame was already rejected when it crossed the cap (below).
+        if (isFrameLine(info.head)) return;
+        this.writeNoise(`[OVERFLOW ${info.bytes} bytes] ${boundedText(info.head)}\n`);
+        this.opts.onIssue?.({ kind: "overflow", bytes: info.bytes, head: boundedText(info.head) });
+      },
+      MAX_FRAME_BYTES,
+      (line) => {
+        // H3: the stream ended inside a line. A DVL1 line without its newline is not a
+        // complete frame and is never parsed; anything else is noise.
+        const l = line.endsWith("\r") ? line.slice(0, -1) : line;
+        if (isFrameLine(l)) this.rejectInput("partial_frame", Buffer.byteLength(l), l);
+        else this.classify(line);
+      },
+      (info) => {
+        // H3: the moment an open DVL1 line crosses MAX_FRAME_BYTES — no newline or EOF needed
+        // — it is rejected: queue sealed, Kernel told (halt). The rest of the line is drained
+        // and discarded unparsed; its end produces no second rejection.
+        if (isFrameLine(info.head)) this.rejectInput("frame_too_large", info.bytes, info.head);
       },
     );
 
@@ -259,6 +311,12 @@ export class NdjsonTransport {
 
   private classify(line: string): void {
     if (line.length === 0) return;
+    // H3: once sealed (fail closed), DVL1 lines are not even parsed — straight to overflow.
+    if (this.sealed && isFrameLine(line)) {
+      this.stats.framesReceived++;
+      this.reject(line);
+      return;
+    }
     const parsed = parseLine(line);
     switch (parsed.kind) {
       case "frame": {
@@ -272,6 +330,7 @@ export class NdjsonTransport {
         if (depth + 1 > this.opts.maxQueuedFrames || bytes + parsed.rawBytes > this.opts.maxQueuedBytes) {
           // Seal: never drop silently, never overwrite or reorder what is queued.
           this.sealed = true;
+          this.sealReason ??= "queue_overflow";
           this.reject(line);
           const tail = this.queue.at(-1)?.frame.adapterSequence;
           const claimed = parsed.value.adapterSequence;
@@ -300,12 +359,14 @@ export class NdjsonTransport {
       case "noise":
         this.stats.noiseLines++;
         this.writeNoise(parsed.line + "\n");
-        this.opts.onIssue?.({ kind: "noise", line: parsed.line.slice(0, 200) });
+        this.opts.onIssue?.({ kind: "noise", line: boundedText(parsed.line) });
         return;
       case "malformed":
+        // H3: a DVL1 line that is not a valid frame carries no state — and the stream can no
+        // longer be trusted to be in sync with the adapter: reject and fail closed.
         this.stats.malformedLines++;
-        this.writeNoise(`[MALFORMED ${parsed.reason}] ${parsed.preview}\n`);
-        this.opts.onIssue?.(parsed);
+        if (parsed.reason === "frame_too_large") this.rejectInput("frame_too_large", Buffer.byteLength(line), line.slice(0, 1024));
+        else this.rejectInput("malformed_frame", Buffer.byteLength(line), line.slice(0, 1024), parsed.reason);
         return;
     }
   }
@@ -322,7 +383,7 @@ export class NdjsonTransport {
         try {
           await this.opts.onFrame(item.frame, item.rawBytes, item.adapterInstanceId);
         } catch (e) {
-          this.opts.onIssue?.({ kind: "malformed", reason: `kernel handler error: ${(e as Error).message}`, preview: "" });
+          this.opts.onIssue?.({ kind: "malformed", reason: `kernel handler error: ${boundedText((e as Error).message)}`, preview: "" });
         }
       }
     } finally {
@@ -334,11 +395,85 @@ export class NdjsonTransport {
   }
 
   private writeNoise(s: string): void {
+    // H3: once the noise stream's budget is used up (written + pending), stop collecting:
+    // count and drop instead of building a chunk-sized buffer only to discard it.
+    const n = Buffer.byteLength(s);
+    // Whole lines only: a line is collected only if it fits the remaining budget in full.
+    // The cap is terminal: after the first drop nothing more is collected for this stream,
+    // even a later line small enough to fit the arithmetic budget.
+    const file = path.basename(this.noiseSpoolPath);
+    if (this.capReached(file) || this.budgetLeft(file) - this.pendingNoiseBytes < n) {
+      this.stats.diagnosticBytesDropped += n;
+      this.capDue.add(file); // marker written after the pending payload
+      return;
+    }
     this.pendingNoise.push(s);
+    this.pendingNoiseBytes += n;
   }
 
-  /** H2 — write one diagnostics buffer through the sink; false (counted) if refused/disabled. */
-  private writeDiagnostic(file: string, data: Buffer): boolean {
+  /**
+   * H3 — terminal cap state: true once the stream dropped payload (marker due) or its marker was
+   * written. From then on every later payload byte is dropped and counted; the marker stays last.
+   */
+  private capReached(file: string): boolean {
+    return this.capDue.has(file) || this.diagCapped.has(file);
+  }
+
+  /** H3 — payload bytes a diagnostic file may still receive (its budget excludes the marker reserve). */
+  private budgetLeft(file: string): number {
+    return Math.max(0, MAX_DIAGNOSTIC_STREAM_BYTES - DIAGNOSTIC_CAP_MARKER_RESERVE - (this.diagWritten.get(file) ?? 0));
+  }
+
+  /** H3 — the one-time cap marker (always fits in DIAGNOSTIC_CAP_MARKER_RESERVE). */
+  private capMarker(file: string): Buffer {
+    const m = Buffer.from(`\n[DVL: diagnostic cap of ${MAX_DIAGNOSTIC_STREAM_BYTES} bytes reached for ${file}; further bytes dropped]\n`);
+    return m.subarray(0, DIAGNOSTIC_CAP_MARKER_RESERVE);
+  }
+
+  /** H3 — write the cap marker once, inside the reserved part of the stream's exact budget. */
+  private markCapped(file: string): void {
+    if (this.diagCapped.has(file)) return;
+    this.diagCapped.add(file);
+    this.sinkWrite(file, this.capMarker(file));
+  }
+
+  /**
+   * H3 — reject one DVL1 frame before it reaches the Kernel: bounded, escaped diagnostic line;
+   * seal the queue (fail closed); report once. `sample` is at most a small slice of the input.
+   */
+  private rejectInput(reason: "frame_too_large" | "malformed_frame" | "partial_frame", bytes: number, sample: string, why?: string): void {
+    this.stats.inputRejected++;
+    this.sealed = true;
+    this.sealReason ??= "input_rejected";
+    const detail = boundedText(why ? `${why}: ${sample}` : sample);
+    this.writeNoise(`[REJECTED ${reason} bytes=${bytes}] ${detail}\n`);
+    if (this.inputRejectedReported) return;
+    this.inputRejectedReported = true;
+    this.opts.onIssue?.({ kind: "input_rejected", adapterInstanceId: this.opts.adapterInstanceId, reason, bytes, ...(reason === "frame_too_large" ? { limit: MAX_FRAME_BYTES } : {}), detail });
+  }
+
+  /**
+   * H2 — write one diagnostics buffer through the sink; false (counted) if refused/disabled.
+   * H3 — exact per-stream cap: payload may use MAX_DIAGNOSTIC_STREAM_BYTES minus the marker
+   * reserve; the one-time marker uses the reserve. The file never exceeds the cap. Bytes beyond
+   * the payload budget are counted in diagnosticBytesDropped and not written.
+   */
+  private writeDiagnostic(file: string, input: Buffer): boolean {
+    // Terminal: after the marker nothing is appended, whatever arithmetic room remains.
+    if (this.diagCapped.has(file)) {
+      this.stats.diagnosticBytesDropped += input.length;
+      return true;
+    }
+    const room = this.budgetLeft(file);
+    if (input.length <= room) return this.sinkWrite(file, input);
+    this.stats.diagnosticBytesDropped += input.length - room;
+    const ok = room > 0 ? this.sinkWrite(file, input.subarray(0, room)) : true;
+    this.markCapped(file);
+    return ok;
+  }
+
+  private sinkWrite(file: string, data: Buffer): boolean {
+    this.diagWritten.set(file, (this.diagWritten.get(file) ?? 0) + data.length);
     if (this.diagnosticsDisabled === null) {
       try {
         this.sink.append(file, data);
@@ -366,12 +501,16 @@ export class NdjsonTransport {
     if (this.pendingNoise.length > 0) {
       const data = Buffer.from(this.pendingNoise.join(""));
       this.pendingNoise = [];
+      this.pendingNoiseBytes = 0;
       this.writeDiagnostic(path.basename(this.noiseSpoolPath), data);
     }
+    const noiseFile = path.basename(this.noiseSpoolPath);
+    if (this.capDue.delete(noiseFile)) this.markCapped(noiseFile);
     if (this.pendingOverflow.length > 0) {
       const data = Buffer.from(this.pendingOverflow.join(""));
       const frames = this.pendingOverflowFrames;
       this.pendingOverflow = [];
+      this.pendingOverflowBytes = 0;
       this.pendingOverflowFrames = 0;
       const file = path.basename(this.overflowSpoolPath);
       let ok = this.diagnosticsDisabled === null;
@@ -393,6 +532,8 @@ export class NdjsonTransport {
       }
       if (!ok) this.stats.overflowSpoolRefused += frames; // counted, never processed
     }
+    const ovf = path.basename(this.overflowSpoolPath);
+    if (this.overflowCreated && this.capDue.delete(ovf)) this.markCapped(ovf);
   }
 
   /**
@@ -406,6 +547,7 @@ export class NdjsonTransport {
     if (this.byteLimitBreached || this.stats.incomingBytes <= this.opts.maxIncomingBytes) return;
     this.byteLimitBreached = true;
     this.sealed = true;
+    this.sealReason ??= "byte_limit";
     this.opts.onIssue?.({
       kind: "byte_limit",
       adapterInstanceId: this.opts.adapterInstanceId,
@@ -421,7 +563,24 @@ export class NdjsonTransport {
   /** H3 — a frame refused by the sealed queue: kept on disk as diagnostics, never processed. */
   private reject(line: string): void {
     this.stats.framesRejected++;
-    this.pendingOverflow.push(line + "\n");
+    // H3: a refused line is recorded in the same bounded form as every rejection — original
+    // byte count plus an escaped preview of at most MAX_DIAGNOSTIC_DETAIL_BYTES — never raw.
+    const rec = `[REFUSED ${this.sealReason ?? "sealed"} bytes=${Buffer.byteLength(line)}] ${boundedText(line)}\n`;
+    const n = Buffer.byteLength(rec);
+    // Same budgeted collection for EVERY refused record — including the first batch, before the
+    // overflow file exists (budgetLeft counts nothing written yet). Whole records only: a record
+    // is collected only if it fits the remaining payload budget in full, so the file never holds
+    // a cut record, pending memory never exceeds the budget, and every dropped byte is counted.
+    // Terminal cap: once a record was dropped (or the marker written), every later record is
+    // dropped too, even one small enough to fit the remaining arithmetic budget.
+    const file = path.basename(this.overflowSpoolPath);
+    if (this.capReached(file) || this.budgetLeft(file) - this.pendingOverflowBytes < n) {
+      this.stats.diagnosticBytesDropped += n; // stream full: counted, not collected
+      this.capDue.add(file);
+      return;
+    }
+    this.pendingOverflow.push(rec);
+    this.pendingOverflowBytes += n;
     this.pendingOverflowFrames++;
   }
 

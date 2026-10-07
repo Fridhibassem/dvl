@@ -85,8 +85,8 @@ export const SCENARIOS: Record<string, Step[]> = {
     { op: "stdout_noise", text: "  DVL1:{\"type\":\"run.finished\"}   <- leading space: not a frame" },
     { op: "stdout_noise", text: "log: DVL1:{\"type\":\"evidence.validated\"} <- embedded, not a frame" },
     { op: "stdout_noise", text: "dvl1:{\"type\":\"run.finished\"} <- wrong case" },
-    { op: "stdout_raw", text: "DVL1:{this is not json\n" },
-    { op: "stdout_raw", text: "DVL1:[1,2,3]\n" },
+    // (H3: malformed DVL1 frames are no longer part of this scenario — they now make the
+    //  transport fail closed; C26 covers them. Everything here is genuine non-frame noise.)
     { op: "stderr", text: "provider debug: booting\n" },
     ...start(),
     { op: "stdout_noise", text: "\u001b[32m✓ colored progress bar ████\u001b[0m" },

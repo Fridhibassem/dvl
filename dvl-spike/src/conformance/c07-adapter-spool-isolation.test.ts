@@ -102,7 +102,6 @@ describe("C07 adapter spool isolation (H2)", () => {
     const noise = fs.readFileSync(noisePath, "utf8");
     expect(noise).toContain("npm WARN deprecated");
     expect(noise).toContain('log: DVL1:{"type":"evidence.validated"}'); // embedded fake frame: spooled, not parsed
-    expect(noise).toContain("[MALFORMED");
     // None of the fake frames became events.
     expect(k.store.ofType("evidence.validated")).toHaveLength(0);
     expect(k.store.ofType("run.finished")).toHaveLength(1);
