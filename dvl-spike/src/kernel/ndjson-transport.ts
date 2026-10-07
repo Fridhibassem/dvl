@@ -398,7 +398,8 @@ export class NdjsonTransport {
     // H3: once the noise stream's budget is used up (written + pending), stop collecting:
     // count and drop instead of building a chunk-sized buffer only to discard it.
     const n = Buffer.byteLength(s);
-    if (this.budgetLeft(path.basename(this.noiseSpoolPath)) - this.pendingNoiseBytes <= 0) {
+    // Whole lines only: a line is collected only if it fits the remaining budget in full.
+    if (this.budgetLeft(path.basename(this.noiseSpoolPath)) - this.pendingNoiseBytes < n) {
       this.stats.diagnosticBytesDropped += n;
       this.capDue.add(path.basename(this.noiseSpoolPath)); // marker written after the pending payload
       return;
@@ -550,7 +551,11 @@ export class NdjsonTransport {
     // byte count plus an escaped preview of at most MAX_DIAGNOSTIC_DETAIL_BYTES — never raw.
     const rec = `[REFUSED ${this.sealReason ?? "sealed"} bytes=${Buffer.byteLength(line)}] ${boundedText(line)}\n`;
     const n = Buffer.byteLength(rec);
-    if (this.overflowCreated && this.budgetLeft(path.basename(this.overflowSpoolPath)) - this.pendingOverflowBytes <= 0) {
+    // Same budgeted collection for EVERY refused record — including the first batch, before the
+    // overflow file exists (budgetLeft counts nothing written yet). Whole records only: a record
+    // is collected only if it fits the remaining payload budget in full, so the file never holds
+    // a cut record, pending memory never exceeds the budget, and every dropped byte is counted.
+    if (this.budgetLeft(path.basename(this.overflowSpoolPath)) - this.pendingOverflowBytes < n) {
       this.stats.diagnosticBytesDropped += n; // stream full: counted, not collected
       this.capDue.add(path.basename(this.overflowSpoolPath));
       return;

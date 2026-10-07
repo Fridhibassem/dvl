@@ -27,8 +27,19 @@ export function isFrameLine(line: string): boolean {
  * escaped (JSON string escaping, never raw bytes), and at most `maxBytes` UTF-8 bytes.
  */
 export function boundedText(input: string, maxBytes = MAX_DIAGNOSTIC_DETAIL_BYTES): string {
-  let out = JSON.stringify(input.slice(0, maxBytes)).slice(1, -1);
-  while (Buffer.byteLength(out) > maxBytes) out = out.slice(0, Math.max(0, out.length - Math.ceil((Buffer.byteLength(out) - maxBytes) / 4) - 1));
+  // Built one code point at a time from complete escape units, so truncation can only happen
+  // BETWEEN escapes: the result is always a valid JSON string body (JSON.parse('"' + r + '"')
+  // decodes it), never ends in a partial "\uXX" or a dangling backslash, and contains no raw
+  // control characters. A lone surrogate is escaped as "\udXXX" by JSON.stringify.
+  let out = "";
+  let bytes = 0;
+  for (const ch of input) {
+    const esc = JSON.stringify(ch).slice(1, -1);
+    const n = Buffer.byteLength(esc);
+    if (bytes + n > maxBytes) break;
+    out += esc;
+    bytes += n;
+  }
   return out;
 }
 

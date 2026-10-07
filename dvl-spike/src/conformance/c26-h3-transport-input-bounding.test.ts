@@ -20,7 +20,7 @@ import path from "node:path";
 import { PassThrough } from "node:stream";
 import type { ChildProcess } from "node:child_process";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { encodeFrame, LineSplitter } from "../kernel/frame.js";
+import { boundedText, encodeFrame, LineSplitter } from "../kernel/frame.js";
 import type { Kernel } from "../kernel/kernel.js";
 import { NdjsonTransport, type TransportIssue } from "../kernel/ndjson-transport.js";
 import * as types from "../kernel/types.js";
@@ -410,5 +410,84 @@ describe("C26 H3 transport input bounding — review fixes", () => {
     expect(concat.mock.calls.filter(([list]) => (list as Buffer[]).reduce((n, b) => n + b.length, 0) > 1024)).toEqual([]);
     expect(heads).toHaveLength(1);
     expect(heads[0]!.startsWith("DVL1:")).toBe(true);
+  });
+
+  it("18. the FIRST refused batch uses the same budgeted collection: exact cap, whole escaped records, exact accounting; later batches too", async () => {
+    const x = fakeTransport();
+    x.out("DVL1:{bad\n"); // seal (overflow file not created yet)
+    const hostile = encodeFrame(hb(1, { pad: '\u0000\u001b"\\'.repeat(100) }));
+    const rec = `[REFUSED input_rejected bytes=${Buffer.byteLength(hostile) - 1}] ${boundedText(hostile.slice(0, -1))}\n`;
+    const r = Buffer.byteLength(rec);
+    let peak = 0;
+    const t = x.t as unknown as { reject: (l: string) => void; pendingOverflowBytes: number };
+    const orig = t.reject.bind(t);
+    t.reject = (l: string) => {
+      orig(l);
+      peak = Math.max(peak, t.pendingOverflowBytes);
+    };
+    const N = 40_000; // ~N*r ≈ 12 MB of records in ONE chunk, before the overflow file exists
+    x.out(hostile.repeat(N));
+    await flush();
+    const file = x.t.overflowSpoolPath;
+    const size = fs.statSync(file).size;
+    expect(size).toBeLessThanOrEqual(MAX_DIAG);
+    expect(peak).toBeLessThanOrEqual(MAX_DIAG - RESERVE); // collection itself is budgeted
+    const txt = fs.readFileSync(file, "utf8");
+    expect(txt.endsWith("further bytes dropped]\n")).toBe(true);
+    expect(txt.split("[DVL: diagnostic cap").length).toBe(2); // marker once, last
+    expect(txt).not.toMatch(/[\u0000-\u0009\u000b-\u001f]/); // no raw control bytes (newline separators only)
+    const records = txt.slice(0, payloadOf(file)).split("\n").filter(Boolean);
+    for (const l of records) expect(l + "\n").toBe(rec); // every record whole, identical, bounded representation
+    const k = records.length;
+    expect(k * r).toBe(payloadOf(file));
+    expect(k).toBe(Math.floor((MAX_DIAG - RESERVE) / r));
+    expect(x.t.stats.framesRejected).toBe(N);
+    expect(x.t.stats.diagnosticBytesDropped).toBe((N - k) * r); // exact accounting
+    // A later batch obeys the same rules: nothing more written, every byte counted.
+    x.out(hostile.repeat(1000));
+    await flush();
+    expect(fs.statSync(file).size).toBe(size);
+    expect(x.t.stats.diagnosticBytesDropped).toBe((N + 1000 - k) * r);
+    expect(x.frames).toEqual([]);
+  });
+
+  it("19. escaped previews never split an escape: ≤ cap, always decodable, a prefix of the input, no raw control characters", () => {
+    const alphabet = ['"', "\\", "\u0000", "\u001b", "\n", "\r", "\t", "a", "é", "漢", "😀", "\ud800", "/", "\u007f"];
+    for (let seed = 0; seed < alphabet.length; seed++) {
+      for (let len = 1; len <= 400; len += 7) {
+        const input = Array.from({ length: len }, (_, i) => alphabet[(i * 7 + seed) % alphabet.length]).join("");
+        const out = boundedText(input);
+        expect(Buffer.byteLength(out)).toBeLessThanOrEqual(MAX_DETAIL);
+        expect(out).not.toMatch(/[\u0000-\u001f]/);
+        expect(/(^|[^\\])(\\\\)*\\(u[0-9a-fA-F]{0,3})?$/.test(out)).toBe(false); // no trailing partial escape
+        const decoded = JSON.parse(`"${out}"`) as string;
+        expect(input.startsWith(decoded)).toBe(true);
+      }
+    }
+  });
+
+  it("20. hostile refused-frame previews truncated near the limit still decode; the C08 reader recovers adapterSequence order", async () => {
+    const x = fakeTransport();
+    x.out("DVL1:{bad\n");
+    const nasty = '"\\\u0000\u001b\né漢😀';
+    // Shift the alignment ("a" × i%12) before long runs of 6-byte escapes so the 256-byte cut
+    // lands at every offset inside an escape across the 50 frames; the rest is mixed hostile text.
+    const lines = Array.from({ length: 50 }, (_, i) =>
+      encodeFrame({ type: "heartbeat", adapterSequence: 100 + i, pad: "a".repeat(i % 12) + (i % 2 ? "\u0000".repeat(80) : '\\"'.repeat(60)) + nasty.repeat(5) }),
+    );
+    x.out(lines.join(""));
+    await flush();
+    const recs = fs.readFileSync(x.t.overflowSpoolPath, "utf8").split("\n").filter(Boolean);
+    expect(recs).toHaveLength(50);
+    const seqs = recs.map((l) => {
+      expect(l).not.toMatch(/[\u0000-\u001f]/);
+      const m = /^\[REFUSED \S+ bytes=(\d+)\] (.*)$/.exec(l)!;
+      expect(Buffer.byteLength(m[2]!)).toBeLessThanOrEqual(MAX_DETAIL);
+      const text = JSON.parse(`"${m[2]}"`) as string; // never throws: no split escape
+      expect(text.startsWith("DVL1:")).toBe(true);
+      return Number(/"adapterSequence":(\d+)/.exec(text)![1]);
+    });
+    expect(seqs).toEqual(lines.map((_, i) => 100 + i)); // order preserved
+    expect(fs.statSync(x.t.overflowSpoolPath).size).toBeLessThanOrEqual(MAX_DIAG);
   });
 });

@@ -6,8 +6,9 @@
 |---|---|
 | Branch | `claude/h3-transport-input-bounding` |
 | Base commit | `6390bdca48f5df037d9fbf9c0335d87dc0d87b31` (`main`, "merge H2 closed branch") |
-| First implementation (reviewed) | `43f5784d1e348de60d981bd7726055b8fba5ad41`, which got **H3 TRANSPORT INPUT BOUNDING REVIEW FAIL** |
-| Final commit | the commit that adds this revision of the report **together with** the review fixes. A file cannot contain its own commit hash; the hash is given in the hand-off reply and is the branch head |
+| First implementation (reviewed) | `43f5784d1e348de60d981bd7726055b8fba5ad41`: **REVIEW FAIL** |
+| First fix round (re-reviewed) | `4130f8cea8eb49319dd29f8bd0ccd94d3c79d1d5`: **RE-REVIEW FAIL** (2 defects, see "Second re-review fixes") |
+| Final commit | the commit that adds this revision of the report together with the second fix round. A file cannot contain its own hash; it is the branch head and is given in the hand-off reply |
 | Scope | H3 only. H1/H2 behaviour unchanged (see "H1/H2 statement"). **H4 not touched.** `main` not pushed, nothing merged |
 
 ## Investigation (base commit)
@@ -122,6 +123,52 @@ Kernel records contain only these bounded fields plus numbers.
 
 C26 against `43f5784`'s Kernel (new mock hooks kept): tests **6, 7 and 12–17 fail**; the rest pass.
 
+## Second re-review fixes (defects found at `4130f8c`)
+
+Both defects were **reproduced on `4130f8c` before any change**, with a scratch probe that was not committed:
+- **D1:** after a seal, one stdout chunk of 40 000 hostile refused frames, delivered before the overflow file existed, collected **11 720 000 bytes of pending records**. That is more than the 8 388 448-byte payload budget: the first batch bypassed collection budgeting, and the bound applied only at write time.
+- **D2:** **22 of 399** `boundedText` outputs over hostile input could not be decoded as JSON string bodies, because the cut landed inside an escape.
+
+**D1 — first refused-frame batch bypassed collection budgeting.**
+- **Cause:** in `reject()`, the collection check was `if (this.overflowCreated && budgetLeft − pending <= 0)`. Before the overflow file was created, every refused record was collected regardless of budget. The cap was applied only when `writeDiagnostic` trimmed the batch at a byte offset, which can cut a record.
+- **Fix** (`ndjson-transport.ts`, `reject()` and `writeNoise()`):
+  - one budgeted collection path for **every** refused record, with no first-batch exception: `budgetLeft(file) − pendingBytes < recordBytes` → not collected;
+  - `budgetLeft` counts nothing written yet for a file that doesn't exist yet;
+  - **whole records only**: a record is collected only if it fits the remaining payload budget in full, so the file never holds a cut record and pending memory never exceeds the budget;
+  - every record not collected adds its exact byte count to `diagnosticBytesDropped` and schedules the one-time marker, which is written after the flushed payload, inside the reserve, at the end of the file;
+  - stdout-noise lines follow the same whole-line rule; stderr (not line-structured) is still trimmed at the exact budget;
+  - unchanged: fencing, no-parse, `framesRejected` counting and FIFO.
+
+**D2 — preview truncation could split an escape.**
+- **Cause:** `boundedText` escaped the whole sample, then shortened the escaped string by character count. It could end inside `\u00XX` or on a dangling `\`.
+- **Fix** (`frame.ts`, `boundedText`): the output is built **one code point at a time** from complete escape units (`JSON.stringify(ch)` without quotes) and stops before the first unit that would exceed `maxBytes`. Truncation can only happen between complete escapes. Therefore:
+  - the result is always a valid JSON string body (`JSON.parse('"' + r + '"')` decodes it to a prefix of the input);
+  - it is ≤ 256 bytes;
+  - it never ends with a partial escape;
+  - it contains no raw control characters (lone surrogates are escaped as `\udXXX`).
+- **C08 reader:** needed no change. It already decodes `JSON.parse('"' + preview + '"')` and extracts `adapterSequence`, and that decode is now guaranteed to succeed.
+
+**Tests added (C26, now 22):**
+
+| # | Asserts |
+|---|---|
+| 18 | Seal, then **one chunk** of 40 000 hostile refused frames (NUL, ESC, quotes, backslashes) before the overflow file exists: peak pending ≤ payload budget; file ≤ 8 MiB; marker once and last; no raw control bytes; every record whole and identical in the bounded escaped form; record count = ⌊budget / record size⌋; `framesRejected` = 40 000; `diagnosticBytesDropped` = (N − k) × record size **exactly**. A later batch of 1000 adds nothing to the file and exactly 1000 × record size to the dropped count |
+| 19 | `boundedText` over 14 hostile symbols (quote, backslash, NUL, ESC, `\n`, `\r`, `\t`, é, 漢, 😀, lone surrogate, `/`, DEL) at many lengths up to 400: ≤ 256 bytes; no raw control characters; no trailing partial escape; always decodable; the decoded text is a prefix of the input |
+| 20 | 50 refused frames whose previews are cut at every alignment inside 6-byte escapes plus mixed hostile text: all 50 records decode with the C08-style reader; previews ≤ 256 bytes; no raw control characters; the recovered `adapterSequence` values are in exact order; file ≤ cap |
+
+**Fail-before / pin:**
+- Against `4130f8c`'s `frame.ts` and `ndjson-transport.ts`: C26 tests **18, 19 and 20 fail**; all others pass.
+- Reverting only D1 (old guarded check): test 18 fails.
+- Reverting only D2 (old truncation): tests 19 and 20 fail.
+- C08 passes in all fixed runs.
+
+**C09:**
+- **Not reproduced.**
+- In every full run on this tree (3 × 231/231, plus path mode), and in the dedicated `c08/c09/c26` run, C09 passed.
+- Isolated: **10/10**. Under 6 concurrent CPU-busy loops: **5/5**.
+- **Why it can still fail elsewhere:** its duration checks are wall-clock windows (the halt fires no earlier than `maxDurationMs` − 50 ms and no later than `maxDurationMs` + 5 s, with gated processing). A heavily loaded full run can exceed such a window.
+- **Not caused by H3:** the H3 diff doesn't touch the duration timer, the halt path or the gating it measures. I classify it as a known timing-sensitive test (a flake), **not an H3 regression**, and made no C09 change.
+
 ## Files changed (base → final commit)
 
 | File | Change |
@@ -132,13 +179,13 @@ C26 against `43f5784`'s Kernel (new mock hooks kept): tests **6, 7 and 12–17 f
 | `dvl-spike/src/kernel/kernel.ts` | `onTransportIssue` handles `input_rejected`: halt the current instance; stale → record only |
 | `dvl-spike/src/mock-provider/mock-provider.ts` | Test-only `adapter.ping` options: `raw`, `padded`, `unterminated`, `openLine` |
 | `dvl-spike/src/mock-provider/scenarios.ts` | `noisy` no longer contains malformed `DVL1:` lines (they fail closed now) |
-| `dvl-spike/src/conformance/c26-h3-transport-input-bounding.test.ts` | **New**, 19 tests |
+| `dvl-spike/src/conformance/c26-h3-transport-input-bounding.test.ts` | **New**, 22 tests |
 | `dvl-spike/src/conformance/c03-frame-prefix-noise.test.ts` | `noisy` expects 0 malformed lines and 0 rejections; the `[MALFORMED` noise check is removed |
 | `dvl-spike/src/conformance/c07-adapter-spool-isolation.test.ts` | Incidental `[MALFORMED` assertion removed (subject unchanged) |
 | `dvl-spike/src/conformance/c08-queue-limits.test.ts` | The overflow reader decodes the bounded `[REFUSED …]` records (sequence number from the escaped preview). All FIFO and accounting assertions are unchanged |
 | `CLAUDE_REPORTS/H3_TRANSPORT_INPUT_BOUNDING_REPORT.md` | This report |
 
-## Tests: C26 (19)
+## Tests: C26 (22)
 
 | # | Asserts |
 |---|---|
@@ -154,26 +201,31 @@ C26 against `43f5784`'s Kernel (new mock hooks kept): tests **6, 7 and 12–17 f
 | 9 ×2 | Real adapter, 2 MiB frame / malformed frame: state identical to before; halted; no Evidence; durable log lines < 8 KiB |
 | 10 | Real adapter, unterminated `action.finished` + exit: no Evidence; `partial_frame` |
 | 11 | 100 KiB inline payload, `happy`, `oversized-spooled`, `noisy` all finish with no halt |
-| 12–17 | Review fixes, as in the table above |
+| 12–17 | First review fixes, as in the table above |
+| 18–20 | Second re-review fixes (first-batch budgeting, escape-safe previews), see "Second re-review fixes" |
 
 ## Exact command results (final tree)
 
 | Command | Result |
 |---|---|
-| `npm test` run 1 | exit 0 — 26 files, **228/228 passed** |
-| `npm test` run 2 | exit 0 — 26 files, **228/228 passed** |
-| `npm test` run 3 | exit 0 — 26 files, **228/228 passed** |
+| `npm test` run 1 | exit 0 — 26 files, **231/231 passed** |
+| `npm test` run 2 | exit 0 — 26 files, **231/231 passed** |
+| `npm test` run 3 | exit 0 — 26 files, **231/231 passed** |
 | `npm run typecheck` | exit 0 |
 | `npm run spike` | exit 0 — "SPIKE OK — every scenario reached its expected terminal state" |
-| `npx vitest run src/conformance/c18* … c26*` (focused) | exit 0 — 9 files, **120/120 passed** (C18 8, C19 3, C20 7, C21 26, C22 18, C23 10, C24 18, C25 11, C26 19) |
-| `DVL_FS_CONFINEMENT=path npm test` (H2 fallback mode, as on macOS) | exit 0 — 26 files, **228/228 passed** |
+| `npx vitest run src/conformance/c18* … c26*` (focused) | exit 0 — 9 files, **123/123 passed** (C18 8, C19 3, C20 7, C21 26, C22 18, C23 10, C24 18, C25 11, C26 22) |
+| `npx vitest run src/conformance/c08* src/conformance/c09* src/conformance/c26*` | exit 0 — 3 files, **40/40 passed** (C08 14, C09 4, C26 22) |
+| C09 alone ×10 / under 6 busy loops ×5 | 10/10 and 5/5 passed |
+| `DVL_FS_CONFINEMENT=path npm test` (H2 fallback mode, as on macOS) | exit 0 — 26 files, **231/231 passed** |
 
-Per suite: C01 6, C02 4, C03 6, C04 4, C05 4, C06 13, C07 10, C08 14, C09 4, C10 7, C11 7, C12 5, C13 6, C14 8, C15 5, C16 3, C17 2, C18 8, C19 3, C20 7, C21 26, C22 18, C23 10, C24 18, C25 11, **C26 19**.
+Per suite: C01 6, C02 4, C03 6, C04 4, C05 4, C06 13, C07 10, C08 14, C09 4, C10 7, C11 7, C12 5, C13 6, C14 8, C15 5, C16 3, C17 2, C18 8, C19 3, C20 7, C21 26, C22 18, C23 10, C24 18, C25 11, **C26 22**.
 
 The runs were on Linux (procfd confinement), plus the full suite in path mode; there was no macOS host run.
 
 ## Known limitations
 
+- **Whole-record budgeting can leave the payload just under the budget.** Up to one record or line (≤ ~1 MiB for a noise line, ~300 bytes for a refused record) of payload budget can stay unused when the next whole item doesn't fit. The file is still ≤ the cap, and the unwritten bytes are counted as dropped. stderr is not line-structured and is trimmed at the exact budget.
+- **C09** is timing-sensitive under heavy load (see above). It was not reproduced, and H3 doesn't touch it.
 - **Behaviour changes:**
   - A malformed `DVL1:` frame now halts the instance; before, it was logged and processing continued (C03).
   - Refused frames in the overflow spool are bounded previews, not raw lines (C08 reader adapted).
@@ -201,4 +253,4 @@ The runs were on Linux (procfd confinement), plus the full suite in path mode; t
 
 **H4 is not touched.**
 
-H3 IMPLEMENTATION READY FOR CODEX REVIEW
+H3 SECOND FIX READY FOR CODEX RE-REVIEW
