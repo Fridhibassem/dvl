@@ -16,6 +16,7 @@ import path from "node:path";
 import type { FsProbe } from "./confined-fs.js";
 import { EventStore, SpoolIntegrityError, newId, sha256, type ChainHead, type ChainReport, type EventStoreOptions } from "./event-store.js";
 import { NdjsonTransport, type TransportIssue } from "./ndjson-transport.js";
+import { RootLock, RootLockError } from "./root-lock.js";
 import {
   CONTRACT_VERSION,
   FORBIDDEN_ADAPTER_EVENTS,
@@ -277,6 +278,8 @@ export class Kernel {
   readonly limits: SafetyLimits;
   readonly queueLimits: QueueLimits;
   readonly projectId: string;
+  /** H4 — exclusive ownership of the root; taken before this Kernel writes anything as owner. */
+  private rootLock: RootLock | null = null;
 
   constructor(private readonly opts: KernelOptions) {
     this.store = new EventStore({ root: opts.root, fsync: opts.fsync, integrityKey: opts.integrityKey, expectedHead: opts.expectedHead, expectedHeads: opts.expectedHeads, hostDecision: opts.hostDecision, onCommit: opts.onCommit, onIncident: opts.onIncident, ioFaults: opts.ioFaults, confinement: opts.confinement, fsProbe: opts.fsProbe });
@@ -341,6 +344,9 @@ export class Kernel {
   start(): void {
     if (this.child) throw new Error("kernel already started");
     this.assertDurable();
+    // H4 — fail closed before ANY owner write (interruption records, spawn records): a second
+    // live Kernel on this root, running or paused, gets "root_locked" and changes nothing.
+    this.acquireRoot();
     for (const run of this.runs.values()) {
       if (!run.interruptPending) continue;
       run.interruptPending = false;
@@ -722,7 +728,41 @@ export class Kernel {
     await this.transport?.whenIdle();
   }
 
+  /** H4 — true while this Kernel holds the root ownership lock. */
+  get ownsRoot(): boolean {
+    return this.rootLock?.held ?? false;
+  }
+
+  /**
+   * H4 — take ownership, then prove this Kernel's replay is still the whole committed history:
+   * a Kernel that replayed while another owner was still appending would otherwise continue
+   * the chain from a stale head (a fork) and decide recovery from an old view. Stale ⇒ the
+   * lock is released again and nothing is written; the host must open a fresh Kernel.
+   */
+  private acquireRoot(opts: { forRecovery?: boolean } = {}): void {
+    if (this.rootLock) return;
+    const lock = RootLock.acquire(this.opts.root);
+    // Recovery is the one case where disk is beyond the boundary by design; recover() measures
+    // and quarantines that tail itself at the moment it runs (under the lock).
+    const drift = opts.forRecovery ? null : this.store.diskBeyondReplay();
+    if (drift) {
+      lock.release();
+      throw new RootLockError(`the logs changed after this Kernel replayed them (${drift}): open a fresh Kernel`, "stale_replay");
+    }
+    this.rootLock = lock;
+  }
+
   async shutdown(timeoutMs = 3_000): Promise<void> {
+    try {
+      await this.stopAdapter(timeoutMs);
+    } finally {
+      // Ownership ends only after the adapter was told to stop and, if needed, SIGKILLed.
+      this.rootLock?.release();
+      this.rootLock = null;
+    }
+  }
+
+  private async stopAdapter(timeoutMs: number): Promise<void> {
     if (!this.child) return;
     if (!this.closed) {
       // A halted/terminated instance is never commanded again: its process was killed and a
@@ -1421,8 +1461,19 @@ export class Kernel {
    * commit boundary, truncate the logs to it, clear the seal, and record the recovery.
    */
   recoverDurableTail(): ReturnType<EventStore["recover"]> {
+    const owned = this.ownsRoot;
+    this.acquireRoot({ forRecovery: true }); // H4 — recovery truncates the logs: owner only
     const before = { recovery: this.store.recovery, incident: this.store.incident, sealed: this.store.sealed };
-    const report = this.store.recover();
+    let report: ReturnType<EventStore["recover"]>;
+    try {
+      report = this.store.recover();
+    } catch (e) {
+      if (!owned) {
+        this.rootLock?.release(); // a refused recovery does not keep ownership it took for itself
+        this.rootLock = null;
+      }
+      throw e;
+    }
     this.kernelEvent("kernel.durable_recovery", { ...before, ...report });
     return report;
   }

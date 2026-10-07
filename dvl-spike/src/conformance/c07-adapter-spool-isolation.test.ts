@@ -17,7 +17,7 @@ import { sha256 } from "../kernel/event-store.js";
 import { Kernel } from "../kernel/kernel.js";
 import { mockProviderCommand } from "../kernel/mock-launch.js";
 import { MAX_INLINE_PAYLOAD_BYTES, type ArtifactRef, type StoredEvent } from "../kernel/types.js";
-import { makeKernel, runScenario, violations, waitForEvent } from "./harness.js";
+import { kernelOn, makeKernel, runScenario, violations, waitForEvent } from "./harness.js";
 
 let kernels: Kernel[] = [];
 afterEach(async () => {
@@ -74,12 +74,16 @@ describe("C07 adapter spool isolation (H2)", () => {
     expect(() => k.store.createInstanceSpools(a!.adapterInstanceId)).toThrow(/EEXIST/);
   });
 
-  it("2. stderr of parallel instances is drained into each instance's own spool, byte-exact, never mixed", async () => {
+  // H4: one live Kernel per root is enforced (root lock), so instances sharing a root are
+  // successive Kernels on it; their spools still coexist under the same .dvl.
+  it("2. stderr of successive instances on one root is drained into each instance's own spool, byte-exact, never mixed", async () => {
     const k1 = track(makeKernel("c07-stderr"));
-    const k2 = track(new Kernel({ root: rootOf(k1), adapterCommand: mockProviderCommand(), requestTimeoutMs: 5_000 }));
-    const [r1, r2] = await Promise.all([runScenario(k1, "crash"), runScenario(k2, "noisy")]);
-    expect([r1.status, r2.status]).toEqual(["failed", "finished"]);
+    const r1 = await runScenario(k1, "crash");
     await k1.waitClosed(5_000);
+    await k1.shutdown();
+    const k2 = track(kernelOn(rootOf(k1)));
+    const r2 = await runScenario(k2, "noisy");
+    expect([r1.status, r2.status]).toEqual(["failed", "finished"]);
 
     const e1 = fs.readFileSync(path.join(kSpool(k1, k1.currentAdapterInstanceId!), "diagnostics.stderr.log"));
     const e2 = fs.readFileSync(path.join(kSpool(k2, k2.currentAdapterInstanceId!), "diagnostics.stderr.log"));
@@ -152,18 +156,19 @@ describe("C07 adapter spool isolation (H2)", () => {
     expect(imp).toMatchObject({ adapterInstanceId: aid, artifactRef: ref.artifactRef, sourceArtifactRef: claim.artifactRef, hash: claim.hash });
   });
 
-  it("6. parallel adapter instances never share, overwrite, or read each other's spool", async () => {
+  it("6. adapter instances on one root never share, overwrite, or read each other's spool", async () => {
     const k1 = track(makeKernel("c07-parallel"));
-    const k2 = track(new Kernel({ root: rootOf(k1), adapterCommand: mockProviderCommand(), requestTimeoutMs: 5_000 }));
-    const [r1, r2] = await Promise.all([runScenario(k1, "oversized-spooled"), runScenario(k2, "oversized-spooled")]);
+    const r1 = await runScenario(k1, "oversized-spooled");
+    await k1.shutdown();
+    const k2 = track(kernelOn(rootOf(k1)));
+    const r2 = await runScenario(k2, "oversized-spooled");
     expect([r1.status, r2.status]).toEqual(["finished", "finished"]);
     const a1 = k1.currentAdapterInstanceId!;
     const a2 = k2.currentAdapterInstanceId!;
     expect(a1).not.toBe(a2);
 
-    // Shared root ⇒ shared evidence.jsonl (one Kernel per root is the design); use each
-    // Kernel's own in-memory view.
-    const own = (k: Kernel) => k.store.allEvidence().find((e) => e.relatedActionId === "act_big")!.artifactRefs[0]!;
+    // Shared root ⇒ shared evidence.jsonl (k2 replays k1's); pick each instance's own record.
+    const own = (k: Kernel) => k.store.allEvidence().find((e) => e.relatedActionId === "act_big" && e.artifactRefs[0]?.adapterInstanceId === k.currentAdapterInstanceId)!.artifactRefs[0]!;
     const ref1 = own(k1);
     const ref2 = own(k2);
     expect(ref1.path.startsWith(`.dvl/spool/${a1}/`)).toBe(true);

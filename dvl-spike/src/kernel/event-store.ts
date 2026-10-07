@@ -275,6 +275,19 @@ export class EventStore {
     return this.incidentRec;
   }
 
+  /**
+   * H4 — null when both logs on disk end exactly at this store's committed boundary (what it
+   * replayed or appended itself); otherwise which log moved. Only meaningful without a pending
+   * recovery (a recovery tail is beyond the boundary by definition).
+   */
+  diskBeyondReplay(): string | null {
+    for (const kind of LOG_KINDS) {
+      const size = fs.statSync(kind === "events" ? this.eventsPath : this.evidencePath).size;
+      if (size !== this.committedBytes[kind]) return `${kind}: ${size} bytes on disk, ${this.committedBytes[kind]} committed`;
+    }
+    return null;
+  }
+
   /** H2 — current commit boundary of both logs (what the host should hold as anchors). */
   heads(): CommitHeads {
     return { events: { ...this.chain.events }, evidence: { ...this.chain.evidence } };

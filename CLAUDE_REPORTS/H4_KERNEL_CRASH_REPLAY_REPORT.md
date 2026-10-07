@@ -89,3 +89,71 @@ that it ran the synthetic target only).
   selected.
 - The probe was not executed under khedma.tn's own vitest, because that needs `npm ci` from the
   registry, which is out of scope here.
+
+---
+
+## Split-brain fence: single-Kernel root ownership (follow-up)
+
+### Blocker
+
+Reproduced with a scratch script. Kernel A drives a run, and Kernel B starts on the same root
+while A is still alive (a host's false "A crashed"). B records `kernel.run_interrupted`, and A
+finishes and reports `finished` to its caller. On replay, A's `run.finished`/`kernel.run_finished`
+are rejected by the HMAC chain (5 rejected lines), and durable truth says `interrupted`. The two
+writers forked the log, and which verdict survives depends on write order.
+
+### Fix
+
+| Piece | What |
+|---|---|
+| `kernel/root-lock.ts` | OS-backed lock: a Linux **abstract-namespace Unix socket** bound by the owning Kernel process. Exclusive (`EADDRINUSE` for every other binder, same process included). The OS drops it when the process dies (SIGKILL included), so there is no lock file and nothing to go stale. Still held by a SIGSTOPped owner. Close-on-exec, so the adapter child never inherits it (checked: a spawned child holds no copy). Named from the root's `(dev, inode)`, so path aliases share one lock. The bind/release runs on a worker thread and the caller blocks on `Atomics.wait` (bounded, 5 s), so `start()` stays synchronous. Non-Linux fails closed (`root_lock_unsupported`) |
+| `Kernel.start()` | `assertDurable()`, **then acquire**, then any owner write (`kernel.run_interrupted`, spawn records). A refused Kernel writes nothing |
+| `Kernel.recoverDurableTail()` | Acquires before truncating or recording. A refused recovery releases the ownership it took for itself |
+| Stale-replay guard | After acquiring, the log sizes on disk must equal the store's committed bytes (`EventStore.diskBeyondReplay()`). Otherwise `stale_replay`: lock released, nothing written. Without it, a Kernel that replayed while the previous owner was still appending would take over after the owner died and continue the chain from a stale head (a fork) |
+| `Kernel.shutdown()` | Releases ownership after the adapter is stopped |
+| Errors | `RootLockError` with code `root_locked` / `stale_replay` / `root_lock_failed` / `root_lock_unsupported` |
+
+### Tests (C28, `c28-h4-root-ownership.test.ts`)
+
+The live owner is a Kernel in its own process (`h4-kernel-host.ts`), mid-run.
+
+| # | Asserts |
+|---|---|
+| 1 | Construction does not own. `start()` owns, `shutdown()` releases. A Kernel that replayed before the owner wrote is refused `stale_replay` with zero bytes written; a fresh Kernel then takes over |
+| 2 | Owner alive: `start()` and `recoverDurableTail()` are both `root_locked`; no `run_interrupted`, no `durable_recovery`, both logs byte-identical. A symlink alias maps to the same lock name |
+| 3 | Same with the owner **SIGSTOPped** |
+| 4 | Owner **SIGKILLed**: a fresh Kernel takes over and records the interruption exactly once |
+
+### Changed existing tests
+
+C07 tests 2 and 6 ran **two Kernels on one root in parallel** (their own comment said "one Kernel
+per root is the design"). That state is now refused by design. Both tests now run the two Kernels
+one after the other on the same root, using the host key (`kernelOn`), with every spool-isolation and
+cross-import assertion kept. Test 6 picks each instance's evidence by `adapterInstanceId`,
+because k2 now replays k1's evidence.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| `npm test` | 28 files, **246/246**, three consecutive runs |
+| `npm run typecheck` | clean |
+| Lock disabled (falsification) | C28 tests 2 and 3 fail |
+| Stale guard disabled (falsification) | C28 test 1 fails |
+| Split-brain repro against the fix | B's `start()` throws `root_locked`; A is unaffected |
+| khedma.tn checkout | `git status` empty |
+
+### Known limits of the fence (not addressed, by request)
+
+- **Network namespaces.** Abstract sockets are per network namespace. Two Kernels in different
+  containers that share a volume do not see each other's lock.
+- **Constructor-time records.** A Kernel's constructor still writes `kernel.integrity_violation`,
+  `kernel.anchor_rollback_accepted` or `kernel.integrity_key_ephemeral` without the lock (H2 tests
+  C24/C25 rely on this). It happens only when integrity is already broken, a rollback is decided, or
+  no key is given, but a reader opened beside a live owner in those states can still append.
+- **Size-based stale check.** It catches appends, the split-brain mode, not a same-size rewrite.
+- **Keyless Kernels** can no longer start on a root with existing logs (`stale_replay`: they
+  authenticate nothing, so their committed size is 0). That is fail-closed behaviour; before this change they appended
+  lines no keyed replay accepts.
+- Not yet addressed: a lagging host anchor, killing a surviving old adapter before archive, and
+  khedma.tn coverage in CI.
