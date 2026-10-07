@@ -7,6 +7,7 @@ import path from "node:path";
 import { Kernel, type KernelOptions } from "../kernel/kernel.js";
 import { mockProviderCommand } from "../kernel/mock-launch.js";
 import type { StoredEvent } from "../kernel/types.js";
+import type { CommitHeads } from "../kernel/event-store.js";
 
 export function tempRoot(tag: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), `dvl-${tag}-`));
@@ -24,14 +25,39 @@ export function keyFor(root: string): Buffer {
   return k;
 }
 
+/**
+ * H2 commit model — the HOST also holds each project's commit boundary: every Kernel the
+ * harness creates publishes it via onCommit and the harness keeps the latest per root. Tests
+ * pass it back explicitly (`expectedHeads: anchorsFor(root)`) when they replay "with host
+ * anchors"; by default a replaying Kernel gets none (the anchor-less case).
+ */
+const hostHeads = new Map<string, CommitHeads>();
+export function anchorsFor(root: string): CommitHeads | undefined {
+  const h = hostHeads.get(root);
+  return h && { events: { ...h.events }, evidence: { ...h.evidence } };
+}
+
+function hostOptions(root: string, extra: Partial<KernelOptions>): KernelOptions {
+  return {
+    root,
+    adapterCommand: mockProviderCommand(),
+    requestTimeoutMs: 5_000,
+    integrityKey: keyFor(root),
+    ...extra,
+    onCommit: (h) => {
+      hostHeads.set(root, h);
+      extra.onCommit?.(h);
+    },
+  };
+}
+
 export function makeKernel(tag: string, extra: Partial<KernelOptions> = {}): Kernel {
-  const root = tempRoot(tag);
-  return new Kernel({ root, adapterCommand: mockProviderCommand(), requestTimeoutMs: 5_000, integrityKey: keyFor(root), ...extra });
+  return new Kernel(hostOptions(tempRoot(tag), extra));
 }
 
 /** Another Kernel on an existing root, as the host would create it (same integrity key). */
 export function kernelOn(root: string, extra: Partial<KernelOptions> = {}): Kernel {
-  return new Kernel({ root, adapterCommand: mockProviderCommand(), requestTimeoutMs: 5_000, integrityKey: keyFor(root), ...extra });
+  return new Kernel(hostOptions(root, extra));
 }
 
 /** Spawn + describe + run a scenario to completion. */

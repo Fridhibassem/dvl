@@ -55,6 +55,9 @@ export { SpoolIntegrityError } from "./confined-fs.js";
 const { O_RDONLY, O_WRONLY, O_CREAT, O_EXCL, O_APPEND } = fs.constants;
 const EVENTS_DIR = [".dvl", "events"] as const;
 const EVIDENCE_DIR = [".dvl", "evidence"] as const;
+const INTEGRITY_DIR = [".dvl", "integrity"] as const;
+const SEAL_MARKER = "sealed.json";
+const LOG_KINDS = ["events", "evidence"] as const;
 
 /**
  * Blocker 1 — durable authority. The adapter runs as the same OS user (no sandbox) and can
@@ -77,8 +80,46 @@ export interface ChainReport {
   rejected: { line: number; reason: "unparseable" | "missing_mac" | "mac_mismatch"; eventId?: string; type?: string }[];
   /** True when an expectedHead anchor was given and the log no longer reaches it. */
   truncated: boolean;
+  /**
+   * H2 commit model — authenticated records (or bytes) found BEYOND the commit boundary
+   * (host anchor or persisted seal marker), or a torn final fragment. They are not committed:
+   * never loaded into history, registry or evidence.
+   */
+  uncommitted?: { records: number; bytes: number };
 }
-type LogKind = "events" | "evidence";
+export type LogKind = "events" | "evidence";
+export type CommitHeads = Record<LogKind, ChainHead>;
+
+/**
+ * H2 commit model (Option A: "refused means not committed").
+ *   - A record is COMMITTED only when its write, optional fsync and post-write integrity
+ *     re-check all succeed; only then do the chain head, in-memory history and the published
+ *     commit boundary (onCommit → host) advance.
+ *   - Any error after a durable write BEGINS (write error, partial write, fsync error,
+ *     post-write integrity detection) is an UNCERTAIN outcome: the record is NOT committed,
+ *     the store SEALS before any later append, an incident is reported to the host
+ *     (onIncident) and persisted best-effort as an authenticated seal marker.
+ *   - Replay accepts records only up to the commit boundary: the host-held anchors
+ *     (expectedHeads) when given, else the persisted seal marker. Anything beyond it is
+ *     quarantined (never authoritative) and the store opens in RECOVERY_REQUIRED: appends are
+ *     refused until the host calls recover(), which moves the uncommitted tail to
+ *     .dvl/integrity/quarantine-*.jsonl and truncates the logs to the boundary.
+ */
+export interface DurableIncident {
+  log: LogKind;
+  code: string;
+  reason: string;
+  at: string;
+  /** Commit boundary at the moment of the incident (what replay must not go beyond). */
+  committed: Record<LogKind, ChainHead & { bytes: number }>;
+  /** Whether the authenticated seal marker could be written. */
+  markerPersisted: boolean;
+}
+export interface RecoveryState {
+  source: "host_anchor" | "seal_marker" | "torn_tail";
+  uncommitted: Record<LogKind, { records: number; bytes: number }>;
+  incident?: DurableIncident;
+}
 
 export function sha256(data: Buffer | string): string {
   return "sha256:" + crypto.createHash("sha256").update(data).digest("hex");
@@ -95,6 +136,17 @@ export interface EventStoreOptions {
   integrityKey?: Buffer;
   /** Blocker 1 — host-held anchor of the events log head, to detect truncation/rollback. */
   expectedHead?: ChainHead;
+  /**
+   * H2 commit model — host-held commit boundary for BOTH logs (as last published via
+   * onCommit). Replay never goes beyond it. `expectedHead` is the legacy events-only form.
+   */
+  expectedHeads?: Partial<CommitHeads>;
+  /** H2 — called after every committed record with the new commit boundary (host persists it). */
+  onCommit?: (heads: CommitHeads) => void;
+  /** H2 — called once when the store seals after an uncertain durable write. */
+  onIncident?: (incident: DurableIncident) => void;
+  /** H2 — test-only I/O fault injection for durable log writes. */
+  ioFaults?: { log?: (kind: LogKind, phase: "write" | "fsync", record: Record<string, unknown>) => "fail" | "partial" | undefined };
   /**
    * H2 — "auto" (default) uses directory-relative confinement where available (Linux
    * /proc/self/fd), else path checks; "path" forces the path-check fallback (tests).
@@ -117,8 +169,14 @@ export class EventStore {
    * at construction, no symlinked component ever followed, inode-bound directory handles.
    */
   readonly fsc: Confinement;
-  /** H2 — set when a post-write check failed; all further durable appends are refused. */
+  /** H2 — set at an uncertain durable write; all further durable appends are refused. */
   private sealedReason: string | null = null;
+  /** H2 — the store opened with an uncommitted tail / persisted seal; recover() required. */
+  private recoveryState: RecoveryState | null = null;
+  /** H2 — live incident (this process). */
+  private incidentRec: DurableIncident | null = null;
+  /** H2 — byte length of each log up to (and including) its last committed record. */
+  private readonly committedBytes: Record<LogKind, number> = { events: 0, evidence: 0 };
   private seq = 0;
   private readonly events: StoredEvent[] = [];
   private readonly evidence = new Map<string, EvidenceRecord>();
@@ -128,8 +186,8 @@ export class EventStore {
   /** True when no host key was supplied: nothing written now can be trusted after restart. */
   readonly ephemeralKey: boolean;
   private readonly chain: Record<LogKind, ChainHead>;
-  /** Blocker 1 — what replay authenticated vs rejected, per log. */
-  readonly integrity: Record<LogKind, ChainReport>;
+  /** Blocker 1 — what replay authenticated vs rejected, per log (+ H2 seal-marker status). */
+  readonly integrity: Record<LogKind, ChainReport> & { marker: null | "valid" | "invalid" };
 
   constructor(private readonly opts: EventStoreOptions) {
     this.ephemeralKey = !opts.integrityKey;
@@ -139,6 +197,7 @@ export class EventStore {
     this.integrity = {
       events: { ok: true, accepted: 0, rejected: [], truncated: false },
       evidence: { ok: true, accepted: 0, rejected: [], truncated: false },
+      marker: null,
     };
     this.fsc = new Confinement(opts.root, { mode: opts.confinement, probe: opts.fsProbe });
     this.dvlDir = path.join(opts.root, ".dvl");
@@ -148,7 +207,7 @@ export class EventStore {
     this.evidencePath = path.join(this.dvlDir, "evidence", "evidence.jsonl");
     // H2: created component-by-component without following symlinks; fail closed if any
     // Kernel-owned directory or log was replaced by a symlink, a file, or a hard link.
-    for (const rel of [[".dvl", "spool"], [".dvl", "adapter-spool"], EVENTS_DIR, EVIDENCE_DIR]) this.fsc.openDir(rel, true).close();
+    for (const rel of [[".dvl", "spool"], [".dvl", "adapter-spool"], EVENTS_DIR, EVIDENCE_DIR, INTEGRITY_DIR]) this.fsc.openDir(rel, true).close();
     for (const kind of ["events", "evidence"] as const) this.withLogDir(kind, (d, name) => fs.closeSync(openBound(d, name, O_WRONLY | O_APPEND | O_CREAT).fd));
     this.replay();
   }
@@ -178,12 +237,79 @@ export class EventStore {
 
   /** Re-read JSONL from disk — only records that authenticate (blocker 1). */
   readFromDisk(): StoredEvent[] {
-    return this.readChain<StoredEvent>("events").records;
+    // H2: only COMMITTED records — never a possibly-written record beyond the commit boundary.
+    return this.readChain<StoredEvent>("events", this.chain.events).records;
   }
 
-  /** H2 — non-null once the store has failed closed (post-write integrity detection). */
+  /** H2 — non-null once the store has failed closed (uncertain durable write). */
   get sealed(): string | null {
     return this.sealedReason;
+  }
+
+  /** H2 — non-null when the store opened with an uncommitted tail or persisted seal. */
+  get recovery(): RecoveryState | null {
+    return this.recoveryState;
+  }
+
+  /** H2 — the incident that sealed this store (this process), if any. */
+  get incident(): DurableIncident | null {
+    return this.incidentRec;
+  }
+
+  /** H2 — current commit boundary of both logs (what the host should hold as anchors). */
+  heads(): CommitHeads {
+    return { events: { ...this.chain.events }, evidence: { ...this.chain.evidence } };
+  }
+
+  /**
+   * H2 — explicit recovery decision: quarantine every byte beyond the commit boundary of
+   * both logs into .dvl/integrity/quarantine-<log>-<ts>.jsonl, truncate the logs to the
+   * boundary, remove the seal marker, and re-open for appends. Refuses (throws) if a log is
+   * SHORTER than its boundary (rollback: needs a host decision) or a path is unsafe.
+   */
+  recover(): { quarantined: Record<LogKind, { bytes: number; file: string | null }> } {
+    if (!this.recoveryState && !this.sealedReason) return { quarantined: { events: { bytes: 0, file: null }, evidence: { bytes: 0, file: null } } };
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const quarantined = {} as Record<LogKind, { bytes: number; file: string | null }>;
+    for (const kind of LOG_KINDS) {
+      const committed = this.committedBytes[kind];
+      const tail = this.withLogDir(kind, (d, name) => {
+        const { fd } = openBound(d, name, fs.constants.O_RDWR);
+        try {
+          const size = fs.fstatSync(fd).size;
+          if (size < committed) throw new SpoolIntegrityError(`${kind} log is shorter than its commit boundary (${size} < ${committed})`, "recovery_required");
+          const buf = Buffer.alloc(size - committed);
+          if (buf.length > 0) fs.readSync(fd, buf, 0, buf.length, committed);
+          return { buf, fd, d, name };
+        } catch (e) {
+          fs.closeSync(fd);
+          throw e;
+        }
+      });
+      try {
+        let file: string | null = null;
+        if (tail.buf.length > 0) {
+          file = `quarantine-${kind}-${stamp}.jsonl`;
+          this.writeKernelFile(INTEGRITY_DIR, file, tail.buf);
+          fs.ftruncateSync(tail.fd, committed);
+          if (this.opts.fsync) fs.fsyncSync(tail.fd);
+        }
+        quarantined[kind] = { bytes: tail.buf.length, file };
+      } finally {
+        fs.closeSync(tail.fd);
+      }
+    }
+    this.withDir(INTEGRITY_DIR, (d) => {
+      try {
+        fs.unlinkSync(d.entry(SEAL_MARKER));
+      } catch (e) {
+        if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
+      }
+    });
+    this.sealedReason = null;
+    this.recoveryState = null;
+    this.incidentRec = null;
+    return { quarantined };
   }
 
   /** Blocker 1 — current head of the events chain; the host may persist it as an anchor. */
@@ -206,7 +332,7 @@ export class EventStore {
   /** Authenticated EvidenceRecords from disk, latest status per id (blocker 1). */
   readEvidenceFromDisk(): EvidenceRecord[] {
     const latest = new Map<string, EvidenceRecord>();
-    for (const r of this.readChain<EvidenceRecord>("evidence").records) latest.set(r.evidenceId, r);
+    for (const r of this.readChain<EvidenceRecord>("evidence", this.chain.evidence).records) latest.set(r.evidenceId, r);
     return [...latest.values()];
   }
 
@@ -525,15 +651,17 @@ export class EventStore {
     const mac = this.mac(this.chain[kind].mac, canonical);
     // `mac` is the LAST key, so stripping it reproduces `canonical` byte-for-byte on replay.
     const line = canonical.slice(0, -1) + (canonical === "{}" ? "" : ",") + `"mac":"${mac}"}` + "\n";
-    // H2: open/write/close per record. The log is opened relative to its verified
-    // directory (never created here, never through a symlink) and bound (regular file, one
-    // link, name ↔ inode, directory still canonical) at open AND immediately before the
-    // write — a refusal there writes nothing. After the write it is re-bound again: if the
-    // inode was moved or aliased in the final window (which no userspace check can exclude
-    // against a same-user process), the record may have landed in that inode, so the store
-    // is SEALED (fail closed): the chain head and in-memory history do not advance, and every
-    // later append is refused.
-    if (this.sealedReason) throw new SpoolIntegrityError(`store sealed after an integrity failure: ${this.sealedReason}`, "sealed");
+    // H2: open/write/close per record. The log is opened relative to its verified directory
+    // (never created here, never through a symlink) and bound (regular file, one link,
+    // name ↔ inode, directory still canonical) at open AND immediately before the write — a
+    // refusal there writes nothing and commits nothing. From the moment the write begins, any
+    // failure (write/partial write/fsync error, post-write integrity detection) is an
+    // UNCERTAIN outcome: the record may be on disk, so it is NOT committed and the store SEALS
+    // before any later append — it never appends again from the old head (no chain fork).
+    if (this.sealedReason) throw new SpoolIntegrityError(`store sealed after an uncertain durable write: ${this.sealedReason}`, "sealed");
+    if (this.recoveryState) throw new SpoolIntegrityError(`store requires recovery (${this.recoveryState.source}); appends are refused until recover()`, "recovery_required");
+    const bytes = Buffer.from(line);
+    let committedSize = 0;
     this.withLogDir(kind, (d, name) => {
       this.fsc.probe("log:before-open", d.kernelPath(name));
       const { fd } = openBound(d, name, O_WRONLY | O_APPEND);
@@ -541,87 +669,211 @@ export class EventStore {
         this.fsc.probe("log:after-open", d.kernelPath(name));
         rebind(d, name, fd, "replaced");
         this.fsc.probe("log:before-write", d.kernelPath(name));
-        writeAll(fd, Buffer.from(line));
-        if (this.opts.fsync) fs.fsyncSync(fd);
         try {
+          const fault = this.opts.ioFaults?.log?.(kind, "write", obj as Record<string, unknown>);
+          if (fault === "partial") {
+            writeAll(fd, bytes.subarray(0, Math.floor(bytes.length / 2)));
+            throw Object.assign(new Error("EIO: injected partial write"), { code: "EIO" });
+          }
+          if (fault === "fail") throw Object.assign(new Error("EIO: injected write error"), { code: "EIO" });
+          writeAll(fd, bytes);
+          if (this.opts.fsync) {
+            if (this.opts.ioFaults?.log?.(kind, "fsync", obj as Record<string, unknown>) === "fail") throw Object.assign(new Error("EIO: injected fsync error"), { code: "EIO" });
+            fs.fsyncSync(fd);
+          }
+          this.fsc.probe("log:after-write", d.kernelPath(name));
           rebind(d, name, fd, "after_write");
+          committedSize = fs.fstatSync(fd).size;
         } catch (e) {
-          this.sealedReason = (e as Error).message;
-          throw e;
+          const code = e instanceof SpoolIntegrityError ? e.code : "uncommitted";
+          this.seal(kind, code, (e as Error).message);
+          throw e instanceof SpoolIntegrityError ? e : new SpoolIntegrityError(`uncertain durable write to ${kind} log (${(e as Error).message}); record not committed, store sealed`, "uncommitted");
         }
       } finally {
         fs.closeSync(fd);
       }
     });
+    this.committedBytes[kind] = committedSize;
     this.chain[kind] = { count: this.chain[kind].count + 1, mac };
+    this.opts.onCommit?.(this.heads());
   }
 
-  /** Walk one log, accepting only lines whose MAC continues the last accepted line. */
-  private readChain<T>(kind: LogKind, anchor?: ChainHead): { records: T[]; report: ChainReport; head: ChainHead } {
-    const report: ChainReport = { ok: true, accepted: 0, rejected: [], truncated: false };
-    const records: T[] = [];
-    let prev = this.genesis(kind);
-    let anchorMet = !anchor || anchor.count === 0;
-    // H2: read through a bound no-follow descriptor; an unsafe log path (symlink, hard link,
-    // swapped/moved directory) fails closed with SpoolIntegrityError. A missing log is empty.
-    const raw = this.withLogDir(kind, (d, name) => {
+  /** H2 — fail closed after an uncertain durable write: seal, persist marker, tell the host. */
+  private seal(kind: LogKind, code: string, reason: string): void {
+    if (this.sealedReason) return;
+    this.sealedReason = reason;
+    const committed = {} as DurableIncident["committed"];
+    for (const k of LOG_KINDS) committed[k] = { ...this.chain[k], bytes: this.committedBytes[k] };
+    const incident: DurableIncident = { log: kind, code, reason, at: new Date().toISOString(), committed, markerPersisted: false };
+    try {
+      const body = { incident: { ...incident, markerPersisted: undefined } };
+      const canonical = JSON.stringify(body);
+      const mac = crypto.createHmac("sha256", this.key).update("dvl-seal-marker\n").update(canonical).digest("hex");
+      this.writeKernelFile(INTEGRITY_DIR, SEAL_MARKER, Buffer.from(JSON.stringify({ ...body, mac })));
+      incident.markerPersisted = true;
+    } catch {
+      /* best effort: the integrity area may be unusable too; the host still gets onIncident */
+    }
+    this.incidentRec = incident;
+    this.opts.onIncident?.(incident);
+  }
+
+  /** H2 — the authenticated seal marker, if present and valid. */
+  private readMarker(): DurableIncident | null {
+    const raw = this.withDir(INTEGRITY_DIR, (d) => {
       let fd: number;
       try {
-        fd = openBound(d, name, O_RDONLY).fd;
+        fd = openBound(d, SEAL_MARKER, O_RDONLY).fd;
       } catch (e) {
-        if (e instanceof SpoolIntegrityError && e.code === "missing") return [];
+        if (e instanceof SpoolIntegrityError && e.code === "missing") return null;
         throw e;
       }
       try {
-        return fs.readFileSync(fd, "utf8").split("\n");
+        return fs.readFileSync(fd, "utf8");
       } finally {
         fs.closeSync(fd);
       }
     });
-    raw.forEach((line, idx) => {
-      if (!line.trim()) return;
+    if (raw === null) return null;
+    try {
+      const { mac, ...body } = JSON.parse(raw) as { mac: string; incident: DurableIncident };
+      const expected = crypto.createHmac("sha256", this.key).update("dvl-seal-marker\n").update(JSON.stringify(body)).digest("hex");
+      if (typeof mac !== "string" || mac.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(expected))) throw new Error("bad mac");
+      this.integrity.marker = "valid";
+      return { ...body.incident, markerPersisted: true };
+    } catch {
+      this.integrity.marker = "invalid"; // forged/corrupt marker: confers nothing, reported
+      return null;
+    }
+  }
+
+  /**
+   * Walk one log, accepting only lines whose MAC continues the last accepted line, and never
+   * beyond `boundary` (the commit boundary): records/bytes after it are counted as uncommitted.
+   * Without a boundary the whole authenticated log is accepted, except a torn final fragment
+   * (no trailing newline), which can never be a complete committed record.
+   */
+  private readChain<T>(kind: LogKind, boundary?: ChainHead): { records: T[]; report: ChainReport; head: ChainHead; committedBytes: number } {
+    const report: ChainReport = { ok: true, accepted: 0, rejected: [], truncated: false, uncommitted: { records: 0, bytes: 0 } };
+    const records: T[] = [];
+    let prev = this.genesis(kind);
+    // H2: read through a bound no-follow descriptor; an unsafe log path (symlink, hard link,
+    // swapped/moved directory) fails closed with SpoolIntegrityError. A missing log is empty.
+    const buf = this.withLogDir(kind, (d, name) => {
+      let fd: number;
+      try {
+        fd = openBound(d, name, O_RDONLY).fd;
+      } catch (e) {
+        if (e instanceof SpoolIntegrityError && e.code === "missing") return Buffer.alloc(0);
+        throw e;
+      }
+      try {
+        return fs.readFileSync(fd);
+      } finally {
+        fs.closeSync(fd);
+      }
+    });
+    let committedEnd = 0;
+    let off = 0;
+    let lineNo = 0;
+    let atBoundary = boundary !== undefined && boundary.count === 0;
+    let boundaryMacOk = boundary === undefined || boundary.count === 0;
+    while (off < buf.length) {
+      const nl = buf.indexOf(10, off);
+      const end = nl === -1 ? buf.length : nl + 1;
+      const line = buf.toString("utf8", off, nl === -1 ? buf.length : nl);
+      const start = off;
+      off = end;
+      lineNo++;
+      if (!line.trim()) {
+        if (!atBoundary) committedEnd = end;
+        continue;
+      }
+      if (atBoundary) {
+        report.uncommitted!.records++;
+        continue;
+      }
+      if (nl === -1) {
+        // Torn final fragment: a crash/uncertain-write artifact, never a committed record.
+        report.uncommitted!.records++;
+        committedEnd = start;
+        break;
+      }
       let obj: Record<string, unknown>;
       try {
         obj = JSON.parse(line) as Record<string, unknown>;
       } catch {
-        // A torn final line is a crash artifact; anywhere else it is a rejected record.
-        const isTail = raw.slice(idx + 1).every((l) => !l.trim());
-        if (!isTail) report.rejected.push({ line: idx + 1, reason: "unparseable" });
-        return;
+        report.rejected.push({ line: lineNo, reason: "unparseable" });
+        committedEnd = end;
+        continue;
       }
       const { mac, ...rest } = obj;
-      const reject = (reason: "missing_mac" | "mac_mismatch") =>
-        report.rejected.push({ line: idx + 1, reason, eventId: typeof rest.eventId === "string" ? rest.eventId : undefined, type: typeof rest.type === "string" ? rest.type : undefined });
-      if (typeof mac !== "string") return reject("missing_mac");
+      const reject = (reason: "missing_mac" | "mac_mismatch") => {
+        report.rejected.push({ line: lineNo, reason, eventId: typeof rest.eventId === "string" ? rest.eventId : undefined, type: typeof rest.type === "string" ? rest.type : undefined });
+        committedEnd = end;
+      };
+      if (typeof mac !== "string") {
+        reject("missing_mac");
+        continue;
+      }
       const expected = this.mac(prev, JSON.stringify(rest));
-      if (mac.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(expected))) return reject("mac_mismatch");
+      if (mac.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(expected))) {
+        reject("mac_mismatch");
+        continue;
+      }
       prev = mac;
       report.accepted++;
       records.push(rest as T);
-      if (anchor && report.accepted === anchor.count && mac === anchor.mac) anchorMet = true;
-    });
-    if (!anchorMet) report.truncated = true;
-    report.ok = report.rejected.length === 0 && !report.truncated;
-    return { records, report, head: { count: report.accepted, mac: prev } };
+      committedEnd = end;
+      if (boundary && report.accepted === boundary.count) {
+        atBoundary = true;
+        boundaryMacOk = mac === boundary.mac;
+      }
+    }
+    report.uncommitted!.bytes = buf.length - committedEnd;
+    if (boundary && (report.accepted < boundary.count || !boundaryMacOk)) report.truncated = true;
+    if (report.uncommitted!.records === 0 && report.uncommitted!.bytes === 0) delete report.uncommitted;
+    report.ok = report.rejected.length === 0 && !report.truncated && report.uncommitted === undefined;
+    return { records, report, head: { count: report.accepted, mac: prev }, committedBytes: committedEnd };
   }
 
   private replay(): void {
-    const ev = this.readChain<StoredEvent>("events", this.opts.expectedHead);
+    // Commit boundary: host anchors win; else the persisted (authenticated) seal marker.
+    const marker = this.readMarker();
+    const host: Partial<CommitHeads> = { ...this.opts.expectedHeads };
+    if (this.opts.expectedHead && !host.events) host.events = this.opts.expectedHead;
+    const boundaryOf = (k: LogKind): ChainHead | undefined => host[k] ?? (marker ? { count: marker.committed[k].count, mac: marker.committed[k].mac } : undefined);
+    const ev = this.readChain<StoredEvent>("events", boundaryOf("events"));
+    const evd = this.readChain<EvidenceRecord>("evidence", boundaryOf("evidence"));
     this.integrity.events = ev.report;
-    this.chain.events = ev.head; // new records continue the authenticated chain
+    this.integrity.evidence = evd.report;
+    this.chain.events = ev.head; // new records continue the committed chain
+    this.chain.evidence = evd.head;
+    this.committedBytes.events = ev.committedBytes;
+    this.committedBytes.evidence = evd.committedBytes;
     for (const e of ev.records) {
       this.events.push(e);
       this.seq = Math.max(this.seq, e.kernelSequence);
-      // Only authenticated Kernel-origin registrations rebuild provenance.
+      // Only authenticated, COMMITTED Kernel-origin registrations rebuild provenance.
       if (e.type === ARTIFACT_REGISTERED && e.origin === "kernel" && e.trust === "kernel_truth") {
         const entry = e.payload as ArtifactRef & ArtifactProvenance;
         this.registry.set(entry.artifactRef, entry);
       }
     }
-    const evd = this.readChain<EvidenceRecord>("evidence");
-    this.integrity.evidence = evd.report;
-    this.chain.evidence = evd.head;
     for (const r of evd.records) this.evidence.set(r.evidenceId, r);
+
+    const unc = (r: ChainReport) => r.uncommitted ?? { records: 0, bytes: 0 };
+    const hasTail = unc(ev.report).bytes > 0 || unc(evd.report).bytes > 0;
+    const anyHost = host.events !== undefined || host.evidence !== undefined;
+    if (marker || (hasTail && anyHost)) {
+      this.recoveryState = { source: anyHost ? "host_anchor" : "seal_marker", uncommitted: { events: unc(ev.report), evidence: unc(evd.report) }, incident: marker ?? undefined };
+    } else if (hasTail) {
+      // No boundary at all: only a torn final fragment can be identified as uncommitted. It
+      // is quarantined right away (it can never be a complete record) so the next append
+      // cannot be glued onto it and become unreplayable.
+      this.recoveryState = { source: "torn_tail", uncommitted: { events: unc(ev.report), evidence: unc(evd.report) } };
+      this.recover();
+    }
   }
 }
 

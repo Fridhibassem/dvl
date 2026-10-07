@@ -14,7 +14,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import type { FsProbe } from "./confined-fs.js";
-import { EventStore, SpoolIntegrityError, newId, sha256, type ChainHead, type ChainReport } from "./event-store.js";
+import { EventStore, SpoolIntegrityError, newId, sha256, type ChainHead, type ChainReport, type EventStoreOptions } from "./event-store.js";
 import { NdjsonTransport, type TransportIssue } from "./ndjson-transport.js";
 import {
   CONTRACT_VERSION,
@@ -72,6 +72,14 @@ export interface KernelOptions {
   expectedHead?: ChainHead;
   /** H3 — protocol queue bounds per adapter instance (defaults: MAX_QUEUED_FRAMES / MAX_QUEUED_BYTES). */
   queueLimits?: Partial<QueueLimits>;
+  /** H2 commit model — host-held commit boundary for both logs (last value from onCommit). */
+  expectedHeads?: EventStoreOptions["expectedHeads"];
+  /** H2 — receives the new commit boundary after every committed record (host persists it). */
+  onCommit?: EventStoreOptions["onCommit"];
+  /** H2 — receives the incident when the store seals after an uncertain durable write. */
+  onIncident?: EventStoreOptions["onIncident"];
+  /** H2 — test-only durable-write fault injection. */
+  ioFaults?: EventStoreOptions["ioFaults"];
   /** H2 — filesystem confinement mode for Kernel-owned paths ("path" forces the fallback). */
   confinement?: "auto" | "path";
   /** H2 — test-only probe at filesystem check/use points (deterministic race injection). */
@@ -266,7 +274,7 @@ export class Kernel {
   readonly projectId: string;
 
   constructor(private readonly opts: KernelOptions) {
-    this.store = new EventStore({ root: opts.root, fsync: opts.fsync, integrityKey: opts.integrityKey, expectedHead: opts.expectedHead, confinement: opts.confinement, fsProbe: opts.fsProbe });
+    this.store = new EventStore({ root: opts.root, fsync: opts.fsync, integrityKey: opts.integrityKey, expectedHead: opts.expectedHead, expectedHeads: opts.expectedHeads, onCommit: opts.onCommit, onIncident: opts.onIncident, ioFaults: opts.ioFaults, confinement: opts.confinement, fsProbe: opts.fsProbe });
     const { events, evidence } = this.store.integrity;
     if (!events.ok || !evidence.ok) {
       // Fail closed: rejected records stay on disk as inert bytes and confer nothing.
@@ -293,6 +301,7 @@ export class Kernel {
 
   start(): void {
     if (this.child) throw new Error("kernel already started");
+    this.assertDurable();
     this.spawnAdapter();
   }
 
@@ -441,6 +450,7 @@ export class Kernel {
 
   /** §11 — DVL issues identity; the provider receives a task, never ownership. */
   async startRun(task: RunTask, attempt = 1): Promise<RunIdentity> {
+    this.assertDurable();
     if (!this.capabilities) throw new Error("describe() must succeed before run.start");
     const runId = newId("run");
     const decisions = { db: "postgres", style: "spike" };
@@ -469,6 +479,7 @@ export class Kernel {
    * Every precondition — including checkpoint safety — is checked before anything changes.
    */
   async retryRun(runId: string, task: RunTask, opts: RetryOptions = {}): Promise<RunIdentity> {
+    this.assertDurable();
     if (!this.capabilities) throw new Error("describe() must succeed before run.start");
     const run = this.runs.get(runId);
     if (!run) throw new Error(`unknown run ${runId}`);
@@ -1331,6 +1342,27 @@ export class Kernel {
       this.durableWriteRefusals.push({ type, code: e.code, reason: e.message });
       return null;
     }
+  }
+
+  /**
+   * H2 — no new work while the durable store cannot commit: sealed after an uncertain write,
+   * or opened with an uncommitted tail / persisted seal (explicit recovery required first).
+   */
+  private assertDurable(): void {
+    if (this.store.sealed) throw new SpoolIntegrityError(`durable store sealed: ${this.store.sealed}`, "sealed");
+    const r = this.store.recovery;
+    if (r) throw new SpoolIntegrityError(`durable store requires recovery (${r.source}); call recoverDurableTail()`, "recovery_required");
+  }
+
+  /**
+   * H2 — the host's explicit recovery decision: quarantine the uncommitted tail beyond the
+   * commit boundary, truncate the logs to it, clear the seal, and record the recovery.
+   */
+  recoverDurableTail(): ReturnType<EventStore["recover"]> {
+    const before = { recovery: this.store.recovery, incident: this.store.incident, sealed: this.store.sealed };
+    const report = this.store.recover();
+    this.kernelEvent("kernel.durable_recovery", { ...before, ...report });
+    return report;
   }
 
   /** H2 — Kernel records that could not be made durable (see kernelEvent). */

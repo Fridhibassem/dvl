@@ -33,13 +33,17 @@ const { O_RDONLY, O_DIRECTORY, O_NOFOLLOW } = fs.constants;
  *   hard_link      the file has more than one link (aliased elsewhere)
  *   replaced       the directory/name no longer maps to the inode the Kernel holds (checked BEFORE writing)
  *   after_write    the same, detected only AFTER a write (the write may have landed in the relocated/aliased inode)
- *   sealed         a previous after_write detection disabled further writes (fail closed)
+ *   uncommitted    an error occurred after a durable write began (write/partial write/fsync):
+ *                  the outcome on disk is uncertain; the record is NOT committed and the store seals
+ *   sealed         a previous uncertain write / after_write detection disabled further appends
+ *   recovery_required  the store opened with an uncommitted tail or a persisted seal: appends are
+ *                  refused until the host runs explicit recovery
  *   root_replaced  the project root inode changed
  *   exists         an exclusive create found an existing entry
  *   unsafe_name    a name is not a single plain path component
  *   io             any other I/O failure
  */
-export type SpoolIntegrityCode = "symlink" | "missing" | "not_dir" | "not_regular" | "hard_link" | "replaced" | "after_write" | "sealed" | "root_replaced" | "exists" | "unsafe_name" | "io";
+export type SpoolIntegrityCode = "symlink" | "missing" | "not_dir" | "not_regular" | "hard_link" | "replaced" | "after_write" | "uncommitted" | "sealed" | "recovery_required" | "root_replaced" | "exists" | "unsafe_name" | "io";
 
 /**
  * A Kernel-owned file or directory is not where the Kernel expects it (symlinked component,
@@ -68,6 +72,7 @@ export type FsStage =
   | "import:after-area-check"
   | "import:before-open"
   | "log:before-write"
+  | "log:after-write"
   | "diagnostic:before-write";
 export type FsProbe = (stage: FsStage, target: string) => void;
 export type ConfinementMode = "procfd" | "path";

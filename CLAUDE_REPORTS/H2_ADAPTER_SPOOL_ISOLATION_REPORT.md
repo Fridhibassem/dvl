@@ -4,11 +4,11 @@ Scope: H2 only — adapter/Kernel spool isolation. Base `main` at `f376652` (H1 
 `claude/h2-adapter-spool-isolation`. No H1/H3/H4 work, no architecture redesign, no Stable
 Contract change.
 
-> **Guarantee correction (second re-review):** statements in §4, §7 and §9 that the Kernel
-> "never writes through" or "cannot be redirected" to adapter-moved/aliased targets **overstate**
-> what userspace code can guarantee against a same-user process. The authoritative statement of
-> what H2 guarantees — and what needs OS isolation — is **§10.1**. Earlier sections are kept as
-> the historical record of each review round.
+> **Guarantee corrections:**
+> - **Second re-review:** statements in §4, §7 and §9 that the Kernel "never writes through" or "cannot be redirected" to adapter-moved/aliased targets **overstate** what userspace code can guarantee against a same-user process.
+> - **Third review:** §10.1's claim that final-window mutations are "detected immediately" also **overstates**. Validation observes the *current* state only, so a transient mutation that is undone before the post-write check is not detected. In addition, a record refused live could regain authority on replay. Both are fixed or downgraded in §11.
+>
+> The authoritative statement of what H2 guarantees, and what needs OS isolation, is **§11.1**. Earlier sections are kept as the historical record of each review round.
 
 ## 1. Inspection findings (before any code change)
 
@@ -383,14 +383,14 @@ Per suite: C01 6, C02 4, C03 6, C04 4, C05 4, C06 13, C07 10, C08 14, C09 4, C10
 
 `main` was not pushed and nothing was merged.
 
-## 10. Second Codex Re-review Fixes
+## 10. Second Codex Re-review Fixes (reviewed at `4c53a43` — result: H2 SECOND RE-REVIEW FAIL, see §11)
 
 Codex re-reviewed `57a6797` and returned **H2 RE-REVIEW FAIL** with three blockers. The instruction was to implement a real enforceable boundary or downgrade the guarantee honestly. **The boundary cannot be made strict in userspace Node against a same-user process.** This round therefore:
 1. makes every check that *can* be enforced happen before every write;
 2. adds detection after every write, with a fail-closed latch;
 3. downgrades the stated guarantee to exactly what the tests prove.
 
-### 10.1 What H2 guarantees (authoritative), and what requires OS isolation
+### 10.1 What H2 guarantees, and what requires OS isolation (superseded by §11.1: detection was overstated, and live refusal did not survive restart)
 
 **Threat model:** the adapter runs as the same OS user. Between any two syscalls of the Kernel, it can rename, symlink, hard-link or delete anything under the project root, and move Kernel inodes elsewhere on the same filesystem.
 
@@ -505,7 +505,7 @@ Codex re-reviewed `57a6797` and returned **H2 RE-REVIEW FAIL** with three blocke
 | L2 post-write detection without sealing | 2a, 2b, 2c (both modes) |
 | K1 `kernelEvent` rethrows integrity errors | 2c (both modes) |
 
-### 10.4 Exact results (final tree)
+### 10.4 Exact results (at `4c53a43`; current results: §11.6)
 
 | Command | Result |
 |---|---|
@@ -545,5 +545,175 @@ Per suite: C01 6, C02 4, C03 6, C04 4, C05 4, C06 13, C07 10, C08 14, C09 4, C10
 - an H2 PASS;
 - strict no-outside-write prevention;
 - a run on a macOS host.
+
+`main` was not pushed and nothing was merged.
+
+## 11. Durable Commit Semantics Fix
+
+**Context:**
+- Codex reviewed `4c53a43` and returned **H2 SECOND RE-REVIEW FAIL**.
+- The remaining problem was durable commit semantics under uncertain writes, not path isolation.
+  1. A completed write followed by an fsync failure left the store unsealed, so the next append could fork the chain.
+  2. A record refused live could regain authority after restart, because its MAC was valid.
+  3. Detection was overclaimed.
+- This round defines **one** commit model and applies it to both logs, live reads, replay, evidence, the artifact registry and Kernel start-up.
+
+### 11.1 Chosen commit model: Option A — refused means not committed
+
+**Definitions** (`event-store.ts`, `DurableIncident`/`RecoveryState`, and `durableAppend`):
+
+- **Committed.**
+  - A record is committed only when its write, its fsync (when `fsync` is on) and the post-write integrity re-check (name ↔ inode, single link, directory canonical) **all** succeed.
+  - Only then do the chain head, in-memory history and evidence map advance, and the store publishes the new **commit boundary** (`{events, evidence}` heads) to the host via `onCommit`.
+- **Refused before the write.** The target is already unsafe (symlink, hard link, swapped or moved directory). Nothing is written; this is unchanged from earlier rounds.
+- **Uncertain** (any error *after the write begins*):
+  - write error, partial write followed by an I/O error, fsync error, or post-write detection (`after_write`);
+  - the record may be on disk, so it is **not committed**;
+  - **before any later append** the store seals (`sealed`) and never appends again from the old head, so **no chain fork** is possible;
+  - an incident is reported to the host (`onIncident`) and persisted best-effort as an **HMAC-authenticated seal marker** `.dvl/integrity/sealed.json`, holding the commit boundary at the incident;
+  - error code: `uncommitted` for I/O, `after_write` for detection.
+- **Same-instance disk reads** (`readFromDisk`, `readEvidenceFromDisk`) return committed records only. They read up to the live commit boundary, never a possibly-written record beyond it.
+- **Replay:**
+  - The commit boundary is the **host anchors** (`expectedHeads`, both logs; legacy `expectedHead` still covers events) when given, else the **authenticated seal marker**.
+  - Records and bytes beyond the boundary are counted as `uncommitted` and **quarantined**: never loaded into history, the evidence map or the artifact registry.
+  - The store opens **RECOVERY_REQUIRED**: appends, `Kernel.start`, `startRun` and `retryRun` throw `recovery_required`.
+  - A forged or corrupt marker confers nothing (`integrity.marker = "invalid"`).
+- **Recovery** is an explicit host decision: `Kernel.recoverDurableTail()` → `EventStore.recover()`.
+  1. Copy every byte beyond the boundary of each log to `.dvl/integrity/quarantine-<log>-<ts>.jsonl`.
+  2. Truncate the logs to the boundary.
+  3. Remove the marker, clear the seal, and record `kernel.durable_recovery`.
+  - It refuses if a log is *shorter* than its boundary: a rollback needs a host decision.
+- **Torn fragment.** A final fragment without a newline can never be a complete committed record. With no boundary at all, it is quarantined automatically at open. Previously the next append was glued onto it and became unreplayable.
+- **Evidence and artifacts follow the same rule.**
+  - An artifact registration (`kernel.artifact_registered`) that is uncertain is not in the registry live, after replay, or after recovery, so `verifyKernelArtifact` returns "not registered" even though the bytes exist.
+  - A `FILE_SNAPSHOT` (`VALIDATED`) whose evidence write is uncertain never becomes `VALIDATED`: not live, not in same-instance disk reads, not after restart with host anchors or with the marker, and not after recovery.
+
+**H2 guarantees** (enforced, and pinned by C20–C23):
+1. Adapter and Kernel areas are separate, and location never confers trust (registration plus hash; HMAC chain).
+2. Kernel reads use confined no-follow, single-link, inode-bound access.
+3. Pre-write refusal: any unsafe state that exists before a write is refused, with nothing written.
+4. **Commit semantics:**
+   - no acknowledged record is ever unreplayable (no fork);
+   - an uncertain record is never acknowledged, and is never authoritative on replay when a commit boundary (host anchors, or a surviving seal marker) is available;
+   - recovery is explicit.
+5. **Post-write check:** a mutation still in place after the write is detected, and seals the store or disables diagnostics.
+
+**H2 does NOT guarantee:**
+- **Detection of transient mutations.** Validation observes the *current* state. An alias or move created during the write and undone before the post-write check is **not detected**. The record commits, and an outside name may have observed it (C23-7 demonstrates this).
+- **Prevention of the final racing write.** One write can land in a relocated or aliased Kernel inode (C22).
+- **A boundary without host anchors once the marker is gone.** If the host keeps no anchors and a same-user process deletes the seal marker, a complete MAC-valid uncommitted tail record is indistinguishable from a committed one and is accepted (C23-5 demonstrates this). **The supported configuration is host-held anchors**, kept from `onCommit`.
+- **Protection against the adapter writing or deleting files** under the root.
+
+**Strict prevention and guaranteed detection both require OS/access isolation:** a separate OS user, or a mount namespace or container in which the Kernel's `.dvl` areas are absent or read-only to the adapter.
+
+### 11.2 Exact behaviour for uncertain writes
+
+| Situation | Live outcome | Head / history / evidence / registry | Later appends | Disk reads (same instance) | Restart with host anchors | Restart, marker only | Restart, no anchors, no marker |
+|---|---|---|---|---|---|---|---|
+| Write fails / partial write + I/O error | throws `uncommitted`; sealed; incident (+ marker) | unchanged | `sealed` | committed only | quarantined; RECOVERY_REQUIRED | quarantined; RECOVERY_REQUIRED | torn fragment auto-quarantined; complete record: **accepted (limitation)** |
+| Full write, then fsync error | throws `uncommitted`; sealed | unchanged | `sealed` | committed only | quarantined; RECOVERY_REQUIRED | quarantined; RECOVERY_REQUIRED | **accepted (limitation)** |
+| Post-write detection (alias/move still present) | throws `after_write`; sealed | unchanged | `sealed` | refused while the alias exists; then committed only | quarantined; RECOVERY_REQUIRED | quarantined; RECOVERY_REQUIRED | **accepted (limitation)** |
+| Transient alias/move, undone before the post-write check | **committed** (not detected) | advanced | allowed | includes it | accepted | — | accepted |
+
+The Kernel never throws into handlers or timers on these paths: `kernelEvent` returns `null` and logs to `durableWriteRefusals`. New work (`start`/`startRun`/`retryRun`) is refused while sealed or recovery is required.
+
+### 11.3 Exact fixes (files)
+
+- **`dvl-spike/src/kernel/event-store.ts`:**
+  - Commit model types: `CommitHeads`, `DurableIncident`, `RecoveryState`.
+  - Options: `expectedHeads`, `onCommit`, `onIncident`, `ioFaults` (test-only fault injection, given the record being written).
+  - `durableAppend`:
+    1. sealed/recovery checks;
+    2. pre-write bind;
+    3. write;
+    4. optional fsync;
+    5. probe `log:after-write`;
+    6. post-write bind.
+
+    Any error after the write begins seals the store; on success it advances the head, `committedBytes` and `onCommit`.
+  - Seal marker: `seal()` writes it, `readMarker()` reads it (HMAC, domain-separated).
+  - `readChain(kind, boundary)` is byte-accurate. It stops at the boundary, counts the `uncommitted` tail, and treats a torn fragment as uncommitted.
+  - `replay()` resolves the boundary from host anchors, else the marker, then sets RECOVERY_REQUIRED or auto-quarantines a torn fragment.
+  - Disk reads are bounded by the live commit head.
+  - New `recover()`, `heads()`, `recovery`, `incident`.
+- **`dvl-spike/src/kernel/kernel.ts`:**
+  - passes `expectedHeads`/`onCommit`/`onIncident`/`ioFaults` through;
+  - `assertDurable()` guards `start`, `startRun` and `retryRun`;
+  - new `recoverDurableTail()`.
+- **`dvl-spike/src/kernel/confined-fs.ts`:** codes `uncommitted` and `recovery_required`; probe stage `log:after-write`.
+- **`dvl-spike/src/conformance/harness.ts`:** plays the host's commit-boundary store. Every Kernel publishes to it via `onCommit`; `anchorsFor(root)` returns it, for tests that replay with host anchors.
+- **New test file:** `dvl-spike/src/conformance/c23-h2-durable-commit-semantics.test.ts`.
+
+**Preserved:**
+- diagnostics without long-lived handles, with refusal/count/drop (C22);
+- static symlink/hard-link read refusal (C21-3, C23-3);
+- import-area disappearance → `CORRUPTED` evidence (C21-4d/4e);
+- C20 stable-code portability;
+- C18/C19.
+
+### 11.4 Tests: C23 (10 tests)
+
+| Test | Covers | Asserts |
+|---|---|---|
+| 1 ×4 | {events, evidence} × {full write then fsync error, partial write then I/O error} | `uncommitted`; sealed; head/history unchanged; same-instance disk reads exclude it (the fully written record *is* on disk); later events **and** evidence appends `sealed` with no bytes written; incident + marker. Restart **with host anchors**: quarantined, RECOVERY_REQUIRED, `start()` and appends refused. Restart **without anchors**: marker valid, `seal_marker` recovery. `recoverDurableTail()` quarantines and truncates; then a new append, then an anchored replay: `ok`, no rejected lines, every acknowledged record present, the uncertain one absent |
+| 2 | Codex fork scenario | After write+fsync error, the next append is `sealed` (not acknowledged). Replay with and without anchors: every acknowledged record present, zero `mac_mismatch` |
+| 3 | Real Kernel snapshot/evidence path | `happy` run then `trySnapshot`; the evidence log is aliased while the `FILE_SNAPSHOT` record is written. Rejects `after_write`; no `VALIDATED` live; disk read refused while the alias exists, then committed only after removal. Restart with anchors / with marker / after recovery: never `VALIDATED` |
+| 4 | Artifact registration recovery | fsync error on `kernel.artifact_registered` during `oversized-spooled`: bytes on disk, `verifyKernelArtifact` → not registered live, after restart with/without anchors, and after recovery; no evidence for the action; run not finished |
+| 5 | **Limitation** (no anchors, marker deleted) | the MAC-valid uncertain evidence record **is accepted**; with host anchors it is quarantined again |
+| 6 | Torn fragment, no boundary | auto-quarantined at open; a later append replays cleanly (no rejected lines) |
+| 7 | **Limitation** (transient mutation) | an alias created before the write and removed before the post-check is **not detected**: the record commits, the store is not sealed, and the alias contents captured during the window contain the record |
+
+**Mutation check** (each applied alone against C23, then restored byte-for-byte):
+
+| Mutation | Failing C23 tests |
+|---|---|
+| U1 no seal on uncertain write | 1 (all 4), 2, 3, 4, 5, 6 |
+| U2 disk reads not bounded by the commit head | 1 (2 variants), 3 |
+| U3b replay ignores host anchors **and** marker | 1 (2 variants), 2, 3, 4, 5 |
+| U3c replay ignores host anchors only | 5 |
+| U4 seal marker not persisted | 1 (all 4), 2, 3, 4, 5, 6 |
+| U5 no torn-fragment quarantine | 6 |
+| U6 no durability guard on `Kernel.start` | 1 (all 4) |
+
+### 11.5 Limitations
+
+- **Without host anchors, the boundary survives restart only via the seal marker.** A same-user process can delete the marker, after which a complete signed uncommitted record is accepted (C23-5). Host-held anchors (`onCommit` → `expectedHeads`) close this and are the supported configuration. They must be persisted by the host outside the adapter's reach.
+- **Transient mutations are not detected** (C23-7): validation sees current state only.
+- **The final racing write can land in a relocated or aliased inode** (C22).
+- **Sealing and RECOVERY_REQUIRED are fail-closed availability effects.** An adapter able to cause them can stop the Kernel's durable logging until the host recovers.
+- **Recovery is all-or-nothing per log.** It truncates to the boundary and quarantines everything after it, including adapter-appended junk. It refuses on rollback (log shorter than boundary).
+- **The host-anchor callback is synchronous.** A host that loses the latest `onCommit` value (e.g. its own crash) will see the last committed records as uncommitted and quarantine them. That's safe (they're not authoritative), but they're then lost to replay until the host restores them from quarantine.
+- **Carried over:**
+  - root trusted by inode;
+  - spawn-failure cleanup kills the direct child only;
+  - no macOS host run (fallback mode exercised via `DVL_FS_CONFINEMENT=path`);
+  - the original Codex probe file is not in the repository.
+
+### 11.6 Exact results (final tree)
+
+| Command | Result |
+|---|---|
+| `npm test` run 1 | exit 0 — 23 files, **180/180 passed** |
+| `npm test` run 2 | exit 0 — 23 files, **180/180 passed** |
+| `npm test` run 3 | exit 0 — 23 files, **180/180 passed** |
+| `npm run typecheck` | exit 0 |
+| `npm run spike` | exit 0 — "SPIKE OK — every scenario reached its expected terminal state" |
+| `npx vitest run src/conformance/c18* src/conformance/c19* src/conformance/c20* src/conformance/c21* src/conformance/c22*` | exit 0 — 5 files, **62/62 passed** (C18 8, C19 3, C20 7, C21 26, C22 18) |
+| `npx vitest run src/conformance/c23*` | **10/10 passed** |
+| `DVL_FS_CONFINEMENT=path npm test` (macOS fallback mode, on Linux) | exit 0 — 23 files, **180/180 passed** |
+
+Per suite: C01 6, C02 4, C03 6, C04 4, C05 4, C06 13, C07 10, C08 14, C09 4, C10 7, C11 7, C12 5, C13 6, C14 8, C15 5, C16 3, C17 2, C18 8, C19 3, C20 7, C21 26, C22 18, **C23 10**.
+
+### 11.7 Ready for Codex?
+
+**Yes — ready for Codex review of the durable commit semantics.**
+- One model (Option A) is applied consistently across append, disk reads, replay, evidence, the artifact registry, Kernel start-up and recovery.
+- The guarantees are restated to match what is enforced, and the two remaining limitations (transient mutation, boundary loss without host anchors) are demonstrated by tests.
+
+**Not claimed:**
+- an H2 PASS;
+- strict no-outside-write prevention;
+- guaranteed detection;
+- a macOS host run.
 
 `main` was not pushed and nothing was merged.
