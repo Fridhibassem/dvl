@@ -13,7 +13,8 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { EventStore, newId, sha256, type ChainHead, type ChainReport } from "./event-store.js";
+import type { FsProbe } from "./confined-fs.js";
+import { EventStore, SpoolIntegrityError, newId, sha256, type ChainHead, type ChainReport, type EventStoreOptions } from "./event-store.js";
 import { NdjsonTransport, type TransportIssue } from "./ndjson-transport.js";
 import {
   CONTRACT_VERSION,
@@ -71,6 +72,20 @@ export interface KernelOptions {
   expectedHead?: ChainHead;
   /** H3 — protocol queue bounds per adapter instance (defaults: MAX_QUEUED_FRAMES / MAX_QUEUED_BYTES). */
   queueLimits?: Partial<QueueLimits>;
+  /** H2 commit model — host-held commit boundary for both logs (last value from onCommit). */
+  expectedHeads?: EventStoreOptions["expectedHeads"];
+  /** H2 — receives the new commit boundary after every committed record (host persists it). */
+  onCommit?: EventStoreOptions["onCommit"];
+  /** H2 — receives the incident when the store seals after an uncertain durable write. */
+  onIncident?: EventStoreOptions["onIncident"];
+  /** H2 — explicit host decision for an anchor mismatch (see EventStoreOptions.hostDecision). */
+  hostDecision?: EventStoreOptions["hostDecision"];
+  /** H2 — test-only durable-write fault injection. */
+  ioFaults?: EventStoreOptions["ioFaults"];
+  /** H2 — filesystem confinement mode for Kernel-owned paths ("path" forces the fallback). */
+  confinement?: "auto" | "path";
+  /** H2 — test-only probe at filesystem check/use points (deterministic race injection). */
+  fsProbe?: FsProbe;
 }
 
 export interface QueueLimits {
@@ -261,13 +276,14 @@ export class Kernel {
   readonly projectId: string;
 
   constructor(private readonly opts: KernelOptions) {
-    this.store = new EventStore({ root: opts.root, fsync: opts.fsync, integrityKey: opts.integrityKey, expectedHead: opts.expectedHead });
+    this.store = new EventStore({ root: opts.root, fsync: opts.fsync, integrityKey: opts.integrityKey, expectedHead: opts.expectedHead, expectedHeads: opts.expectedHeads, hostDecision: opts.hostDecision, onCommit: opts.onCommit, onIncident: opts.onIncident, ioFaults: opts.ioFaults, confinement: opts.confinement, fsProbe: opts.fsProbe });
     const { events, evidence } = this.store.integrity;
     if (!events.ok || !evidence.ok) {
       // Fail closed: rejected records stay on disk as inert bytes and confer nothing.
       const summarize = (r: ChainReport) => ({ ok: r.ok, accepted: r.accepted, truncated: r.truncated, rejectedCount: r.rejected.length, rejected: r.rejected.slice(0, 50) });
       this.kernelEvent("kernel.integrity_violation", { events: summarize(events), evidence: summarize(evidence) });
     }
+    if (this.store.rollbackAccepted) this.kernelEvent("kernel.anchor_rollback_accepted", this.store.rollbackAccepted);
     if (this.store.ephemeralKey) this.kernelEvent("kernel.integrity_key_ephemeral", { note: "no host integrityKey: durable records will not authenticate after restart" });
     this.limits = { maxDurationMs: 60_000, maxIncomingBytes: 256 * 1024 * 1024, ...opts.limits };
     this.queueLimits = { maxQueuedFrames: MAX_QUEUED_FRAMES, maxQueuedBytes: MAX_QUEUED_BYTES, ...opts.queueLimits };
@@ -288,6 +304,7 @@ export class Kernel {
 
   start(): void {
     if (this.child) throw new Error("kernel already started");
+    this.assertDurable();
     this.spawnAdapter();
   }
 
@@ -347,10 +364,40 @@ export class Kernel {
 
     // The instance id is bound into these closures at spawn time: frames are
     // attributed to the pipe they arrived on, not to whatever instance is current.
-    this.transport = new NdjsonTransport(child, {
+    try {
+      this.transport = this.newTransport(child, adapterInstanceId, spools.kernelDir);
+    } catch (e) {
+      // H2: diagnostics could not be opened safely in the Kernel spool. Never leave the
+      // just-spawned child running without a supervised, drained transport, and never let
+      // the previous instance's transport stand in for it.
+      child.kill("SIGKILL");
+      this.transport = null;
+      this.closed = true;
+      this.terminatedInstances.add(adapterInstanceId);
+      this.kernelEvent("kernel.adapter_spawn_failed", { adapterInstanceId, reason: (e as Error).message });
+      throw e;
+    }
+
+    const spawnedAt = Date.now();
+    this.durationTimer = setTimeout(() => {
+      // Only ever halts the instance it was armed for.
+      if (this.adapterInstanceId !== adapterInstanceId) return;
+      this.haltForSafety(`maxDurationMs ${this.limits.maxDurationMs} exceeded`, { kind: "max_duration", maxDurationMs: this.limits.maxDurationMs, elapsedMs: Date.now() - spawnedAt });
+    }, this.limits.maxDurationMs);
+    this.durationTimer.unref();
+  }
+
+  private newTransport(child: ChildProcess, adapterInstanceId: string, kernelDir: string): NdjsonTransport {
+    return new NdjsonTransport(child, {
       // H2: stderr + non-DVL1 stdout drain into THIS instance's Kernel-owned spool.
-      spoolDir: spools.kernelDir,
+      spoolDir: kernelDir,
       diagnosticsName: "diagnostics",
+      // H2: every diagnostics create/append (stderr, noise, lazy overflow) is confined to this
+      // instance's Kernel spool and revalidated per write; no descriptor is kept between writes.
+      diagnosticSink: {
+        create: (fileName) => this.store.createDiagnostic(adapterInstanceId, fileName),
+        append: (fileName, data) => this.store.appendDiagnostic(adapterInstanceId, fileName, data),
+      },
       // H3: bounded, instance-owned queue; a fresh one for every instance.
       adapterInstanceId,
       maxQueuedFrames: this.queueLimits.maxQueuedFrames,
@@ -360,14 +407,6 @@ export class Kernel {
       onIssue: (i) => this.onTransportIssue(i, adapterInstanceId),
       onClose: (info) => this.onAdapterClosed(info, adapterInstanceId),
     });
-
-    const spawnedAt = Date.now();
-    this.durationTimer = setTimeout(() => {
-      // Only ever halts the instance it was armed for.
-      if (this.adapterInstanceId !== adapterInstanceId) return;
-      this.haltForSafety(`maxDurationMs ${this.limits.maxDurationMs} exceeded`, { kind: "max_duration", maxDurationMs: this.limits.maxDurationMs, elapsedMs: Date.now() - spawnedAt });
-    }, this.limits.maxDurationMs);
-    this.durationTimer.unref();
   }
 
   /** Random, never pid- or counter-derived; checked against ids already in the store. */
@@ -414,6 +453,7 @@ export class Kernel {
 
   /** §11 — DVL issues identity; the provider receives a task, never ownership. */
   async startRun(task: RunTask, attempt = 1): Promise<RunIdentity> {
+    this.assertDurable();
     if (!this.capabilities) throw new Error("describe() must succeed before run.start");
     const runId = newId("run");
     const decisions = { db: "postgres", style: "spike" };
@@ -442,6 +482,7 @@ export class Kernel {
    * Every precondition — including checkpoint safety — is checked before anything changes.
    */
   async retryRun(runId: string, task: RunTask, opts: RetryOptions = {}): Promise<RunIdentity> {
+    this.assertDurable();
     if (!this.capabilities) throw new Error("describe() must succeed before run.start");
     const run = this.runs.get(runId);
     if (!run) throw new Error(`unknown run ${runId}`);
@@ -1014,10 +1055,31 @@ export class Kernel {
       // H2: the adapter's claim is never attached. Only bytes the Kernel verified and
       // imported into its own spool are referenced, via a Kernel-issued ref.
       const aid = ev.adapterInstanceId!;
-      const imp = this.store.importAdapterArtifact(outputRef, aid, { runId: run.identity.runId, attempt: run.identity.attempt });
+      let imp: ReturnType<EventStore["importAdapterArtifact"]>;
+      try {
+        imp = this.store.importAdapterArtifact(outputRef, aid, { runId: run.identity.runId, attempt: run.identity.attempt, sourceEventId: ev.eventId });
+      } catch (e) {
+        // Defence in depth: an unexpected import failure still yields CORRUPTED evidence
+        // instead of escaping into the transport handler and losing evidence processing.
+        imp = { ok: false, reason: `artifact import failed: ${(e as Error).message}` };
+      }
       if (imp.ok) {
         refs.push(imp.ref);
-        this.kernelEvent("kernel.artifact_imported", { adapterInstanceId: aid, artifactRef: imp.ref.artifactRef, sourceArtifactRef: imp.ref.sourceArtifactRef, hash: imp.ref.hash, byteSize: imp.ref.byteSize }, run.identity.runId, ev.attempt);
+        this.kernelEvent(
+          "kernel.artifact_imported",
+          {
+            adapterInstanceId: aid,
+            artifactRef: imp.ref.artifactRef,
+            path: imp.ref.path,
+            sourceArtifactRef: imp.ref.sourceArtifactRef,
+            sourcePath: (outputRef as { path: string }).path,
+            sourceEventId: ev.eventId,
+            hash: imp.ref.hash,
+            byteSize: imp.ref.byteSize,
+          },
+          run.identity.runId,
+          ev.attempt,
+        );
       } else {
         status = "CORRUPTED";
         reason = `artifact verification failed: ${imp.reason}`;
@@ -1028,6 +1090,12 @@ export class Kernel {
     // very event's payload (object identity). An adapter-supplied `__spooled` key is just data.
     if (ev.payload !== null && typeof ev.payload === "object" && KERNEL_SPOOL_MARKERS.has(ev.payload)) {
       refs.push((ev.payload as { __spooled: ArtifactRef }).__spooled);
+    }
+    // H2: the Kernel could not spool this event's oversized payload safely: its content is
+    // not available as Kernel material, so the evidence cannot be trusted.
+    if (ev.payload !== null && typeof ev.payload === "object" && KERNEL_SPOOL_REFUSED.has(ev.payload)) {
+      status = "CORRUPTED";
+      reason = `payload spooling refused: ${(ev.payload as { __spoolRefused: string }).__spoolRefused}`;
     }
 
     const summary = String(payload.summary ?? `${kind} exit=${String(payload.exitCode)}`).slice(0, 280);
@@ -1123,6 +1191,11 @@ export class Kernel {
   private onTransportIssue(issue: TransportIssue, adapterInstanceId: string): void {
     // Noise is expected and already spooled; only count it in the store as a diagnostic.
     if (issue.kind === "noise") return;
+    if (issue.kind === "diagnostics_refused") {
+      const { kind: _k, ...d } = issue;
+      this.kernelEvent("kernel.spool_integrity_violation", { kind: "diagnostics_refused", ...d });
+      return;
+    }
     if (issue.kind === "byte_limit") {
       const { kind: _kind, ...b } = issue;
       if (adapterInstanceId !== this.adapterInstanceId || this.terminatedInstances.has(adapterInstanceId)) {
@@ -1258,9 +1331,46 @@ export class Kernel {
     run.endWaiters.splice(0).forEach((w) => w(status));
   }
 
-  kernelEvent(type: string, payload: unknown, runId?: string, attempt?: number): StoredEvent {
-    return this.store.append({ origin: "kernel", trust: "kernel_truth", type, payload, runId, attempt });
+  /**
+   * Append a Kernel record. H2: if the durable log refuses the write (unsafe log path, or the
+   * store sealed itself after a post-write integrity detection) the Kernel fails closed
+   * WITHOUT throwing into timers/handlers: the record is not durable, it is not added to
+   * history, and the refusal is kept in `durableWriteRefusals` for the host.
+   */
+  kernelEvent(type: string, payload: unknown, runId?: string, attempt?: number): StoredEvent | null {
+    try {
+      return this.store.append({ origin: "kernel", trust: "kernel_truth", type, payload, runId, attempt });
+    } catch (e) {
+      if (!(e instanceof SpoolIntegrityError)) throw e;
+      this.durableWriteRefusals.push({ type, code: e.code, reason: e.message });
+      return null;
+    }
   }
+
+  /**
+   * H2 — no new work while the durable store cannot commit: sealed after an uncertain write,
+   * or opened with an uncommitted tail / persisted seal (explicit recovery required first).
+   */
+  private assertDurable(): void {
+    if (this.store.sealed) throw new SpoolIntegrityError(`durable store sealed: ${this.store.sealed}`, "sealed");
+    const r = this.store.recovery;
+    if (r?.source === "anchor_mismatch") throw new SpoolIntegrityError("durable store cannot reach the host commit boundary (anchor mismatch): restore the logs or reopen with an explicit host rollback decision", "anchor_mismatch");
+    if (r) throw new SpoolIntegrityError(`durable store requires recovery (${r.source}); call recoverDurableTail()`, "recovery_required");
+  }
+
+  /**
+   * H2 — the host's explicit recovery decision: quarantine the uncommitted tail beyond the
+   * commit boundary, truncate the logs to it, clear the seal, and record the recovery.
+   */
+  recoverDurableTail(): ReturnType<EventStore["recover"]> {
+    const before = { recovery: this.store.recovery, incident: this.store.incident, sealed: this.store.sealed };
+    const report = this.store.recover();
+    this.kernelEvent("kernel.durable_recovery", { ...before, ...report });
+    return report;
+  }
+
+  /** H2 — Kernel records that could not be made durable (see kernelEvent). */
+  readonly durableWriteRefusals: { type: string; code: string; reason: string }[] = [];
 }
 
 // ───────────────────────── helpers ─────────────────────────
@@ -1276,6 +1386,8 @@ export class Kernel {
  * Identity-based, so an adapter payload that merely contains a `__spooled` key never matches.
  */
 const KERNEL_SPOOL_MARKERS = new WeakSet<object>();
+/** H2 — payload objects standing in for an oversized payload the Kernel could not spool safely. */
+const KERNEL_SPOOL_REFUSED = new WeakSet<object>();
 
 function capPayload(k: Kernel, adapterInstanceId: string, payload: unknown, type: string, runId?: string): unknown {
   if (payload === undefined) return undefined;
@@ -1283,12 +1395,23 @@ function capPayload(k: Kernel, adapterInstanceId: string, payload: unknown, type
   const bytes = Buffer.byteLength(json);
   if (bytes <= MAX_INLINE_PAYLOAD_BYTES) return payload;
   // H2: spooled into the sending instance's own Kernel-owned spool, ref stamped with it.
-  const ref = k.store.spoolArtifact(json, {
-    owner: adapterInstanceId,
-    mimeType: "application/json",
-    summary: `oversized inline payload of ${type} (${bytes} bytes) spooled by Kernel`,
-    provenance: { origin: "kernel_spooled_payload", runId },
-  });
+  let ref: ArtifactRef;
+  try {
+    ref = k.store.spoolArtifact(json, {
+      owner: adapterInstanceId,
+      mimeType: "application/json",
+      summary: `oversized inline payload of ${type} (${bytes} bytes) spooled by Kernel`,
+      provenance: { origin: "kernel_spooled_payload", runId },
+    });
+  } catch (e) {
+    if (!(e instanceof SpoolIntegrityError)) throw e;
+    // The event is still recorded (without the payload), so lifecycle processing continues;
+    // nothing was written outside the spool and nothing is registered.
+    k.kernelEvent("kernel.spool_integrity_violation", { kind: "payload_spool_refused", adapterInstanceId, type, bytes, reason: e.message }, runId);
+    const refused = { __spoolRefused: e.message, __note: "payload exceeded 32KB inline cap; Kernel spooling refused" };
+    KERNEL_SPOOL_REFUSED.add(refused);
+    return refused;
+  }
   k.kernelEvent("kernel.protocol_violation", { kind: "inline_payload_exceeded", type, bytes, limit: MAX_INLINE_PAYLOAD_BYTES, artifactRef: ref.artifactRef }, runId);
   const marker = { __spooled: ref, __note: "payload exceeded 32KB inline cap; spooled by Kernel" };
   KERNEL_SPOOL_MARKERS.add(marker);

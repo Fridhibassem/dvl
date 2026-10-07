@@ -36,6 +36,11 @@ export type Step =
   | { op: "forge_log_records" }
   /** Unreported workspace write (no events). */
   | { op: "write_raw"; rel: string; content: string }
+  /**
+   * Adversarial (H2): hard-link a Kernel-owned artifact (this instance's Kernel spool) into the
+   * adapter's own area and claim it as fresh output with its exact hash and size.
+   */
+  | { op: "alias_and_finish"; actor: string; actionId: string }
   /** Adversarial (blocker B): emit a frame mimicking kernel.artifact_registered for planted bytes. */
   | { op: "forge_registration"; actor: string }
   /** Adversarial (blocker B): re-cite an artifact the Kernel registered for an earlier event. */
@@ -220,6 +225,16 @@ export const SCENARIOS: Record<string, Step[]> = {
     ...start(),
     { op: "emit", type: "action.started", actor: ROOT, payload: { actionId: "act_kp", kind: "test" } },
     { op: "spool_and_finish", actor: ROOT, actionId: "act_kp", kind: "test", bytes: 1024, exitCode: 0, pathOverride: ".dvl/spool/kernel/forged.log" },
+    ...finish(),
+  ],
+
+  /** H2 — adapter re-presents Kernel-owned bytes as its own output via a hard link. */
+  "artifact-hardlink-alias": [
+    ...start(),
+    { op: "emit", type: "action.started", actor: ROOT, payload: { actionId: "act_src", kind: "test" } },
+    { op: "spool_and_finish", actor: ROOT, actionId: "act_src", kind: "test", bytes: 2048, exitCode: 0 },
+    { op: "emit", type: "action.started", actor: ROOT, payload: { actionId: "act_alias", kind: "test" } },
+    { op: "alias_and_finish", actor: ROOT, actionId: "act_alias" },
     ...finish(),
   ],
 
