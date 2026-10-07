@@ -23,6 +23,11 @@ export const MAX_LINE_BYTES = MAX_FRAME_BYTES;
  * at most this many bytes are written to the diagnostic spool; the rest is counted and dropped.
  */
 export const MAX_DIAGNOSTIC_STREAM_BYTES = 8 * 1024 * 1024;
+/**
+ * H3 — part of each stream's MAX_DIAGNOSTIC_STREAM_BYTES reserved for the one-time "cap reached"
+ * marker, so the file never exceeds the cap: payload ≤ cap − reserve, marker ≤ reserve.
+ */
+export const DIAGNOSTIC_CAP_MARKER_RESERVE = 160;
 /** H3 — maximum bytes of any attacker-derived text in a diagnostic (reason detail / preview). */
 export const MAX_DIAGNOSTIC_DETAIL_BYTES = 256;
 /**

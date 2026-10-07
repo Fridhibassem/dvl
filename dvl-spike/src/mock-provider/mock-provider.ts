@@ -389,6 +389,14 @@ async function handle(cmd: Record<string, unknown>): Promise<void> {
         const f = sequenced(padded.frame);
         await writeOut(encodeFrame({ ...f, payload: { ...((f.payload as object) ?? {}), pad: "x".repeat(padded.padBytes) } }));
       }
+      //   openLine    — "DVL1:" + bytes of filler in 64 KiB writes, NO newline, no pong: the
+      //                 line stays open (tests rejection at the cap without newline/EOF).
+      const openLine = payload.openLine as { bytes: number } | undefined;
+      if (openLine) {
+        await writeOut("DVL1:");
+        for (let sent = 0; sent < openLine.bytes; sent += 65536) await writeOut("x".repeat(Math.min(65536, openLine.bytes - sent)));
+        return;
+      }
       const unterminated = payload.unterminated as Record<string, unknown> | undefined;
       if (unterminated) {
         await writeOut(encodeFrame(sequenced(unterminated)).slice(0, -1)); // no "\n"

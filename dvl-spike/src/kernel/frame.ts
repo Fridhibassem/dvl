@@ -64,6 +64,9 @@ export function parseLine(line: string): ParsedLine {
  * to make the Kernel buffer an unbounded line. Oversized lines are discarded
  * (prefix preview retained) and reported via onOverflow.
  */
+/** H3 — bytes of an over-cap line kept as its diagnostic preview. */
+export const OVERFLOW_PREVIEW_BYTES = 256;
+
 export class LineSplitter {
   private parts: Buffer[] = [];
   private size = 0;
@@ -77,6 +80,12 @@ export class LineSplitter {
     private readonly maxLineBytes = MAX_LINE_BYTES,
     /** H3 — a final line WITHOUT its terminating newline at EOF (never a complete frame). */
     private readonly onPartial?: (line: string) => void,
+    /**
+     * H3 — called ONCE, synchronously, at the moment a line first crosses the cap (no newline
+     * or EOF needed), with the bytes seen so far and an owned preview of at most
+     * OVERFLOW_PREVIEW_BYTES. `onOverflow` still reports the final size when the line ends.
+     */
+    private readonly onOverflowStart?: (info: { bytes: number; head: string }) => void,
   ) {}
 
   push(chunk: Buffer): void {
@@ -112,10 +121,19 @@ export class LineSplitter {
     }
     if (this.size + buf.length > this.maxLineBytes) {
       this.overflowing = true;
-      this.overflowHead = Buffer.concat([...this.parts, buf]).subarray(0, 256);
+      // H3: copy at most the preview into a small, independently owned buffer — never
+      // concatenate (or keep a view into) the whole over-cap line or chunk.
+      const head = Buffer.alloc(Math.min(OVERFLOW_PREVIEW_BYTES, this.size + buf.length));
+      let off = 0;
+      for (const part of [...this.parts, buf]) {
+        if (off >= head.length) break;
+        off += part.copy(head, off, 0, Math.min(part.length, head.length - off));
+      }
+      this.overflowHead = head;
       this.overflowBytes = this.size + buf.length;
       this.parts = [];
       this.size = 0;
+      this.onOverflowStart?.({ bytes: this.overflowBytes, head: head.toString("utf8") });
       return;
     }
     this.parts.push(Buffer.from(buf)); // copy: caller may reuse chunk memory

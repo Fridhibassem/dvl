@@ -20,7 +20,7 @@ import path from "node:path";
 import { PassThrough } from "node:stream";
 import type { ChildProcess } from "node:child_process";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { encodeFrame } from "../kernel/frame.js";
+import { encodeFrame, LineSplitter } from "../kernel/frame.js";
 import type { Kernel } from "../kernel/kernel.js";
 import { NdjsonTransport, type TransportIssue } from "../kernel/ndjson-transport.js";
 import * as types from "../kernel/types.js";
@@ -29,6 +29,13 @@ import { frame, makeKernel, runScenario, waitForEvent } from "./harness.js";
 const MAX_FRAME_BYTES = (types as Record<string, unknown>).MAX_FRAME_BYTES as number;
 const MAX_DIAG = (types as Record<string, unknown>).MAX_DIAGNOSTIC_STREAM_BYTES as number;
 const MAX_DETAIL = (types as Record<string, unknown>).MAX_DIAGNOSTIC_DETAIL_BYTES as number;
+const RESERVE = (types as Record<string, unknown>).DIAGNOSTIC_CAP_MARKER_RESERVE as number;
+/** Payload bytes in a capped diagnostic file (file size minus the one-time cap marker). */
+const payloadOf = (file: string) => {
+  const b = fs.readFileSync(file);
+  const i = b.lastIndexOf("\n[DVL: diagnostic cap of");
+  return i === -1 ? b.length : i;
+};
 
 let kernels: Kernel[] = [];
 afterEach(async () => {
@@ -90,7 +97,8 @@ describe("C26 H3 transport input bounding — transport (fake child)", () => {
     // Delivered in small chunks: the cap is enforced while reading, never by a claimed length.
     for (let i = 0; i < big.length; i += 65536) x.out(big.slice(i, i + 65536));
     await flush();
-    expect(parse.mock.calls.filter(([s]) => typeof s === "string" && s.length > MAX_FRAME_BYTES)).toEqual([]);
+    const body = big.slice("DVL1:".length, -1); // the exact JSON text of the oversized frame
+    expect(parse.mock.calls.filter(([s]) => typeof s === "string" && (s === body || s.length >= body.length))).toEqual([]);
     expect(x.frames).toEqual([]);
     expect(x.rejected()).toEqual([expect.objectContaining({ reason: "frame_too_large", limit: MAX_FRAME_BYTES })]);
     expect(x.rejected()[0]!.bytes).toBeGreaterThan(MAX_FRAME_BYTES);
@@ -169,10 +177,10 @@ describe("C26 H3 transport input bounding — transport (fake child)", () => {
     for (let i = 0; i < 20; i++) x.err(chunk); // 20 MiB
     await flush();
     const size = fs.statSync(x.t.stderrSpoolPath).size;
-    expect(size).toBeGreaterThanOrEqual(MAX_DIAG);
-    expect(size).toBeLessThanOrEqual(MAX_DIAG + 512); // + one truncation marker
+    expect(size).toBeLessThanOrEqual(MAX_DIAG); // exact cap, marker included
+    expect(payloadOf(x.t.stderrSpoolPath)).toBe(MAX_DIAG - RESERVE);
     expect(x.t.stats.stderrBytes).toBe(20 * 1024 * 1024); // every byte was still read (drained)
-    expect(x.t.stats.diagnosticBytesDropped).toBe(20 * 1024 * 1024 - MAX_DIAG);
+    expect(x.t.stats.diagnosticBytesDropped).toBe(20 * 1024 * 1024 - (MAX_DIAG - RESERVE)); // exact accounting
   });
 
   it("7. huge stdout noise is bounded on disk; an over-long NON-frame line is discarded, not fatal", async () => {
@@ -182,7 +190,7 @@ describe("C26 H3 transport input bounding — transport (fake child)", () => {
     for (let i = 0; i < 20; i++) x.out(chunk); // ~20 MiB of short noise lines
     await flush();
     const size = fs.statSync(x.t.noiseSpoolPath).size;
-    expect(size).toBeLessThanOrEqual(MAX_DIAG + 512);
+    expect(size).toBeLessThanOrEqual(MAX_DIAG);
     expect(x.t.stats.diagnosticBytesDropped).toBeGreaterThan(10 * 1024 * 1024);
     // A single 3 MiB noise line (no DVL1 prefix): discarded with a bounded head; not a protocol failure.
     const y = fakeTransport();
@@ -264,5 +272,143 @@ describe("C26 H3 transport input bounding — Kernel (real adapter)", () => {
       expect((await runScenario(kk, scenario)).status, scenario).toBe("finished");
       expect(kk.store.ofType("kernel.safety_halt"), scenario).toEqual([]);
     }
+  });
+});
+
+describe("C26 H3 transport input bounding — review fixes", () => {
+  it("12. an OPEN oversized DVL1 line is rejected the moment it crosses the cap — no newline/EOF needed; reported once", async () => {
+    const x = fakeTransport();
+    x.out("DVL1:");
+    const chunk = "x".repeat(65536);
+    let sent = 5;
+    while (sent + chunk.length <= MAX_FRAME_BYTES) {
+      x.out(chunk);
+      sent += chunk.length;
+    }
+    expect(x.t.isSealed).toBe(false); // at most the cap so far: not rejected
+    expect(x.rejected()).toEqual([]);
+    x.out(chunk); // crosses the cap; stream stays open
+    expect(x.t.isSealed).toBe(true);
+    expect(x.t.stats.inputRejected).toBe(1);
+    expect(x.rejected()).toEqual([expect.objectContaining({ reason: "frame_too_large", limit: MAX_FRAME_BYTES })]);
+    for (let i = 0; i < 40; i++) x.out(chunk); // drained and discarded, never parsed
+    x.out("\n" + encodeFrame(hb(2)));
+    x.end();
+    await flush();
+    expect(x.rejected()).toHaveLength(1); // newline / EOF add no second rejection
+    expect(x.frames).toEqual([]);
+  });
+
+  it("13. Kernel: a completion queued behind a gated frame never becomes Evidence once an open oversized line crosses the cap", async () => {
+    let release!: () => void;
+    let held = true;
+    const gate = new Promise<void>((r) => (release = r));
+    const k = track(makeKernel("c26-open-gated", { frameGate: async (t) => void (held && t === "heartbeat" && (await gate)) }));
+    k.start();
+    await k.describe();
+    const id = await k.startRun({ role: "builder", goal: "x", acceptanceCriteria: [], scope: ["src/**"], scenario: "idle" });
+    const req = (p: unknown) => (k as unknown as { request: (t: string, p: unknown) => Promise<unknown> }).request("adapter.ping", p);
+    await req({ emit: [frame("run.started", id.runId, 1, "actor_root"), frame("action.started", id.runId, 1, "actor_root", { actionId: "act_1", kind: "test" })] });
+    await k.settle();
+    // heartbeat (gated) + a valid completion queued behind it, then an OPEN 1.06 MiB DVL1 line.
+    void req({
+      emit: [frame("heartbeat", id.runId, 1, "actor_root"), frame("action.finished", id.runId, 1, "actor_root", { actionId: "act_1", kind: "test", exitCode: 0 })],
+      openLine: { bytes: 17 * 65536 },
+    }).catch(() => undefined);
+    await waitForEvent(k, (e) => e.type === "kernel.safety_halt", 10_000); // fired while the line is still open
+    held = false;
+    release();
+    await k.settle();
+    await k.waitClosed(10_000);
+    expect(k.store.ofType("kernel.safety_halt")).toHaveLength(1);
+    expect((k.store.ofType("kernel.safety_halt")[0]!.payload as { kind: string; reason: string }).kind).toBe("transport_input_rejected");
+    expect(k.store.allEvidence()).toEqual([]); // the queued completion was fenced, not applied
+    expect(k.runStatus(id.runId)).toBe("halted");
+  });
+
+  it("14. Kernel: an oversized open line from a STALE instance is recorded, never halts the current instance", async () => {
+    const k = track(makeKernel("c26-open-stale"));
+    k.start();
+    await k.describe();
+    const oldChild = (k as unknown as { child: ChildProcess }).child;
+    const oldAid = k.currentAdapterInstanceId!;
+    k.restartAdapter({ force: true });
+    await k.describe();
+    const current = k.currentAdapterInstanceId!;
+    expect(current).not.toBe(oldAid);
+    oldChild.stdout!.emit("data", Buffer.from("DVL1:" + "y".repeat(MAX_FRAME_BYTES))); // crosses the cap, open
+    await k.settle();
+    const stale = k.store.ofType("kernel.transport_issue").map((e) => e.payload as { kind: string; stale?: boolean; adapterInstanceId?: string });
+    expect(stale).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "input_rejected", stale: true, adapterInstanceId: oldAid })]));
+    expect(k.store.ofType("kernel.safety_halt").filter((e) => (e.payload as { adapterInstanceId?: string }).adapterInstanceId === current)).toEqual([]);
+    expect(k.currentAdapterInstanceId).toBe(current);
+    await k.describe(); // the current instance still answers
+  });
+
+  it("15. after the seal, refused DVL1 lines are stored as bounded escaped records — never raw, never parsed", async () => {
+    const x = fakeTransport();
+    x.out("DVL1:{bad\n"); // seals
+    const parse = vi.spyOn(JSON, "parse");
+    const evil = "DVL1:{" + '\u001b\u0000"'.repeat(100_000);
+    x.out(evil + "\n");
+    x.out(encodeFrame(hb(9)));
+    await flush();
+    expect(parse.mock.calls.filter(([s]) => typeof s === "string" && s.length > 1000)).toEqual([]);
+    const recs = fs.readFileSync(x.t.overflowSpoolPath, "utf8").split("\n").filter(Boolean);
+    expect(recs).toHaveLength(2);
+    expect(x.t.stats.framesRejected).toBe(2);
+    expect(recs[0]).toMatch(new RegExp(`^\\[REFUSED input_rejected bytes=${Buffer.byteLength(evil)}\\] `));
+    for (const r of recs) {
+      expect(Buffer.byteLength(r)).toBeLessThanOrEqual(MAX_DETAIL + 64);
+      expect(r).not.toMatch(/[\u0000-\u001f]/); // no raw control bytes
+    }
+    expect(x.frames).toEqual([]);
+  });
+
+  it("16. every diagnostic stream stops at EXACTLY the cap (marker included): crossing by one byte, many small writes, queue overflow", async () => {
+    // stderr: cap + 1 byte.
+    const a = fakeTransport();
+    a.err(Buffer.alloc(MAX_DIAG + 1, 0x61));
+    await flush();
+    expect(fs.statSync(a.t.stderrSpoolPath).size).toBeLessThanOrEqual(MAX_DIAG);
+    expect(a.t.stats.diagnosticBytesDropped).toBe(MAX_DIAG + 1 - payloadOf(a.t.stderrSpoolPath));
+    // stdout noise: many small writes.
+    const b = fakeTransport();
+    const line = "small noise line\n";
+    let total = 0;
+    for (let i = 0; i < 9; i++) {
+      const c = line.repeat(Math.floor((1024 * 1024) / line.length));
+      b.out(c);
+      total += Buffer.byteLength(c);
+    }
+    await flush();
+    expect(fs.statSync(b.t.noiseSpoolPath).size).toBeLessThanOrEqual(MAX_DIAG);
+    expect(b.t.stats.diagnosticBytesDropped).toBe(total - payloadOf(b.t.noiseSpoolPath));
+    for (const f of [a.t.stderrSpoolPath, b.t.noiseSpoolPath]) expect(fs.readFileSync(f, "utf8").endsWith("further bytes dropped]\n"), f).toBe(true); // marker last, once
+    // queue overflow: seal, then far more refused frames than fit.
+    const c = fakeTransport();
+    c.out("DVL1:{bad\n");
+    const refused = encodeFrame(hb(1, { payload: { pad: "p".repeat(400) } }));
+    const batch = refused.repeat(2000);
+    for (let i = 0; i < 30; i++) c.out(batch);
+    await flush();
+    expect(fs.statSync(c.t.overflowSpoolPath).size).toBeLessThanOrEqual(MAX_DIAG);
+    expect(c.t.stats.framesRejected).toBe(60_000);
+    expect(c.t.stats.diagnosticBytesDropped).toBeGreaterThan(0);
+  });
+
+  it("17. the overflow preview owns at most its 256 bytes; no full-size concatenation of an over-cap line", () => {
+    const heads: string[] = [];
+    const s = new LineSplitter(() => undefined, () => undefined, MAX_FRAME_BYTES, undefined, (i) => heads.push(i.head));
+    const concat = vi.spyOn(Buffer, "concat");
+    const big = Buffer.alloc(32 * 1024 * 1024, 0x78);
+    big.write("DVL1:", 0);
+    s.push(big);
+    const head = (s as unknown as { overflowHead: Buffer }).overflowHead;
+    expect(head.length).toBeLessThanOrEqual(256);
+    expect(head.buffer.byteLength).toBeLessThanOrEqual(256); // independently owned, not a view
+    expect(concat.mock.calls.filter(([list]) => (list as Buffer[]).reduce((n, b) => n + b.length, 0) > 1024)).toEqual([]);
+    expect(heads).toHaveLength(1);
+    expect(heads[0]!.startsWith("DVL1:")).toBe(true);
   });
 });

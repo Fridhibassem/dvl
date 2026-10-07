@@ -6,170 +6,196 @@
 |---|---|
 | Branch | `claude/h3-transport-input-bounding` |
 | Base commit | `6390bdca48f5df037d9fbf9c0335d87dc0d87b31` (`main`, "merge H2 closed branch") |
-| Implementation commit | `43f5784d1e348de60d981bd7726055b8fba5ad41` |
-| Final commit | the commit that adds this report, the direct child of `43f5784`, on the same branch. Its hash is given in the hand-off reply because a file cannot contain its own commit hash |
-| Scope | H3 only. H1 and H2 behaviour unchanged (see "H1/H2 statement"). **H4 not touched.** `main` not pushed, nothing merged |
+| First implementation (reviewed) | `43f5784d1e348de60d981bd7726055b8fba5ad41`, which got **H3 TRANSPORT INPUT BOUNDING REVIEW FAIL** |
+| Final commit | the commit that adds this revision of the report **together with** the review fixes. A file cannot contain its own commit hash; the hash is given in the hand-off reply and is the branch head |
+| Scope | H3 only. H1/H2 behaviour unchanged (see "H1/H2 statement"). **H4 not touched.** `main` not pushed, nothing merged |
 
-## Investigation (before any change)
-
-Read:
-- `frame.ts` (`parseLine`, `LineSplitter`);
-- `ndjson-transport.ts` (drain/process loops, `classify`, diagnostics sink, queue);
-- `kernel.ts` (`onTransportIssue`, `ingest`, `capPayload`);
-- `mock-provider.ts`;
-- `scenarios.ts`;
-- tests C03, C07, C08 and C12.
+## Investigation (base commit)
 
 | Area | Found on the base commit |
 |---|---|
-| Line/frame size | One splitter cap, `MAX_LINE_BYTES` = **4 MiB**, for all stdout lines. A `DVL1:` frame of up to 4 MiB was fully `JSON.parse`d, then its payload was spooled by `capPayload` and registered. That is 128× the 32 KiB inline-payload cap |
-| Over-cap line | Discarded with a raw 256-byte head written to noise, then an `overflow` issue and **processing continued**, even for a `DVL1:` frame |
-| Malformed `DVL1:` frame | `JSON.parse` error recorded, preview written to noise, then **processing continued** (C03 asserted this). The error reason embedded V8's message, which echoes input bytes |
-| Partial frame at EOF | `LineSplitter.end()` flushed the unterminated last line through `onLine`, so a complete JSON object without its newline **was accepted as a frame**. Proven end to end: an unterminated `action.finished` from the real adapter **created Evidence** (C26-10 on base) |
-| After the queue sealed | Every later line was still `JSON.parse`d before being rejected |
-| stderr / stdout noise | Drained continuously and written to the spool **without a per-stream bound**; the only limit was the 256 MiB `maxIncomingBytes` total |
-| Many small frames | Already bounded by the queue limits (1024 frames / 16 MiB) with seal and halt; kept as a regression check |
-| Provider size claims | None used for framing, which is newline-delimited. Artifact sizes are re-verified against `fstat` (H2) |
+| Line/frame size | Single splitter cap of **4 MiB**. A `DVL1:` frame up to 4 MiB was fully `JSON.parse`d, its payload spooled and registered |
+| Over-cap line | Discarded, with a raw 256-byte head written to noise, then processing continued (even for a `DVL1:` frame) |
+| Malformed `DVL1:` frame | Recorded, then processing continued. The reason echoed V8's message, which contains input bytes |
+| Partial frame at EOF | An unterminated final line was parsed and **accepted**. An unterminated `action.finished` from the real adapter **created Evidence** |
+| After seal | Every later line was still `JSON.parse`d; refused frames were stored raw in the overflow spool |
+| stderr / stdout noise | No per-stream bound; only the 256 MiB `maxIncomingBytes` total |
+| Many small frames | Already bounded by the queue limits (1024 / 16 MiB), with seal and halt |
+| Provider size claims | None used for framing (newline-delimited). Artifact sizes are re-verified via `fstat` (H2) |
 
-## Exact limits introduced (`dvl-spike/src/kernel/types.ts`)
+## Exact limits (`dvl-spike/src/kernel/types.ts`)
 
 | Constant | Value | Meaning |
 |---|---|---|
-| `MAX_FRAME_BYTES` | **1 048 576** (1 MiB) | Maximum bytes of one incoming `DVL1:` frame line, prefix included, newline excluded. Counted while reading, before `JSON.parse`. Above the 32 KiB inline cap, so a non-conformant oversized inline payload (e.g. the 100 KiB `oversized-inline` scenario) is still received and defensively spooled |
-| `MAX_LINE_BYTES` | = `MAX_FRAME_BYTES` | Per-line buffering cap of the stdout splitter for frames and noise alike. It was 4 MiB |
-| `MAX_DIAGNOSTIC_STREAM_BYTES` | **8 388 608** (8 MiB) | Per adapter instance, per diagnostic stream (`diagnostics.stderr.log`, `diagnostics.stdout-noise.log`, `diagnostics.queue-overflow.log`) |
-| `MAX_DIAGNOSTIC_DETAIL_BYTES` | **256** | Maximum UTF-8 bytes of any attacker-derived text in a diagnostic (reason detail or preview) |
+| `MAX_FRAME_BYTES` | **1 048 576** | Maximum bytes of one `DVL1:` frame line, prefix included, newline excluded. Counted while reading, before `JSON.parse`. Above the 32 KiB inline cap, so oversized inline payloads up to that size can still be defensively spooled |
+| `MAX_LINE_BYTES` | = `MAX_FRAME_BYTES` | Per-line buffering cap of the stdout splitter (frames and noise). It was 4 MiB |
+| `MAX_DIAGNOSTIC_STREAM_BYTES` | **8 388 608** | **Exact** maximum file size per adapter instance per diagnostic stream (`diagnostics.stderr.log`, `diagnostics.stdout-noise.log`, `diagnostics.queue-overflow.log`), marker included |
+| `DIAGNOSTIC_CAP_MARKER_RESERVE` | **160** | Part of that cap reserved for the one-time "cap reached" marker: payload ≤ 8 388 448 bytes, marker ≤ 160 bytes |
+| `MAX_DIAGNOSTIC_DETAIL_BYTES` | **256** | Maximum UTF-8 bytes of any attacker-derived text (detail or preview) in a diagnostic |
+| `OVERFLOW_PREVIEW_BYTES` (`frame.ts`) | **256** | Bytes of an over-cap line kept as its preview, in an independently owned buffer |
 
 These come on top of the existing limits: `MAX_QUEUED_FRAMES` 1024, `MAX_QUEUED_BYTES` 16 MiB, and `maxIncomingBytes` (default 256 MiB).
 
 ## Exact behaviour
 
-**Fail-closed sequence.** Every rejection below follows the same five steps:
+**Fail-closed sequence**, applied on every rejection below. All of these steps happen synchronously inside the stdout `data` handler that delivered the offending bytes:
 1. `stats.inputRejected++`.
-2. The queue is sealed immediately. Frames already queued before the bad one keep FIFO order; every later `DVL1:` line goes unparsed to the overflow diagnostics.
-3. One bounded line `[REJECTED <reason> bytes=<n>] <detail>` is written to the noise spool.
-4. An `input_rejected` issue is reported once per instance: `{reason, bytes, limit?, detail}`.
-5. The Kernel calls `haltForSafety("transport input rejected (<reason>)", {kind: "transport_input_rejected", …})` for the current instance, recorded once, which terminates the instance and its runs. For a stale instance it only records `kernel.transport_issue {stale: true}`.
+2. The queue is sealed. Frames queued *before* the bad input keep FIFO order; every later `DVL1:` line goes, **unparsed**, to the overflow spool as a bounded record.
+3. One bounded line, `[REJECTED <reason> bytes=<n>] <detail>`, is written to the noise spool.
+4. An `input_rejected` issue `{reason, bytes, limit?, detail}` is reported **once** per instance.
+5. The Kernel calls `haltForSafety("transport input rejected (<reason>)", {kind: "transport_input_rejected", …})` for the current instance, once. This terminates the instance and fails its runs, so frames still queued from it are **fenced** when processed (never applied). For a stale instance it only records `kernel.transport_issue {kind: "input_rejected", stale: true}`.
 
-**What a rejected frame never produces:** an event, an actor/action transition, Evidence, an artifact registration, or a Kernel-spooled payload.
+**What rejected input never produces:** an event, actor/action transition, Evidence, artifact registration or Kernel-spooled payload.
 
-**Oversized input** (`frame_too_large`):
-- The splitter counts bytes as chunks arrive. Once the current line exceeds `MAX_FRAME_BYTES` it stops buffering (it keeps a 256-byte head) and counts the remaining bytes until the newline.
-- If the line begins with `DVL1:` it is **never parsed**, and the fail-closed sequence runs with `limit: 1048576` and the observed byte count.
+**Oversized input (`frame_too_large`).**
+- The splitter counts bytes per line as chunks arrive. **At the first byte past `MAX_FRAME_BYTES`**, while the line is still open, with no newline or EOF needed, it:
+  1. stops buffering;
+  2. copies at most 256 bytes into a new, owned preview buffer;
+  3. calls `onOverflowStart`.
+
+  If the line starts with `DVL1:`, the fail-closed sequence runs immediately with `limit: 1048576` and the bytes seen so far.
+- The rest of the line is drained and counted, never buffered or parsed. Its eventual newline or EOF produces **no** second rejection.
 - `parseLine` also checks the size before `JSON.parse`, as a defensive second check.
-- An over-long **non-frame** line is noise, not a protocol failure: it is discarded, a bounded `[OVERFLOW n bytes] <head>` line is recorded, and processing continues.
+- An over-long **non-frame** line is noise, not fatal: discarded, one bounded `[OVERFLOW n bytes] <escaped head>` line, processing continues.
 
-**Malformed input** (`malformed_frame`): a `DVL1:` line whose body is not JSON, is not a JSON object, or lacks a non-empty string `type`.
-- Nothing is applied, and the fail-closed sequence runs.
-- The detail is a fixed reason (`invalid JSON at position N`, `frame body is not a JSON object`, `frame missing string 'type'`) plus a bounded, escaped sample. The V8 parse message, which echoes input, is no longer stored.
-- Lines not starting exactly with `DVL1:` are noise and are never parsed. This is unchanged (C03/C38 semantics).
+**Malformed input (`malformed_frame`).**
+- **Trigger:** a newline-terminated `DVL1:` line whose body is not JSON, is not a JSON object, or lacks a non-empty string `type`. It gets one bounded parse attempt (≤ 1 MiB), then nothing is applied and the fail-closed sequence runs.
+- **Detail:** a fixed reason (`invalid JSON at position N` / `frame body is not a JSON object` / `frame missing string 'type'`) plus a bounded, escaped sample. V8's message is never stored.
+- **Not affected:** lines not starting exactly with `DVL1:` are noise and never parsed.
 
-**Partial input** (`partial_frame`): at stdout EOF, a final line without its terminating newline that starts with `DVL1:` is **never parsed**, whether its JSON is complete or truncated, and the fail-closed sequence runs. A partial non-frame line at EOF is ordinary noise.
+**Partial input (`partial_frame`).** At stdout EOF, a final `DVL1:` line without its newline is **never parsed** (complete or truncated JSON alike), and the fail-closed sequence runs. A partial non-frame line is noise.
 
-**Noise / stderr bounding:**
-- Draining never stops: every byte is still read and charged to `maxIncomingBytes`.
-- Per instance and per stream, at most `MAX_DIAGNOSTIC_STREAM_BYTES` are written. The first write that would cross the cap writes up to it, followed by one marker line, `[DVL: diagnostic cap of 8388608 bytes reached for <file>; further bytes dropped]`.
-- All excess bytes are counted in `stats.diagnosticBytesDropped` and dropped. Nothing is buffered in memory beyond one chunk.
+**Refused lines after the seal.** Each refused line is recorded as `[REFUSED <queue_overflow|byte_limit|input_rejected> bytes=<original byte count>] <escaped preview ≤ 256 bytes>`, never raw. `framesRejected` counts every refused line. This applies to every seal cause, so queue overflow and byte limit use the same representation.
+
+**Noise/stderr bounding.**
+- Draining never stops: every byte is read and charged to `maxIncomingBytes`.
+- Per stream, payload is written up to `8 388 448` bytes; then the one-time marker `\n[DVL: diagnostic cap of 8388608 bytes reached for <file>; further bytes dropped]\n` (≤ 160 bytes) is appended **last**. The file is always ≤ 8 388 608 bytes.
+- Every byte not written is counted exactly in `stats.diagnosticBytesDropped`.
+- Once a stream's budget is used, further noise lines and refused records are counted and **not collected**, so no chunk-sized buffer is built only to be discarded.
 
 ## Exact diagnostic truncation rule
 
 `boundedText(input, maxBytes = 256)` in `frame.ts`:
 1. Take at most `maxBytes` characters.
 2. `JSON.stringify` them, without the outer quotes, so control characters, quotes and backslashes are escaped and never raw.
-3. Shorten the result until its UTF-8 length is ≤ `maxBytes`.
+3. Shorten the result until it is ≤ `maxBytes` UTF-8 bytes.
 
-Where it applies:
-- rejection `detail`: at most a 1024-character sample of the line goes in, 256 bytes come out;
+It is used for:
+- rejection `detail` (from a sample of ≤ 1024 characters);
+- refused-line previews;
 - the overflow head;
-- noise issue lines;
+- noise issue text;
 - Kernel handler-error reasons.
 
-Kernel records (`kernel.safety_halt`, `kernel.transport_issue`) only ever contain these bounded fields plus numbers. No raw attacker body reaches the durable log: C26-9 asserts that no events-log line exceeds 8 KiB after a 2 MiB frame or a 10 KB malformed frame.
+Kernel records contain only these bounded fields plus numbers.
 
-## Files changed (base → implementation commit)
+## Codex review findings (`43f5784`) and fixes
+
+| # | Finding | Fix | Test (fails on `43f5784`, passes now) |
+|---|---|---|---|
+| High 1 | An open oversized `DVL1:` line was not rejected until newline/EOF; a completion queued earlier produced Evidence after the cap was crossed | `LineSplitter` calls `onOverflowStart` at the first byte past the cap; the transport rejects, seals and reports there; the line's end adds nothing | **C26-12** (transport: not sealed at ≤ cap, sealed + one rejection on crossing, none added by later newline/EOF); **C26-13** (real Kernel: gated heartbeat + queued `action.finished` + open 1.06 MiB line → exactly one `transport_input_rejected` halt, **no Evidence**, run `halted`); **C26-14** (stale instance: recorded `stale: true`, current instance not halted and still answers) |
+| Medium 2 | Post-seal refused lines were stored raw (300 KB, raw NUL/ESC) | `reject()` stores `[REFUSED <why> bytes=N] <boundedText>` for every seal cause | **C26-15** (after seal: a 300 KB control-character line gives a record ≤ 320 bytes, no raw control bytes, original byte count recorded, no `JSON.parse` of it, nothing ingested) |
+| Low 3 | The cap marker exceeded the 8 MiB stream cap (≈ +100 bytes) | Marker reserve (160 bytes) inside the cap; marker written once, after the pending payload | **C26-16** (stderr cap + 1, many small noise writes, queue overflow: each file ≤ cap; exact dropped accounting; marker last). C26-6/7 tightened to `≤ MAX_DIAGNOSTIC_STREAM_BYTES` with exact accounting |
+| Medium 4 | The overflow preview retained a view of a full-size `Buffer.concat` (32 MiB) | The preview is copied into an owned ≤ 256-byte buffer; no concat of over-cap data | **C26-17** (32 MiB single chunk: preview `length` and `buffer.byteLength` ≤ 256, no `Buffer.concat` over 1 KiB, `onOverflowStart` called once) |
+| Test weakness | C26-1's parse spy used a length filter that missed the exact oversized body | The spy now matches the exact body string, or any string at least that long | C26-1 |
+
+**Mutation check of the fixes** (each applied alone, then restored byte-for-byte):
+
+| Mutation | Failing tests |
+|---|---|
+| N1 no rejection at the crossing (old: at newline/EOF) | C26-12, 13, 14 |
+| N2 refused lines raw | C26-15 |
+| N3 marker outside the budget | C26-6, 7, 16 |
+| N4 preview as a view of a full concat | C26-17 |
+| N5 marker written mid-collection | C26-16 |
+
+**Mutation check of the original guards** (all still hold):
+
+| Mutation | Failing tests |
+|---|---|
+| old 4 MiB cap | 1, 7, 9 |
+| no seal | 1, 3 |
+| partial accepted | 4, 10 |
+| no stream cap | 6, 7 |
+| Kernel no halt | 9 ×2, 10 |
+| unbounded detail | 5 |
+
+C26 against `43f5784`'s Kernel (new mock hooks kept): tests **6, 7 and 12–17 fail**; the rest pass.
+
+## Files changed (base → final commit)
 
 | File | Change |
 |---|---|
-| `dvl-spike/src/kernel/types.ts` | New `MAX_FRAME_BYTES`, `MAX_DIAGNOSTIC_STREAM_BYTES`, `MAX_DIAGNOSTIC_DETAIL_BYTES`; `MAX_LINE_BYTES` = `MAX_FRAME_BYTES` |
-| `dvl-spike/src/kernel/frame.ts` | `isFrameLine`, `boundedText`; `parseLine` checks size before parse and has non-echoing reasons; `LineSplitter` gains an optional `onPartial` for an unterminated final line |
-| `dvl-spike/src/kernel/ndjson-transport.ts` | Frame cap on the splitter; `rejectInput` (seal + bounded diagnostic + one `input_rejected` issue); no parse after seal; partial-line handling; per-stream diagnostic caps; stats `inputRejected` and `diagnosticBytesDropped`; bounded noise/handler-error text |
-| `dvl-spike/src/kernel/kernel.ts` | `onTransportIssue` handles `input_rejected`: halt the current instance (`transport_input_rejected`), record only for a stale instance |
-| `dvl-spike/src/mock-provider/mock-provider.ts` | Test-only `adapter.ping` options `raw`, `padded`, `unterminated` (written by the current, handshaken adapter) |
-| `dvl-spike/src/mock-provider/scenarios.ts` | `noisy` no longer contains the two malformed `DVL1:` lines (they now fail closed; C26 covers them). All genuine noise is kept |
-| `dvl-spike/src/conformance/c26-h3-transport-input-bounding.test.ts` | **New** suite, 13 tests |
-| `dvl-spike/src/conformance/c03-frame-prefix-noise.test.ts` | E2E now expects `malformedLines` 0 and `inputRejected` 0 for `noisy`; the `[MALFORMED` noise assertion is removed. The behaviour change is deliberate |
-| `dvl-spike/src/conformance/c07-adapter-spool-isolation.test.ts` | C07-3 drops the incidental `[MALFORMED` assertion; its subject (non-DVL1 stdout spooled, never parsed) is unchanged |
+| `dvl-spike/src/kernel/types.ts` | `MAX_FRAME_BYTES`, `MAX_DIAGNOSTIC_STREAM_BYTES`, `DIAGNOSTIC_CAP_MARKER_RESERVE`, `MAX_DIAGNOSTIC_DETAIL_BYTES`; `MAX_LINE_BYTES` = `MAX_FRAME_BYTES` |
+| `dvl-spike/src/kernel/frame.ts` | `isFrameLine`, `boundedText`, `OVERFLOW_PREVIEW_BYTES`; size check before parse with non-echoing reasons; `LineSplitter` gains `onPartial` and `onOverflowStart` (immediate, owned preview) |
+| `dvl-spike/src/kernel/ndjson-transport.ts` | Frame cap; reject at the crossing; `rejectInput` (seal, bounded line, one issue); no parse after seal; bounded `[REFUSED …]` records; exact per-stream caps with a reserved, last-written marker; no collection once a stream is full; stats `inputRejected` and `diagnosticBytesDropped` |
+| `dvl-spike/src/kernel/kernel.ts` | `onTransportIssue` handles `input_rejected`: halt the current instance; stale → record only |
+| `dvl-spike/src/mock-provider/mock-provider.ts` | Test-only `adapter.ping` options: `raw`, `padded`, `unterminated`, `openLine` |
+| `dvl-spike/src/mock-provider/scenarios.ts` | `noisy` no longer contains malformed `DVL1:` lines (they fail closed now) |
+| `dvl-spike/src/conformance/c26-h3-transport-input-bounding.test.ts` | **New**, 19 tests |
+| `dvl-spike/src/conformance/c03-frame-prefix-noise.test.ts` | `noisy` expects 0 malformed lines and 0 rejections; the `[MALFORMED` noise check is removed |
+| `dvl-spike/src/conformance/c07-adapter-spool-isolation.test.ts` | Incidental `[MALFORMED` assertion removed (subject unchanged) |
+| `dvl-spike/src/conformance/c08-queue-limits.test.ts` | The overflow reader decodes the bounded `[REFUSED …]` records (sequence number from the escaped preview). All FIFO and accounting assertions are unchanged |
 | `CLAUDE_REPORTS/H3_TRANSPORT_INPUT_BOUNDING_REPORT.md` | This report |
 
-## Tests: C26 (13)
+## Tests: C26 (19)
 
-| # | Covers | Asserts |
-|---|---|---|
-| 0 | Explicit limits | constants as above; inline cap < frame cap |
-| 1 | Oversized `DVL1:` frame (cap + 1 byte, valid JSON, sent in 64 KiB chunks) | no `JSON.parse` call on any string > cap; not delivered; `frame_too_large` with `limit` and `bytes`; sealed; a later valid frame is not processed |
-| 2 | Frames at the limit, one byte below it, and small | accepted, no rejection |
-| 3 | Malformed: invalid JSON, array, missing type, `null`, empty type | prior valid frame processed, nothing after; `malformed_frame`; sealed |
-| 4 | Partial at EOF | a complete-JSON frame without newline and a truncated frame are never delivered (`partial_frame`); a partial non-frame line is noise |
-| 5 | Bounded diagnostics | 500 KB malformed body with control bytes: detail ≤ 256 bytes with no raw control characters; noise spool ≤ 712 bytes; every issue's JSON bounded |
-| 6 | Huge stderr (20 MiB) | spool ≤ cap + 512 bytes; all 20 MiB still read; `diagnosticBytesDropped` = 20 MiB − cap |
-| 7 | Huge stdout noise (20 MiB of short lines; one 3 MiB noise line) | noise spool ≤ cap + 512 bytes; dropped bytes counted. The 3 MiB noise line is discarded with a bounded head, is **not** fatal, and the next valid frame is processed |
-| 8 | Many small frames (5000, blocked processing, queue 64) | depth and high-water mark ≤ 64; sealed; `queue_overflow`; only one frame reached the handler |
-| 9 ×2 | Real adapter, live run: 2 MiB padded `action.finished`; malformed `DVL1:` line | `kernel.safety_halt` kind `transport_input_rejected`; accepted adapter events, Evidence, registrations and actor state are **identical** to before the input; no Evidence; run `halted`; max events-log line < 8 KiB |
-| 10 | Real adapter: validly sequenced `action.finished` without newline, then exit | no Evidence; `partial_frame` recorded |
-| 11 | Valid traffic still works | `oversized-inline` (100 KiB inline payload) finishes without a halt; H1/H2 scenarios `happy`, `oversized-spooled`, `noisy` finish without a halt |
-
-### Fail-before / pass-after
-
-- **On the base commit**, with only the test-only mock hooks added, C26 gives **11 failed / 2 passed**. The two that pass are the controls: test 8 (existing queue bound) and test 11 (valid traffic).
-- **Behavioural failures on base include:**
-  - malformed frames do not stop processing (`[1, 2]` delivered instead of `[1]`);
-  - a partial frame is accepted;
-  - the real adapter's unterminated `action.finished` creates Evidence (`evd_…` instead of `[]`);
-  - no halt for oversized or malformed input;
-  - a 20 MiB stdout noise spool.
-
-**Mutation check** (each guard disabled alone, then restored byte-for-byte):
-
-| Mutation | Failing C26 tests |
+| # | Asserts |
 |---|---|
-| G1 old 4 MiB cap | 1, 7, 9 (oversized) |
-| G2 no seal on rejection | 1, 3 |
-| G3 partial line delivered at EOF (old behaviour) | 4, 10 |
-| G4 no diagnostic stream cap | 6, 7 |
-| G5 Kernel does not halt on `input_rejected` | 9 (oversized), 9 (malformed), 10 |
-| G6 `boundedText` returns its input unchanged | 5 |
+| 0 | Explicit limits |
+| 1 | Oversized frame (cap + 1, valid JSON, 64 KiB chunks): no `JSON.parse` of the body; not delivered; `frame_too_large`; sealed; later valid frame not processed |
+| 2 | Frames at the cap, cap − 1 and small are accepted |
+| 3 | Five malformed variants: earlier frame processed, nothing after; `malformed_frame`; sealed |
+| 4 | Partial at EOF (complete and truncated JSON) never delivered; partial non-frame is noise |
+| 5 | Rejection detail ≤ 256 bytes, escaped; bounded noise line; bounded issues |
+| 6 | 20 MiB stderr: file ≤ cap; payload = cap − reserve; all bytes read; exact dropped count |
+| 7 | 20 MiB noise ≤ cap; a 3 MiB non-frame line is discarded, not fatal |
+| 8 | 5000 small frames: queue ≤ 64, sealed, `queue_overflow` |
+| 9 ×2 | Real adapter, 2 MiB frame / malformed frame: state identical to before; halted; no Evidence; durable log lines < 8 KiB |
+| 10 | Real adapter, unterminated `action.finished` + exit: no Evidence; `partial_frame` |
+| 11 | 100 KiB inline payload, `happy`, `oversized-spooled`, `noisy` all finish with no halt |
+| 12–17 | Review fixes, as in the table above |
 
-## Exact command results (implementation commit `43f5784`)
+## Exact command results (final tree)
 
 | Command | Result |
 |---|---|
-| `npm test` run 1 | exit 0 — 26 files, **222/222 passed** |
-| `npm test` run 2 | exit 0 — 26 files, **222/222 passed** |
-| `npm test` run 3 | exit 0 — 26 files, **222/222 passed** |
+| `npm test` run 1 | exit 0 — 26 files, **228/228 passed** |
+| `npm test` run 2 | exit 0 — 26 files, **228/228 passed** |
+| `npm test` run 3 | exit 0 — 26 files, **228/228 passed** |
 | `npm run typecheck` | exit 0 |
 | `npm run spike` | exit 0 — "SPIKE OK — every scenario reached its expected terminal state" |
-| `npx vitest run src/conformance/c18* … c26*` (focused) | exit 0 — 9 files, **114/114 passed** (C18 8, C19 3, C20 7, C21 26, C22 18, C23 10, C24 18, C25 11, C26 13) |
-| `DVL_FS_CONFINEMENT=path npm test` (H2 fallback mode) | exit 0 — 26 files, **222/222 passed** |
+| `npx vitest run src/conformance/c18* … c26*` (focused) | exit 0 — 9 files, **120/120 passed** (C18 8, C19 3, C20 7, C21 26, C22 18, C23 10, C24 18, C25 11, C26 19) |
+| `DVL_FS_CONFINEMENT=path npm test` (H2 fallback mode, as on macOS) | exit 0 — 26 files, **228/228 passed** |
 
-Per suite: C01 6, C02 4, C03 6, C04 4, C05 4, C06 13, C07 10, C08 14, C09 4, C10 7, C11 7, C12 5, C13 6, C14 8, C15 5, C16 3, C17 2, C18 8, C19 3, C20 7, C21 26, C22 18, C23 10, C24 18, C25 11, **C26 13**.
+Per suite: C01 6, C02 4, C03 6, C04 4, C05 4, C06 13, C07 10, C08 14, C09 4, C10 7, C11 7, C12 5, C13 6, C14 8, C15 5, C16 3, C17 2, C18 8, C19 3, C20 7, C21 26, C22 18, C23 10, C24 18, C25 11, **C26 19**.
+
+The runs were on Linux (procfd confinement), plus the full suite in path mode; there was no macOS host run.
 
 ## Known limitations
 
-- **Malformed frames now fail closed.** That is a deliberate behaviour change from the original spike, where they were logged and processing continued (C03). One malformed `DVL1:` line now halts the instance. The `noisy` scenario and two assertions were adjusted accordingly. Non-prefixed noise is unaffected.
-- **Frames up to 1 MiB are still parsed.** That is 32× the inline cap, kept so the existing defensive spooling of non-conformant inline payloads keeps working. Peak per-line memory is bounded by `MAX_FRAME_BYTES` plus one read chunk.
-- **Accounting:**
-  - The diagnostic caps are per instance and per stream. Total disk use per instance is bounded at about 3 × 8 MiB plus markers, while a run's total incoming bytes remain bounded by `maxIncomingBytes`.
-  - Bytes dropped by the cap are counted but not recoverable.
-  - The cap marker is written once per stream.
-- **Already-queued frames.** Frames queued *before* a rejected frame are still processed in order. The halt then terminates the instance, so the H1 fencing rules apply to anything still in flight.
-- **One report per instance.** A rejected frame is reported once per instance; later rejections are counted in `stats.inputRejected` and the noise spool, not re-reported.
-- **Not covered by H3:** adapter→Kernel *rate* (frames per second) and stdin backpressure. Those are bounded only by the existing queue and `maxIncomingBytes` limits.
+- **Behaviour changes:**
+  - A malformed `DVL1:` frame now halts the instance; before, it was logged and processing continued (C03).
+  - Refused frames in the overflow spool are bounded previews, not raw lines (C08 reader adapted).
+- **Memory is bounded per line, not per pipe read.**
+  - Up to `MAX_FRAME_BYTES` per line, plus the current chunk delivered by Node's pipe read.
+  - Diagnostic collection per chunk is bounded by the stream's remaining budget plus one line.
+  - Normal pipe reads are ≤ 64 KiB, but the transport does not impose its own chunk-size limit; a caller pushing a huge synthetic chunk still has that chunk in memory (it is not copied).
+  - This is not a native-memory or allocation profile.
+- **Frames up to 1 MiB are still parsed** (32× the inline cap) to keep defensive spooling of non-conformant inline payloads.
+- **Queued frames are fenced, not rolled back.** Frames queued before a rejection are still pumped, and the Kernel fences them after the halt; nothing is rolled back.
+- **Reporting:** one `input_rejected` issue per instance; later rejections are counted (`inputRejected`, `framesRejected`) and recorded in bounded form.
+- **Stale-instance coverage:** the stale case is tested by emitting on the retired child's stdout after a forced replacement, not by a still-running stale process.
+- **Not in H3:** frame *rate* limiting and stdin backpressure (covered only by the existing queue and `maxIncomingBytes` limits); OS isolation (inherited H2 limits).
 
 ## H1/H2 statement
 
-- H1 (C06, C10, C14–C19) and H2 (C04, C07, C11, C13, C20–C25) **remain green**: 222/222 in all three full runs, the focused run, and the H2 path-confinement mode.
-- Only two H1/H2-era assertions changed, both tied to the deliberate H3 malformed-frame change: C03's malformed-count expectation, and the `[MALFORMED` noise check in C07-3.
-- No H1 or H2 logic was modified.
+- H1 (C06, C10, C14–C19) and H2 (C04, C07, C11, C13, C20–C25) **remain green**: 228/228 in all three full runs, the focused run, and path mode.
+- The only H1/H2-era test edits follow directly from the deliberate H3 changes:
+  - C03's malformed-count expectation;
+  - C07-3's `[MALFORMED` check;
+  - C08's overflow-record reader, with its assertions unchanged.
+- No H1/H2 logic was modified.
 
 ## H4 statement
 
