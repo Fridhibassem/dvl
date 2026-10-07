@@ -10,7 +10,9 @@ Contract change.
 >
 > - **Fourth review:** §11's model let an unreachable host anchor still install authority, let an `onCommit` failure diverge live state from the host boundary, and recovered without re-binding the logs. All three are fixed in §12.
 >
-> The authoritative statement of what H2 guarantees, and what needs OS isolation, is **§11.1 as amended by §12.1**. Earlier sections are kept as the historical record of each review round.
+> - **Fifth review:** a count-0 host anchor with a wrong MAC was treated as a valid boundary, and recovery checked the committed prefix by size only while it ran. Both are fixed in §13.
+>
+> The authoritative statement of what H2 guarantees, and what needs OS isolation, is **§11.1 as amended by §12.1 and §13.1**. Earlier sections are kept as the historical record of each review round.
 
 ## 1. Inspection findings (before any code change)
 
@@ -720,7 +722,7 @@ Per suite: C01 6, C02 4, C03 6, C04 4, C05 4, C06 13, C07 10, C08 14, C09 4, C10
 
 `main` was not pushed and nothing was merged.
 
-## 12. Anchor Publication and Recovery Fixes
+## 12. Anchor Publication and Recovery Fixes (reviewed at `45e7674` — result: H2 ANCHOR/PUBLICATION/RECOVERY REVIEW FAIL, see §13)
 
 Codex reviewed `1380e76` and returned **H2 DURABLE COMMIT REVIEW FAIL** with three High blockers. The commit model stays **Option A (refused means not committed)**, with the host-held commit boundary as the authority. This round closes the three gaps in how that authority is reached, published and restored.
 
@@ -818,7 +820,7 @@ All earlier behaviour still passes:
 - C20 stable codes;
 - C18/C19.
 
-### 12.5 Exact command results (final tree)
+### 12.5 Exact command results (at `45e7674`; current results: §13.4)
 
 | Command | Result |
 |---|---|
@@ -845,6 +847,110 @@ Per suite: C01 6, C02 4, C03 6, C04 4, C05 4, C06 13, C07 10, C08 14, C09 4, C10
 ### 12.7 Ready for Codex?
 
 **Yes — ready for Codex review of the anchor/publication/recovery fixes.**
+
+**Not claimed:**
+- an H2 PASS;
+- strict prevention;
+- guaranteed detection;
+- a macOS host run.
+
+`main` was not pushed and nothing was merged.
+
+## 13. Zero Anchor and Committed Prefix Recovery Fixes
+
+**Context:**
+- Codex reviewed `45e7674` and returned **H2 ANCHOR/PUBLICATION/RECOVERY REVIEW FAIL** with two blockers.
+- Both were **reproduced on `45e7674` before any change**, with a scratch probe that was not committed.
+- The commit model is unchanged: **Option A** (refused means not committed), with the host-held boundary as the authority and a valid MAC alone not counting as Project Truth.
+
+### 13.1 Amended guarantees
+
+- **A count-0 host anchor has authority.**
+  - It must carry the log's genesis MAC, i.e. an empty committed chain.
+  - A count-0 anchor with any other MAC is an **anchor mismatch** and fails closed exactly as in §12.1: nothing is installed from either log; start, append, evidence and ordinary recovery are refused; nothing is written and the host boundary is not replaced.
+  - Only an explicit host decision (`accept_disk_rollback`) proceeds.
+  - A *correct* count-0 anchor keeps its meaning: anything on disk beyond it is an uncommitted tail, requiring explicit recovery.
+- **Recovery verifies committed content, not just size.** The committed prefix is checked against the commit head and its MAC chain in phase 1, and its SHA-256 is captured. It is then re-verified:
+  - through the bound descriptor **before truncation** and **after truncation** (phase 3);
+  - in the final pre-clear check (phase 4), together with a re-verification of the committed MAC chain.
+
+  Any same-size corruption of committed bytes, whether before recovery, before truncation or before clearing, throws `recovery_failed`.
+  - The seal and marker remain; appends and startup stay blocked.
+  - No authority is restored and the host boundary is not replaced.
+  - A retried ordinary recovery fails again.
+  - On restart the corruption breaks the host boundary (`anchor_mismatch`), so only an explicit host decision (restore the logs, or `accept_disk_rollback`, which still rejects the corrupted record) can proceed.
+
+### 13.2 Exact fixes
+
+**Blocker 1 — wrong count-0 anchor** (`event-store.ts readChain`).
+- **Before:** `boundaryMacOk = boundary === undefined || boundary.count === 0`, so the MAC of a count-0 boundary was never checked. The probe showed `recovery: host_anchor`: every valid disk record counted as an uncommitted tail. Ordinary recovery was allowed; it **truncated the whole log**, and startup then succeeded.
+- **After:** `boundaryMacOk = boundary === undefined || (boundary.count === 0 && boundary.mac === genesis(log))`, so a wrong count-0 MAC yields `truncated` → `anchor_mismatch`, with all the fail-closed gates of §12.
+
+**Blocker 2 — recovery cleared the seal after same-size corruption** (`event-store.ts recover`, new `digestRange`).
+- **Before:** phases 3 and 4 checked size and tail bytes only. The probe showed corruption of committed event or evidence bytes injected at `recover:before-truncate` or `recover:before-clear` ending as "RECOVERED", with the seal cleared, in all 4 combinations.
+- **After:**
+  - **Phase 1:** after re-verifying the prefix against the commit head (MAC chain), it records `prefixDigest[log] = sha256(bytes[0, committed))` through a bound descriptor.
+  - **Phase 3:** compares the digest before `ftruncate`, and again after it, through the same freshly bound descriptor.
+  - **Phase 4:** for both logs, requires the exact committed size, the matching digest, and a committed MAC chain that still verifies against the commit head, before the marker is removed and the seal is cleared.
+  - **Result:** any mismatch → `recovery_failed`; seal, recovery state and marker are kept.
+
+### 13.3 Tests added: C25 `c25-h2-zero-anchor-prefix-recovery.test.ts` (11 tests)
+
+| Test | Scenario | Asserts |
+|---|---|---|
+| Z1 ×2 | wrong count-0 **events** / **evidence** anchor over MAC-valid disk records (a real `oversized-spooled` project) | zero rejected lines (records are valid); `anchor_mismatch` naming the count-0 host anchor; no history, evidence or registry (artifact not registered); `start`, events and evidence appends, and ordinary recovery all refused; both log files byte-identical; host anchors unchanged |
+| Z2 | wrong count-0 anchors on **both** logs | same fail-closed state. Then `accept_disk_rollback` is the only way to accept disk: chain adopted, artifact verifies, `kernel.anchor_rollback_accepted` recorded |
+| Z3 | **correct** count-0 (genesis) anchor | empty log opens cleanly; after a record is written, the genesis anchor makes it an uncommitted tail (`host_anchor` recovery, nothing installed) |
+| P1 ×6 | same-size corruption of committed **events** / **evidence** bytes, {before recovery, at `recover:before-truncate`, at `recover:before-clear`} | `recovery_failed`; seal and marker kept; events/evidence appends and `start()` refused (`sealed`); history count unchanged; host anchors unchanged. A retried ordinary recovery fails again. Restart with host anchors → `anchor_mismatch`, nothing installed, recovery and start refused. Only `accept_disk_rollback` proceeds, and the corrupted record is still rejected (not adopted) |
+| P2 | control: no corruption | recovery succeeds, clears seal and marker, and later appends replay cleanly |
+
+**Mutation check** (each applied alone against C25, then restored byte-for-byte):
+
+| Mutation | Failing C25 tests |
+|---|---|
+| M1 count-0 boundary MAC not checked (old behaviour) | Z1 (events, evidence), Z2 |
+| M2 phase-3 prefix digest checks removed | **none**: masked by the phase-4 check, which still refuses before anything clears (phase 3 is a fail-fast that avoids truncating under an untrusted prefix) |
+| M3 phase-4 prefix digest + chain checks removed | P1 events/evidence at `recover:before-clear` |
+| M4 all new prefix checks removed | P1 events/evidence at `recover:before-truncate` and at `recover:before-clear` |
+
+Corruption present *before* recovery starts was already refused by the phase-1 chain check, as confirmed on `45e7674`. C25 pins it for both logs.
+
+### 13.4 Command results (final tree)
+
+| Command | Result |
+|---|---|
+| `npm test` run 1 | exit 0 — 25 files, **209/209 passed** |
+| `npm test` run 2 | exit 0 — 25 files, **209/209 passed** |
+| `npm test` run 3 | exit 0 — 25 files, **209/209 passed** |
+| `npm run typecheck` | exit 0 |
+| `npm run spike` | exit 0 — "SPIKE OK — every scenario reached its expected terminal state" |
+| `npx vitest run src/conformance/c18* src/conformance/c19* src/conformance/c20* src/conformance/c21* src/conformance/c22* src/conformance/c23* src/conformance/c24*` | exit 0 — 7 files, **90/90 passed** (C18 8, C19 3, C20 7, C21 26, C22 18, C23 10, C24 18) |
+| `npx vitest run src/conformance/c25*` | **11/11 passed** |
+| `DVL_FS_CONFINEMENT=path npm test` (macOS fallback mode, on Linux) | exit 0 — 25 files, **209/209 passed** |
+
+Per suite: C01 6, C02 4, C03 6, C04 4, C05 4, C06 13, C07 10, C08 14, C09 4, C10 7, C11 7, C12 5, C13 6, C14 8, C15 5, C16 3, C17 2, C18 8, C19 3, C20 7, C21 26, C22 18, C23 10, C24 18, **C25 11**.
+
+**C09 (outside H2 scope; no change made):**
+- Passed in every full run above.
+- Isolated: **10/10** runs passed.
+- Under 6 concurrent CPU-busy loops: **3/3** runs passed.
+- No flake was reproduced in this environment. If it flakes elsewhere, that is a timing issue of the safety-halt regression suite and is tracked separately from H2.
+
+### 13.5 Remaining limitations
+
+- **Unchanged from §11.5/§12.6.** All of these need OS/access isolation:
+  - transient mutations are not detected (validation observes current state);
+  - the final racing write can land in a relocated or aliased inode;
+  - without host anchors, a deleted seal marker loses the boundary;
+  - adapter writes and deletes are not prevented.
+- **Recovery check-to-use windows remain.** Corruption of committed bytes done and undone between a digest check and the next syscall is not observed. Persistent corruption is always caught before the seal clears.
+- **Phase-3 digest checks are not independently pinned** (mutation M2 is masked by phase 4).
+- **The explicit host decision is coarse.** `accept_disk_rollback` adopts the authenticated chain up to the first corrupted record; there is no partial repair. Restoring from backup is the alternative.
+- **Not done:** no macOS host run (fallback mode exercised via `DVL_FS_CONFINEMENT=path`); the original Codex probe file is not in the repository.
+
+### 13.6 Ready for Codex?
+
+**Yes — ready for Codex review of the zero-anchor and committed-prefix recovery fixes.**
 
 **Not claimed:**
 - an H2 PASS;

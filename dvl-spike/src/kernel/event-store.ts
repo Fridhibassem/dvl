@@ -308,6 +308,7 @@ export class EventStore {
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
     // Phase 1: validate both logs and capture exact tails — no mutation yet.
     const tails = {} as Record<LogKind, Buffer>;
+    const prefixDigest = {} as Record<LogKind, string>;
     try {
       for (const kind of LOG_KINDS) {
         const committed = this.committedBytes[kind];
@@ -318,6 +319,17 @@ export class EventStore {
           throw new SpoolIntegrityError(`${kind} committed prefix no longer matches the commit head`, "recovery_failed");
         }
         tails[kind] = this.readLogRange(kind, committed);
+        // The committed prefix bytes themselves (content, not only size) — re-verified before
+        // and after truncation and before anything clears.
+        prefixDigest[kind] = this.withLogDir(kind, (d, name) => {
+          const { fd } = openBound(d, name, O_RDONLY);
+          try {
+            return digestRange(fd, committed);
+          } finally {
+            fs.closeSync(fd);
+          }
+        });
+        if (this.readChain(kind, this.chain[kind]).report.truncated) throw new SpoolIntegrityError(`${kind} committed prefix changed during validation`, "recovery_failed");
       }
     } catch (e) {
       fail(e);
@@ -361,24 +373,34 @@ export class EventStore {
             const now = Buffer.alloc(tails[kind].length);
             readFully(fd, now, committed);
             if (!now.equals(tails[kind])) throw new SpoolIntegrityError(`${kind} tail bytes changed since validation`, "recovery_failed");
+            if (digestRange(fd, committed) !== prefixDigest[kind]) throw new SpoolIntegrityError(`${kind} committed bytes changed since validation (same-size corruption)`, "recovery_failed");
             if (this.opts.ioFaults?.recover?.(kind, "truncate") === "fail") throw Object.assign(new Error("EIO: injected truncate error"), { code: "EIO" });
             fs.ftruncateSync(fd, committed);
             if (this.opts.fsync) fs.fsyncSync(fd);
             rebind(d, name, fd, "after_write");
             if (fs.fstatSync(fd).size !== committed) throw new SpoolIntegrityError(`${kind} log size after truncation is wrong`, "recovery_failed");
+            if (digestRange(fd, committed) !== prefixDigest[kind]) throw new SpoolIntegrityError(`${kind} committed bytes changed during truncation`, "recovery_failed");
           } finally {
             fs.closeSync(fd);
           }
         });
       }
-      // Phase 4: both logs must be safe (bound, exact committed size) before anything clears.
+      // Phase 4: both logs must be safe (bound, exact committed size, committed bytes identical
+      // to the validated prefix, committed MAC chain intact) before anything clears.
       this.fsc.probe("recover:before-clear", this.dvlDir);
       for (const kind of LOG_KINDS) {
         this.withLogDir(kind, (d, name) => {
           const { fd, st } = openBound(d, name, O_RDONLY);
-          fs.closeSync(fd);
-          if (st.size !== this.committedBytes[kind]) throw new SpoolIntegrityError(`${kind} log is not at its commit boundary after recovery`, "recovery_failed");
+          try {
+            if (st.size !== this.committedBytes[kind]) throw new SpoolIntegrityError(`${kind} log is not at its commit boundary after recovery`, "recovery_failed");
+            if (digestRange(fd, this.committedBytes[kind]) !== prefixDigest[kind]) throw new SpoolIntegrityError(`${kind} committed bytes do not match the validated prefix (same-size corruption)`, "recovery_failed");
+          } finally {
+            fs.closeSync(fd);
+          }
         });
+        // …and the committed chain (MACs up to the commit head) still verifies.
+        const chk = this.readChain(kind, this.chain[kind]);
+        if (chk.report.truncated || chk.committedBytes > this.committedBytes[kind]) throw new SpoolIntegrityError(`${kind} committed chain no longer verifies against the commit head`, "recovery_failed");
       }
       this.withDir(INTEGRITY_DIR, (d) => {
         try {
@@ -895,7 +917,9 @@ export class EventStore {
     let off = 0;
     let lineNo = 0;
     let atBoundary = boundary !== undefined && boundary.count === 0;
-    let boundaryMacOk = boundary === undefined || boundary.count === 0;
+    // A count-0 boundary still has authority: it must carry this log's genesis MAC (an empty
+    // committed chain). A different MAC is a mismatch, never "no anchor".
+    let boundaryMacOk = boundary === undefined || (boundary.count === 0 && boundary.mac === prev);
     while (off < buf.length) {
       const nl = buf.indexOf(10, off);
       const end = nl === -1 ? buf.length : nl + 1;
@@ -1042,4 +1066,18 @@ function readFully(fd: number, buf: Buffer, pos: number): void {
     if (n === 0) throw new SpoolIntegrityError(`short read: ${off} of ${buf.length} bytes`, "recovery_failed");
     off += n;
   }
+}
+
+/** sha256 of the first `len` bytes of `fd` (positional reads; premature EOF is an error). */
+function digestRange(fd: number, len: number): string {
+  const h = crypto.createHash("sha256");
+  const buf = Buffer.alloc(Math.min(len, 1 << 20) || 1);
+  let off = 0;
+  while (off < len) {
+    const n = fs.readSync(fd, buf, 0, Math.min(buf.length, len - off), off);
+    if (n === 0) throw new SpoolIntegrityError(`short read: committed prefix ${off} of ${len} bytes`, "recovery_failed");
+    h.update(buf.subarray(0, n));
+    off += n;
+  }
+  return h.digest("hex");
 }
