@@ -48,6 +48,15 @@ export type Step =
 
 export const ROOT = "actor_root";
 
+/** H4 — the only change the crash test ever stages in a target project. */
+export const H4_PROBE = `import { expect, it } from "vitest";
+
+// DVL H4 Kernel crash-test probe. Test-only and harmless: touches no application code.
+it("dvl h4 probe", () => {
+  expect(1 + 1).toBe(2);
+});
+`;
+
 /** Common prologue/epilogue. */
 const start = (): Step[] => [{ op: "emit", type: "run.started", actor: ROOT, payload: { fidelity: "L3" } }];
 const finish = (): Step[] => [
@@ -402,6 +411,24 @@ export const SCENARIOS: Record<string, Step[]> = {
   "stdout-noise-flood": [...start(), { op: "stdout_flood", bytes: 1024 * 1024 }, ...finish()],
   /** Blocker C — stderr volume with almost no protocol frames. */
   "stderr-flood": [...start(), { op: "stderr_flood", bytes: 1024 * 1024 }, ...finish()],
+
+  /**
+   * H4 — stages one harmless, test-only file in the attempt workspace of a REAL target project
+   * (a new probe test; no application code, config, secrets, database or network), then stays
+   * busy so the host can kill the KERNEL mid-run. Never reaches run.finished on its own in time.
+   */
+  "h4-target-probe": [
+    ...start(),
+    { op: "write_file", actor: ROOT, rel: "tests/dvl-h4-probe.test.ts", content: H4_PROBE, actionId: "act_h4_probe" },
+    { op: "sleep", ms: 60_000 },
+    ...finish(),
+  ],
+  /** H4 — the same harmless probe, run to completion (retry after recovery, in-process windows). */
+  "h4-target-probe-finish": [
+    ...start(),
+    { op: "write_file", actor: ROOT, rel: "tests/dvl-h4-probe.test.ts", content: H4_PROBE, actionId: "act_h4_probe" },
+    ...finish(),
+  ],
 
   /** Adapter death mid-run. */
   crash: [

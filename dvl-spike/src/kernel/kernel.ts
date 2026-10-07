@@ -106,8 +106,9 @@ export interface RunTask {
  *   starting --run.started--> running --run.finished--> finished
  *   starting|running --run.failed--> failed;   any --safety halt--> halted
  *   starting --dispatch failed--> failed_to_start (Kernel-decided, never adapter-driven)
+ *   starting|running --Kernel stopped without a terminal record--> interrupted (H4, set on replay)
  */
-type RunStatus = "starting" | "running" | "finished" | "failed" | "halted" | "failed_to_start";
+type RunStatus = "starting" | "running" | "finished" | "failed" | "halted" | "failed_to_start" | "interrupted";
 
 /** Action lifecycle — blocker 2. `finished`/`aborted` are terminal. */
 type ActionState = "requested" | "started" | "finished" | "aborted";
@@ -127,6 +128,8 @@ interface RunState {
   status: RunStatus;
   /** Blocker 3 — this attempt's own transaction workspace (.dvl/tx/<runId>/attempt-<n>). */
   txWorkspace: string;
+  /** H4 — rebuilt from the durable log by a restarted Kernel; `interrupted` not yet recorded. */
+  interruptPending?: boolean;
   rootActorId?: string;
   actors: ActorTracker;
   actions: Map<string, ActionRecord>;
@@ -288,6 +291,39 @@ export class Kernel {
     this.limits = { maxDurationMs: 60_000, maxIncomingBytes: 256 * 1024 * 1024, ...opts.limits };
     this.queueLimits = { maxQueuedFrames: MAX_QUEUED_FRAMES, maxQueuedBytes: MAX_QUEUED_BYTES, ...opts.queueLimits };
     this.projectId = "proj_spike";
+    this.rebuildRunsFromReplay();
+  }
+
+  /**
+   * H4 — Kernel crash/restart recovery. Rebuild run/attempt state from the authenticated,
+   * committed history, using Kernel-origin records only: an adapter-origin run.finished in the
+   * log is a claim, never a completion. An attempt with no terminal kernel.run_<status> record
+   * was live when the previous Kernel stopped: it becomes `interrupted` — terminal, never
+   * success, eligible for retryRun(). Read-only here (a replaying Kernel may only be a reader);
+   * start() records kernel.run_interrupted once the Kernel takes ownership of the root.
+   */
+  private rebuildRunsFromReplay(): void {
+    for (const e of this.store.all()) {
+      if (e.origin !== "kernel" || !e.runId) continue;
+      const p = (e.payload ?? {}) as Record<string, unknown>;
+      const run = this.runs.get(e.runId);
+      if (e.type === "kernel.run_created") {
+        const { adapterInstanceId, txWorkspace, ...identity } = p as unknown as RunIdentity & { adapterInstanceId: string; txWorkspace: string };
+        this.runs.set(e.runId, { identity, adapterInstanceId, status: "starting", txWorkspace: path.join(this.opts.root, String(txWorkspace)), actors: new ActorTracker(), actions: new Map(), endWaiters: [] });
+      } else if (run && e.type === "kernel.attempt_created") {
+        run.identity = { ...run.identity, attempt: Number(p.attempt), workspaceId: String(p.workspaceId) };
+        run.adapterInstanceId = String(p.adapterInstanceId);
+        run.txWorkspace = path.join(this.opts.root, String(p.txWorkspace));
+        run.status = "starting";
+      } else if (run && e.attempt === run.identity.attempt && TERMINAL_RECORDS.has(e.type)) {
+        if (!isTerminal(run.status)) run.status = TERMINAL_RECORDS.get(e.type)!;
+      }
+    }
+    for (const run of this.runs.values()) {
+      if (isTerminal(run.status)) continue;
+      run.status = "interrupted";
+      run.interruptPending = true;
+    }
   }
 
   get transportStats() {
@@ -305,6 +341,12 @@ export class Kernel {
   start(): void {
     if (this.child) throw new Error("kernel already started");
     this.assertDurable();
+    for (const run of this.runs.values()) {
+      if (!run.interruptPending) continue;
+      run.interruptPending = false;
+      const { runId, attempt } = run.identity;
+      this.kernelEvent("kernel.run_interrupted", { runId, attempt, adapterInstanceId: run.adapterInstanceId, reason: "Kernel restarted: the attempt has no terminal record" }, runId, attempt);
+    }
     this.spawnAdapter();
   }
 
@@ -1439,8 +1481,11 @@ function instanceKey(...parts: string[]): string {
 }
 
 function isTerminal(s: RunStatus): boolean {
-  return s === "finished" || s === "failed" || s === "halted" || s === "failed_to_start";
+  return s === "finished" || s === "failed" || s === "halted" || s === "failed_to_start" || s === "interrupted";
 }
+
+/** H4 — the Kernel's terminal records (endRun / start()) and the status each one proves. */
+const TERMINAL_RECORDS = new Map<string, RunStatus>((["finished", "failed", "halted", "failed_to_start", "interrupted"] as const).map((s) => [`kernel.run_${s}`, s]));
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));

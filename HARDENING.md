@@ -98,6 +98,13 @@ Add a test that simulates Kernel interruption and verifies replay from JSONL eve
 Acceptance:
 After restart, Kernel can reconstruct enough state to avoid false completion or corrupted truth.
 
+Status (first crash test, pending independent review): the Kernel rebuilds runs from Kernel-origin
+records on replay; an attempt without a terminal Kernel record is `interrupted` (never success),
+recorded once by the next `start()`, continued only via `retryRun()`. Suite C27 SIGKILLs a
+Kernel process mid-run against a synthetic project and the real khedma.tn project (tracked files
+copied to a temp root; one harmless probe test staged in the attempt workspace only). See
+`CLAUDE_REPORTS/H4_KERNEL_CRASH_REPLAY_REPORT.md`.
+
 ## Post-review fixes (Codex blocker candidates A–C) — pending independent review
 
 - A (H1, run ownership): an adapter event naming a known run is applied only if its
