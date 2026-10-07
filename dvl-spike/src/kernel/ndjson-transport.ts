@@ -46,6 +46,8 @@ export interface TransportStats {
    * occupied (e.g. a planted symlink/hard link). Still counted and never processed.
    */
   overflowSpoolRefused: number;
+  /** H2 — diagnostics files the transport refused to open (unsafe path); see overflowSpoolRefused. */
+  diagnosticOpenRefused: number;
   /** Blocker C — raw bytes charged to maxIncomingBytes: every stdout + stderr byte, once, at read. */
   incomingBytes: number;
 }
@@ -81,6 +83,13 @@ export type TransportIssue =
 export interface TransportOptions {
   spoolDir: string; // .dvl/spool/<adapterInstanceId>
   diagnosticsName: string; // file stem for stderr/noise spool
+  /**
+   * H2 — opens a NEW diagnostics file by name inside spoolDir and returns an append fd. The
+   * Kernel supplies a confined opener (canonical root, every ancestor walked without
+   * following symlinks, directory identity re-verified on EVERY open, including the lazy
+   * overflow file). Default: exclusive no-follow open by path (unit tests).
+   */
+  openDiagnostic?: (fileName: string) => number;
   /** H3 — the instance this transport (and its queue) belongs to. */
   adapterInstanceId: string;
   maxQueuedFrames: number;
@@ -106,6 +115,7 @@ export class NdjsonTransport {
     queuedBytesHighWater: 0,
     framesRejected: 0,
     overflowSpoolRefused: 0,
+    diagnosticOpenRefused: 0,
     incomingBytes: 0,
   };
   readonly stderrSpoolPath: string;
@@ -116,7 +126,8 @@ export class NdjsonTransport {
   private readonly queue: { frame: Record<string, unknown>; rawBytes: number; adapterInstanceId: string }[] = [];
   private sealed = false;
   private byteLimitBreached = false;
-  /** null = not created yet; -1 = creation refused (path occupied), nothing is written. */
+  private readonly openDiag: (fileName: string) => number;
+  /** null = not created yet; -1 = creation refused (unsafe path), nothing is written. */
   private overflowFd: number | null = null;
   private processing = false;
   private idleWaiters: (() => void)[] = [];
@@ -140,8 +151,15 @@ export class NdjsonTransport {
     // spool memory is bounded and ordering is exact. Disk is the backpressure sink.
     // H2: created exclusively and never through a symlink, so diagnostics can only land in
     // a fresh regular file inside this instance's Kernel spool.
-    this.stderrFd = openDiagnostic(this.stderrSpoolPath);
-    this.noiseFd = openDiagnostic(this.noiseSpoolPath);
+    const open = opts.openDiagnostic ?? ((name: string) => openDiagnostic(path.join(opts.spoolDir, name)));
+    this.openDiag = open;
+    this.stderrFd = this.openOrCount(path.basename(this.stderrSpoolPath));
+    try {
+      this.noiseFd = this.openOrCount(path.basename(this.noiseSpoolPath));
+    } catch (e) {
+      fs.closeSync(this.stderrFd);
+      throw e;
+    }
 
     const splitter = new LineSplitter(
       (line) => this.classify(line),
@@ -335,7 +353,7 @@ export class NdjsonTransport {
       // already at this path was not made by the Kernel (planted symlink, hard link, file),
       // so adapter-controlled frame bytes are never written through it.
       try {
-        this.overflowFd = openDiagnostic(this.overflowSpoolPath);
+        this.overflowFd = this.openOrCount(path.basename(this.overflowSpoolPath));
       } catch {
         this.overflowFd = -1;
       }
@@ -345,6 +363,16 @@ export class NdjsonTransport {
       return;
     }
     fs.writeSync(this.overflowFd, line + "\n");
+  }
+
+  /** H2 — open a diagnostics file via the (confined) opener; a refusal is counted, then rethrown. */
+  private openOrCount(name: string): number {
+    try {
+      return this.openDiag(name);
+    } catch (e) {
+      this.stats.diagnosticOpenRefused++;
+      throw e;
+    }
   }
 
   /** H3 — true once the queue refused a frame; nothing further is ever enqueued. */

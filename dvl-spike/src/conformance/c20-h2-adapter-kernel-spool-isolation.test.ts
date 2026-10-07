@@ -188,7 +188,7 @@ describe("C20 H2 adapter/Kernel spool isolation", () => {
     // (d) A Kernel-owned directory replaced by a symlink: a new Kernel refuses to open the store.
     const root2 = rootOf(track(makeKernel("c20-dir-swap")));
     swapDirForSymlink(path.join(root2, ".dvl", "evidence"), outsideDir());
-    expect(() => kernelOn(root2)).toThrow(/spool integrity: .*evidence is not a real Kernel-owned directory/);
+    expect(() => kernelOn(root2)).toThrow(/spool integrity: .*evidence is not a real directory/);
   });
 
   it("5. queue-overflow diagnostics are never written through a planted symlink; stderr/noise files must be fresh", async () => {
@@ -246,7 +246,11 @@ describe("C20 H2 adapter/Kernel spool isolation", () => {
     expect(alias.artifactRefs).toEqual([]);
     expect(alias.statusReason).toMatch(/hard-linked/);
     expect(k.store.ofType("kernel.artifact_imported")).toHaveLength(1); // only the genuine one
-    expect(k.store.verifyKernelArtifact(src.artifactRefs[0]!)).toEqual({ ok: true }); // Kernel file intact
+    // While the adapter's alias exists, the Kernel file has a second name the adapter can write
+    // through: it is refused as aliased. Once the alias is gone it verifies again (bytes intact).
+    expect(reason(k.store.verifyKernelArtifact(src.artifactRefs[0]!))).toMatch(/hard-linked/);
+    fs.rmSync(path.join(k.store.adapterSpoolDirOf(k.currentAdapterInstanceId!), "alias.log"));
+    expect(k.store.verifyKernelArtifact(src.artifactRefs[0]!)).toEqual({ ok: true });
 
     // A hard link to a file outside the project (same filesystem) is rejected the same way.
     const aid = k.currentAdapterInstanceId!;

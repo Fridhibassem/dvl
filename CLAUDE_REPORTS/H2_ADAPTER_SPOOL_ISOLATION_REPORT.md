@@ -167,7 +167,7 @@ These came from a scratch probe against `EventStore`. Each probe below was a suc
 | M6 import provenance fields | 7 |
 | M7 post-open identity re-check | **none** (see limitations) |
 
-## 6. Results (on the final tree)
+## 6. Results (at reviewed commit `e94919b`; current results: §9.6)
 
 | Command | Result |
 |---|---|
@@ -181,7 +181,7 @@ These came from a scratch probe against `EventStore`. Each probe below was a suc
 Per suite: C01 6, C02 4, C03 6, C04 4, C05 4, C06 13, C07 10, C08 14, C09 4, C10 7, C11 7, C12 5,
 C13 6, C14 8, C15 5, C16 3, C17 2, C18 8, C19 3, **C20 7**. The count was 119 before this change.
 
-## 7. Known limitations (stated, not hidden)
+## 7. Known limitations at `e94919b` (superseded by §9.7)
 
 - **No OS sandbox.** The adapter is the same OS user and can still physically write, delete or replace any file under the root, including Kernel spool files and logs.
   - H2 guarantees the Kernel never *reads adapter material from outside its own area* and never *writes through adapter-planted paths*. It also guarantees adapter overwrites are *detected* (registration plus hash, HMAC chain) and never trusted.
@@ -200,7 +200,7 @@ C13 6, C14 8, C15 5, C16 3, C17 2, C18 8, C19 3, **C20 7**. The count was 119 be
   - `chmod`-based protection (ineffective as root and against the same user);
   - Windows (`O_NOFOLLOW` is POSIX; the spike already relied on it).
 
-## 8. Ready for Codex review?
+## 8. Ready for Codex review? (at `e94919b` — result: H2 REVIEW FAIL, see §9)
 
 **Yes — ready for Codex review of H2.**
 - Every gap found during inspection (P1–P5 plus the overflow diagnostics link) was reproduced before the fix and is now pinned by a C20 test that fails without its guard.
@@ -210,3 +210,169 @@ C13 6, C14 8, C15 5, C16 3, C17 2, C18 8, C19 3, **C20 7**. The count was 119 be
 - an H2 PASS (that is the reviewer's verdict);
 - any change to `main` (not pushed, not merged);
 - protection that needs OS-level isolation.
+
+## 9. Codex Review Failure Fixes
+
+**Context:**
+- Codex reviewed `e94919b` and returned **H2 REVIEW FAIL** with four blockers.
+- The referenced probe file `dvl-spike/src/conformance/h2-review-probes.test.ts` is **not present in the repository** on any branch (`main`, this branch, or other remotes), so it could not be run or converted directly. Each blocker's described probe was re-implemented as a regression assertion in the new suite **C21**. Every assertion checks rejection and no outside write, never the old behaviour.
+
+### 9.0 Approach: one confinement layer for every Kernel filesystem access
+
+**New file `dvl-spike/src/kernel/confined-fs.ts`.**
+
+- `Confinement` fixes the canonical root (path *and* inode) at construction.
+- `openDir(rel)` walks Kernel-owned directories component by component and never follows a symlink.
+  - **`procfd` mode (Linux, default):** each step is `open("/proc/self/fd/<parentFd>/<component>", O_DIRECTORY|O_NOFOLLOW)`. The final `open`/`mkdir`/`rename`/`lstat` is also issued relative to the held directory fd. This is **directory-relative no-follow confinement**: Node's nearest equivalent to `openat`. A swap after the walk cannot redirect the operation; it lands in the directory inode the Kernel holds.
+  - **`path` mode** (non-Linux, or forced with `confinement: "path"`): an `lstat` walk, plus `realpath` equality, plus inode re-checks. This **narrows** the check/use window; it does **not** close it.
+- `DirHandle.verify()` re-walks the canonical path and requires it to still lead to the held directory inode. This refuses a directory that was moved away (possibly out of the root) or replaced.
+- `openBound(dir, name, flags)`:
+  1. opens no-follow relative to the held directory;
+  2. requires a regular file with `nlink == 1` whose name still maps to the opened inode;
+  3. `verify()`s the directory;
+  4. closes the descriptor on every failure path;
+  5. on a failed bind after an exclusive create, unlinks its own new entry, but only if the name still maps to *its* inode.
+- `SpoolIntegrityError` gains a `code` field (`symlink`/`missing`/`replaced`/...), used to map failures to precise rejection reasons.
+- A test-only `fsProbe(stage, target)` hook (`EventStoreOptions`/`KernelOptions`) fires at named check/use points. Tests use it to force races **deterministically**.
+
+**Uses:** all Kernel spool writes, durable log appends and reads, diagnostics opens, adapter-artifact import reads, artifact verification, and directory creation (non-recursive, relative to the verified parent).
+
+### 9.1 Blocker 1 — diagnostics followed symlinked parent directories
+
+**Fix:**
+- `EventStore.openDiagnostic(owner, fileName)` walks `.dvl/spool/<owner>` from the canonical root without following symlinks and creates exclusively. It binds the file and verifies the directory before returning the fd.
+- `kernel.ts newTransport` passes it as the transport's new `openDiagnostic` option. **Every** diagnostics open uses it: eager stderr/noise *and* the lazy queue-overflow file.
+- **Counting:**
+  - transport `stats.diagnosticOpenRefused` counts refused opens;
+  - `stats.overflowSpoolRefused` counts overflow frames not written (still never processed);
+  - a refused eager open fails the spawn: the child is killed, the instance is fenced, and `kernel.adapter_spawn_failed` is recorded.
+
+**Tests** (C21, both modes):
+- **1a:** owner dir swapped after adapter start, before the lazy overflow file: refused, counted (`overflowSpoolRefused == framesRejected`, `diagnosticOpenRefused == 1`), outside tree empty.
+- **1b:** spool root (ancestor) swapped to an outside tree that even contains the expected owner dir: refused, counted, nothing written there.
+- **1c:** constructor diagnostics, parent swapped between check and open (probe): `start()` throws, the child is killed, `kernel.adapter_spawn_failed` is recorded, and no file is left either outside or in the moved original directory.
+- **1d:** owner dir already a symlink at open: refused.
+
+**Before:** `openDiagnostic(path)` used `O_NOFOLLOW` on the final name only, so a swapped parent redirected the create/append.
+**After:** the parent chain is confined and verified on every open.
+
+### 9.2 Blocker 2 — durable-log hard links redirected writes
+
+**Fix:**
+- Logs are created once at construction (confined) and never created by `durableAppend`.
+- `durableAppend` opens through `openBound` (regular, `nlink == 1`, name ↔ inode, directory verified). After the `log:after-open` probe point it re-binds again (`lstat` == `fstat`, `nlink == 1`) and re-verifies the directory **before writing**.
+- On refusal it throws `SpoolIntegrityError` before the write, so neither the MAC chain head nor in-memory history advances.
+
+**Tests:**
+- **C21-2:** for each of `events.jsonl` and `evidence.jsonl` replaced by a hard link to an outside victim, the append/`putEvidence` is refused, the victim is unchanged, `head()` is unchanged, and the event/evidence counts are unchanged.
+- **C21-2:** an adapter-made alias of the real log is also refused (fail closed).
+
+**Before:** a hard-linked log received Kernel records.
+**After:** refused, with no write.
+
+### 9.3 Blocker 3 — replay and disk reads followed symlinked logs
+
+**Fix:** `readChain` (used by replay, `readFromDisk` and `readEvidenceFromDisk`) reads through `openBound(..., O_RDONLY)`. A symlinked, hard-linked, non-regular or relocated log throws `SpoolIntegrityError`: fail closed. `new Kernel(...)` on such a root throws, and disk reads throw. A missing log reads as empty, which is unchanged; truncation is still detected via the head anchor.
+
+**Tests:** C21-3 covers each log replaced by:
+- a symlink to an authentic, correctly MAC'd copy outside the Kernel area: replay throws `... is a symlink`, and `readFromDisk`/`readEvidenceFromDisk` throw;
+- a hard link to that copy: replay throws `hard-linked`.
+
+The test then restores the logs and shows a clean replay.
+
+**Before:** HMAC-valid content was accepted from any location.
+**After:** location is enforced as well as content.
+
+### 9.4 Blocker 4 — deterministic check/use swaps and import error handling
+
+**Fix:**
+- **`durableAppend`:** see 9.2 (bind at open, plus re-bind and directory re-verify immediately before the write).
+- **`importAdapterArtifact`:**
+  - the area is opened via the confined walk, the file via `openBound`;
+  - every expected filesystem failure becomes `{ ok: false, reason }`: area missing, area swapped or moved, file vanished, symlink, hard link, size mismatch, I/O;
+  - this includes the formerly unhandled `realpath` ENOENT, which can no longer occur because the walk uses descriptors;
+  - Kernel-side materialisation failures (hijacked spool, swap, rename failure) also become rejections;
+  - descriptors are closed in `finally` on every path.
+- **`kernel.ts`:**
+  - `maybeCreateEvidence` wraps the import (defence in depth) so an unexpected throw still yields `CORRUPTED` evidence plus `kernel.artifact_rejected`.
+  - `capPayload` turns a refused Kernel spool write into a stored event with a refusal marker. The event is not lost, so lifecycle continues. Evidence is `CORRUPTED` ("payload spooling refused") and `kernel.spool_integrity_violation` is recorded.
+
+**Tests** (C21, deterministic via `fsProbe`, both modes):
+
+| Test | Forced swap | Result |
+|---|---|---|
+| 4a | log directory swapped between validation and open | refused; outside victim and moved original log unchanged; history and head unchanged |
+| 4b | log name swapped between open and write | refused ("swapped or aliased"); neither file written; history unchanged |
+| 4c | Kernel spool dir swapped between validation and create | refused; nothing outside; no temp leftover in the moved original; nothing registered |
+| 4d(i) | adapter area deleted after the area check | `{ok:false}` (no exception) |
+| 4d(ii) | adapter area swapped for a symlink to an outside dir holding a file with the claimed hash | `{ok:false, "changed during import"}`; nothing registered |
+| 4e | end to end: area vanishes mid-import during a real run | run `finished`; evidence `CORRUPTED`; one `kernel.artifact_rejected`; no "kernel handler error" |
+| 4f | end to end: Kernel spool hijacked before an oversized inline payload | run `finished`; evidence `CORRUPTED` ("payload spooling refused"); `kernel.spool_integrity_violation`; nothing outside; no handler error |
+
+**Before:**
+- The swap between validation and open redirected the log create/append.
+- An area disappearing between `lstat` and `realpath` threw out of import into the transport handler, so the frame's evidence processing was lost.
+
+**After:** refusals and rejections are recorded, and evidence is `CORRUPTED`.
+
+### 9.5 Other changes from this fix round
+
+- **C20-6 strengthened:** while the adapter's hard-link alias of a Kernel artifact exists, `verifyKernelArtifact` now refuses it (`hard-linked`), because the alias is a write path into a Kernel-owned inode. After the alias is removed, it verifies again.
+- **C20-4:** the expected message wording for a symlinked Kernel directory changed; the refusal itself is the same.
+
+### 9.6 Results (final tree)
+
+| Command | Result |
+|---|---|
+| `npm test` ×3 | exit 0 each — 21 files, **152/152 passed** each run |
+| `npm run typecheck` | exit 0 |
+| `npm run spike` | exit 0 — "SPIKE OK — every scenario reached its expected terminal state" |
+| `npx vitest run src/conformance/c18* src/conformance/c19* src/conformance/c20*` | exit 0 — 3 files, **18/18 passed** (C18 8, C19 3, C20 7) |
+| C21 alone | 26/26 (13 tests × 2 confinement modes) |
+
+Per suite: C01 6, C02 4, C03 6, C04 4, C05 4, C06 13, C07 10, C08 14, C09 4, C10 7, C11 7, C12 5, C13 6, C14 8, C15 5, C16 3, C17 2, C18 8, C19 3, C20 7, **C21 26**.
+
+**Fail-before evidence:**
+- **C21 against the reviewed commit's Kernel** (`event-store.ts`, `kernel.ts` and `ndjson-transport.ts` from `e94919b`): **26/26 fail**. This is partly because the new probe and confinement options don't exist there, so it is not taken as primary evidence.
+- **Per-guard mutations of the new code** (each applied alone, then restored byte-for-byte; checked against C20+C21):
+
+| Guard disabled | Failing tests |
+|---|---|
+| Kernel's confined diagnostics opener (transport falls back to path-based open) | C21 1a, 1b, 1c (both modes) |
+| `nlink == 1` in `openBound` | C20-6; C21 2, 3 (both modes) |
+| Log read by path (`readFileSync`) instead of bound fd | C21 3 (both modes) |
+| Re-bind between open and write in `durableAppend` | C21 4b (both modes) |
+| `DirHandle.verify()` | C21 1c, 4a, 4c, 4d (both modes) |
+| Cleanup of own exclusive create on bind failure | C21 1c, 4c (both modes) |
+| `capPayload` refusal handling | C21 4f (both modes) |
+| Store import failure → rejection conversion | C20-2, C20-6; C21 4d (both modes); 4e still passes via the Kernel-level catch |
+| Store conversion **and** the Kernel-level catch | additionally C21 4e (both modes) |
+| Path-mode `realpath` equality check | **none**: redundant with the per-component `lstat` walk (belt and braces) |
+
+### 9.7 Remaining limitations (honest)
+
+- **Strictness depends on the mode.**
+  - **`procfd` mode** (Linux, the default, and CI) gives directory-relative confinement for the operations the Kernel performs. Two caveats remain:
+    1. **The project root** is trusted only by inode. A swapped root is refused, but the root directory itself is not walked from `/`.
+    2. **A directory the Kernel already holds can be *moved* by the adapter** between `verify()` and the following syscall. The operation then lands in the Kernel's own (relocated) directory inode, never in a file the Kernel didn't create or open. The final re-verify shrinks this to a two-syscall window.
+  - **`path` mode** (macOS/others, or forced) is **not** strict. Checks and uses are separate path-based syscalls, so the window is narrowed, not closed. C21 forces the same races in both modes and both refuse them, but a race landing in the remaining sub-syscall gaps is not excluded.
+- **No OS sandbox, which is unchanged.** The same-user adapter can still delete, overwrite or alias Kernel files. Overwrites are detected (registration hash, HMAC chain). Aliases and symlinks are now refused at every Kernel access, and refusal is **fail closed**: an adapter can make the Kernel refuse to append (availability), never make it write elsewhere or trust relocated data.
+- **Refusing aliased logs is fail closed.** An adapter that hard-links a Kernel log stops further appends to it. This is deliberate (Blocker 2) and is an availability, not an integrity, effect.
+- **Spawn-failure cleanup** (Blocker 1 constructor path) kills the child with `SIGKILL` on the child pid. Grandchildren of a misbehaving adapter are not reaped there; this is the same scope as before.
+- **The review probe file wasn't available** in the repository; C21 implements the described probes instead.
+- **Not covered by a dedicated test:**
+  - the path-mode `realpath` belt-and-braces check (see mutations);
+  - errno failures other than the mapped ones (e.g. `EIO`), which are handled by the generic conversion but can't be produced deterministically.
+
+### 9.8 Ready for Codex re-review?
+
+**Yes — ready for Codex re-review of H2.**
+- All four blockers are fixed, each with deterministic regression tests in both confinement modes, pinned by mutation.
+- All 152 tests pass three times; typecheck and spike pass; H1 C18/C19 are green.
+
+**Not claimed:**
+- an H2 PASS;
+- strict confinement outside `procfd` mode;
+- protection that needs OS-level isolation.
+
+`main` was not pushed and nothing was merged.

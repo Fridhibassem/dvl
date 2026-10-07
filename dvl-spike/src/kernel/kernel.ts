@@ -13,7 +13,8 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { EventStore, newId, sha256, type ChainHead, type ChainReport } from "./event-store.js";
+import type { FsProbe } from "./confined-fs.js";
+import { EventStore, SpoolIntegrityError, newId, sha256, type ChainHead, type ChainReport } from "./event-store.js";
 import { NdjsonTransport, type TransportIssue } from "./ndjson-transport.js";
 import {
   CONTRACT_VERSION,
@@ -71,6 +72,10 @@ export interface KernelOptions {
   expectedHead?: ChainHead;
   /** H3 — protocol queue bounds per adapter instance (defaults: MAX_QUEUED_FRAMES / MAX_QUEUED_BYTES). */
   queueLimits?: Partial<QueueLimits>;
+  /** H2 — filesystem confinement mode for Kernel-owned paths ("path" forces the fallback). */
+  confinement?: "auto" | "path";
+  /** H2 — test-only probe at filesystem check/use points (deterministic race injection). */
+  fsProbe?: FsProbe;
 }
 
 export interface QueueLimits {
@@ -261,7 +266,7 @@ export class Kernel {
   readonly projectId: string;
 
   constructor(private readonly opts: KernelOptions) {
-    this.store = new EventStore({ root: opts.root, fsync: opts.fsync, integrityKey: opts.integrityKey, expectedHead: opts.expectedHead });
+    this.store = new EventStore({ root: opts.root, fsync: opts.fsync, integrityKey: opts.integrityKey, expectedHead: opts.expectedHead, confinement: opts.confinement, fsProbe: opts.fsProbe });
     const { events, evidence } = this.store.integrity;
     if (!events.ok || !evidence.ok) {
       // Fail closed: rejected records stay on disk as inert bytes and confer nothing.
@@ -375,6 +380,9 @@ export class Kernel {
       // H2: stderr + non-DVL1 stdout drain into THIS instance's Kernel-owned spool.
       spoolDir: kernelDir,
       diagnosticsName: "diagnostics",
+      // H2: every diagnostics open (eager stderr/noise and lazy overflow) is confined to this
+      // instance's Kernel spool: ancestors walked without following symlinks, identity re-verified.
+      openDiagnostic: (fileName) => this.store.openDiagnostic(adapterInstanceId, fileName),
       // H3: bounded, instance-owned queue; a fresh one for every instance.
       adapterInstanceId,
       maxQueuedFrames: this.queueLimits.maxQueuedFrames,
@@ -1030,7 +1038,14 @@ export class Kernel {
       // H2: the adapter's claim is never attached. Only bytes the Kernel verified and
       // imported into its own spool are referenced, via a Kernel-issued ref.
       const aid = ev.adapterInstanceId!;
-      const imp = this.store.importAdapterArtifact(outputRef, aid, { runId: run.identity.runId, attempt: run.identity.attempt, sourceEventId: ev.eventId });
+      let imp: ReturnType<EventStore["importAdapterArtifact"]>;
+      try {
+        imp = this.store.importAdapterArtifact(outputRef, aid, { runId: run.identity.runId, attempt: run.identity.attempt, sourceEventId: ev.eventId });
+      } catch (e) {
+        // Defence in depth: an unexpected import failure still yields CORRUPTED evidence
+        // instead of escaping into the transport handler and losing evidence processing.
+        imp = { ok: false, reason: `artifact import failed: ${(e as Error).message}` };
+      }
       if (imp.ok) {
         refs.push(imp.ref);
         this.kernelEvent(
@@ -1058,6 +1073,12 @@ export class Kernel {
     // very event's payload (object identity). An adapter-supplied `__spooled` key is just data.
     if (ev.payload !== null && typeof ev.payload === "object" && KERNEL_SPOOL_MARKERS.has(ev.payload)) {
       refs.push((ev.payload as { __spooled: ArtifactRef }).__spooled);
+    }
+    // H2: the Kernel could not spool this event's oversized payload safely: its content is
+    // not available as Kernel material, so the evidence cannot be trusted.
+    if (ev.payload !== null && typeof ev.payload === "object" && KERNEL_SPOOL_REFUSED.has(ev.payload)) {
+      status = "CORRUPTED";
+      reason = `payload spooling refused: ${(ev.payload as { __spoolRefused: string }).__spoolRefused}`;
     }
 
     const summary = String(payload.summary ?? `${kind} exit=${String(payload.exitCode)}`).slice(0, 280);
@@ -1306,6 +1327,8 @@ export class Kernel {
  * Identity-based, so an adapter payload that merely contains a `__spooled` key never matches.
  */
 const KERNEL_SPOOL_MARKERS = new WeakSet<object>();
+/** H2 — payload objects standing in for an oversized payload the Kernel could not spool safely. */
+const KERNEL_SPOOL_REFUSED = new WeakSet<object>();
 
 function capPayload(k: Kernel, adapterInstanceId: string, payload: unknown, type: string, runId?: string): unknown {
   if (payload === undefined) return undefined;
@@ -1313,12 +1336,23 @@ function capPayload(k: Kernel, adapterInstanceId: string, payload: unknown, type
   const bytes = Buffer.byteLength(json);
   if (bytes <= MAX_INLINE_PAYLOAD_BYTES) return payload;
   // H2: spooled into the sending instance's own Kernel-owned spool, ref stamped with it.
-  const ref = k.store.spoolArtifact(json, {
-    owner: adapterInstanceId,
-    mimeType: "application/json",
-    summary: `oversized inline payload of ${type} (${bytes} bytes) spooled by Kernel`,
-    provenance: { origin: "kernel_spooled_payload", runId },
-  });
+  let ref: ArtifactRef;
+  try {
+    ref = k.store.spoolArtifact(json, {
+      owner: adapterInstanceId,
+      mimeType: "application/json",
+      summary: `oversized inline payload of ${type} (${bytes} bytes) spooled by Kernel`,
+      provenance: { origin: "kernel_spooled_payload", runId },
+    });
+  } catch (e) {
+    if (!(e instanceof SpoolIntegrityError)) throw e;
+    // The event is still recorded (without the payload), so lifecycle processing continues;
+    // nothing was written outside the spool and nothing is registered.
+    k.kernelEvent("kernel.spool_integrity_violation", { kind: "payload_spool_refused", adapterInstanceId, type, bytes, reason: e.message }, runId);
+    const refused = { __spoolRefused: e.message, __note: "payload exceeded 32KB inline cap; Kernel spooling refused" };
+    KERNEL_SPOOL_REFUSED.add(refused);
+    return refused;
+  }
   k.kernelEvent("kernel.protocol_violation", { kind: "inline_payload_exceeded", type, bytes, limit: MAX_INLINE_PAYLOAD_BYTES, artifactRef: ref.artifactRef }, runId);
   const marker = { __spooled: ref, __note: "payload exceeded 32KB inline cap; spooled by Kernel" };
   KERNEL_SPOOL_MARKERS.add(marker);
