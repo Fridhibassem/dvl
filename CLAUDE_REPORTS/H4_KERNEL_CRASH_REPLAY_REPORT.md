@@ -282,3 +282,84 @@ fencing.
 - **Still open from the review:** B1 (replay drops an oversized `action.started`) and B2
   (`reconcileActionOutcome` CONFIRMED_DONE, and NOT_DONE on a replayed FENCED attempt, can still be
   written by a non-owner).
+
+---
+
+## B4: effect before a durable action record (H4 spike evidence)
+
+### Root cause
+
+Execution authority was granted per **run**, at dispatch (`run.start`). Action identity existed only
+as adapter **observations** emitted after the fact (`action.started`). Nothing made an effect depend on
+a prior durable Kernel record, so a provider could mutate an external system before any action record
+existed. After a Kernel crash, replay had nothing to mark UNKNOWN; B3 fencing found an empty group;
+`retryRun()` redispatched; and the effect happened twice. That's reproduced by C30 test 0 on the
+pre-fix Kernel: 2 effective payments for one intent.
+
+### Protocol
+
+```
+action.prepare (adapter → Kernel: actionId, kind, target, intent, external, executor)
+  → kernel.action_prepared DURABLE   (identity, authority, intent, signature, effectId, executor)
+  → capability = HMAC(capKey, effectId ‖ signature)
+      executor=provider: sent to the provider ("granted")
+      executor=kernel:   kept; kernel.action_execution_started → Kernel performs the effect → kernel.action_executed
+  → action.started → effect → action.finished   (provider observations)
+crash at any point after PREPARED → replay: UNKNOWN → retry held
+  → inspectActionOutcome(): revoke at the resource, then inspect (linearizable)
+      DONE     → reconciled CONFIRMED_DONE (basis: inspection)
+      NOT_DONE → requires the B3 fence → reconciled CONFIRMED_NOT_DONE (basis: inspection)
+  → retryRun(): fence (B3) → attempt N+1; a prepare whose signature is already DONE → "already_done", no capability
+```
+
+- **Refusals** (each recorded as `kernel.action_prepare_refused`, no capability issued):
+  - no broker configured;
+  - no Kernel executor for a Kernel-owned action;
+  - `duplicate_signature` (the same effect already prepared in this attempt);
+  - `already_done` (an earlier attempt did it);
+  - `refused_prior_unknown`;
+  - the PREPARED record could not be made durable.
+- Adapter lifecycle frames for a Kernel-owned action are rejected at admission (`kernel_owned`).
+- `effectId = runId:attempt:actionId`: revoking attempt 1 never voids attempt 2.
+
+### Tests (C30; the Kernel runs in its own process and is SIGKILLed at each boundary)
+
+| # | Boundary | Result |
+|---|---|---|
+| 0 | Ungated provider (residual) | A naive resource sees 2 effects; a capability-gated resource sees 0 |
+| 1 | Before PREPARED is durable (`action.prepare` held) | The eager write had no effect; no UNKNOWN; retry pays once |
+| 2 | After PREPARED, before the effect | UNKNOWN; retry held; inspection is refused until fenced, then NOT_DONE; retry pays once |
+| 3 | After the effect, before STARTED/FINISHED | UNKNOWN; inspection DONE; retry gets `already_done`; pays once |
+| 4 | After the outcome is durable | CONFIRMED; retry gets `already_done`; pays once |
+| 5a | Survivor holding the capability | Revoked first, so its late write has no effect; NOT_DONE waits for the fence; pays once |
+| 5b | Survivor | The B3 fence kills it before it acts; pays once |
+| 6 | Kernel-owned vs provider-native | The Kernel executes once; the native write without a capability has no effect; the provider-mode copy is a `duplicate_signature`; the adapter's `action.finished` for the Kernel's action is rejected |
+| 7 | Kernel dies inside Kernel-owned execution, after the effect | UNKNOWN; inspection DONE; retry gets `already_done`; no second execution |
+| 8 | No broker | `refused_no_broker`; nothing written |
+
+**Falsification** (mechanism disabled → C30 tests that fail):
+
+| Mechanism disabled | Tests that fail |
+|---|---|
+| Durable PREPARED before the capability | 2, 3, 4, 5a, 5b, 7 |
+| Cross-attempt `already_done` | 3, 4, 7 |
+| In-attempt `duplicate_signature` | 6 |
+| Kernel-owned admission guard | 6 |
+| Resource honours revocation | 5a |
+| Replay of PREPARED as UNKNOWN | 2, 3, 5a, 5b, 7 |
+
+**Totals (Linux):** 30 files, **270/270**, two runs. C27 12, C28 4, C29 8, C30 10 (three further runs
+10/10).
+
+### Residual paths (not closed)
+
+1. **Resources that don't demand a DVL capability.** The provider runs as the same OS user with ambient
+   filesystem, network and credentials. Test 0 shows the duplicate is still possible there. Closing it
+   needs an OS sandbox plus credential brokering, so that the provider holds no ambient authority.
+2. **Resources that can't revoke, or can't be inspected linearizably.** For these, NOT_DONE can't be
+   proven; they stay UNKNOWN, or need an operator reconciliation.
+3. **fsync is off by default.** PREPARED survives a process crash (what was tested), but not an OS
+   crash or power loss, which could lose PREPARED after the capability went out. Production needs
+   `fsync: true`; this was not tested.
+4. **B1 and B2 stay open.** B1 does not affect PREPARED actions, since their identity is in a Kernel
+   record.

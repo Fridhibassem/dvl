@@ -22,6 +22,26 @@ import path from "node:path";
 import { encodeFrame, LineSplitter, parseLine } from "../kernel/frame.js";
 import { CONTRACT_VERSION, type AdapterCapabilities, type ArtifactRef } from "../kernel/types.js";
 import { SCENARIOS, type Step } from "./scenarios.js";
+import { appendLedger, ledgerFile } from "./external-ledger.js";
+
+// ───────────── B4: adapter → Kernel prepare requests ─────────────
+
+interface PrepareReply {
+  decision: string;
+  actionId: string;
+  signature?: string;
+  capability?: string;
+  effectId?: string;
+  result?: unknown;
+}
+const pendingPrepare = new Map<string, (r: PrepareReply) => void>();
+/** Kernel decisions per actionId (this process). */
+const prepared = new Map<string, PrepareReply & { intent: unknown }>();
+function ledgerDir(): string {
+  const d = process.env.DVL_MOCK_LEDGER;
+  if (!d) throw new Error("DVL_MOCK_LEDGER not set");
+  return d;
+}
 
 const PROJECT_ROOT = process.env.DVL_PROJECT_ROOT ?? process.cwd();
 /** H2: the Kernel-assigned untrusted area for THIS adapter instance. No fallback. */
@@ -218,6 +238,51 @@ async function runScenario(name: string, runId: string, attempt: number, txRoot:
         spawn(process.execPath, ["-e", src], { detached: !!step.escape, stdio: "ignore" }).unref();
         const deadline = Date.now() + 5_000;
         while (!fs.existsSync(file + ".pid") && Date.now() < deadline) await new Promise((r) => setTimeout(r, 10));
+        break;
+      }
+      case "ledger_unprepared":
+        appendLedger(ledgerDir(), { t: "entry", actionId: step.actionId, signature: null, capability: null, entry: step.entry });
+        break;
+      case "prepare": {
+        const requestId = "prep_" + crypto.randomBytes(6).toString("hex");
+        const reply = new Promise<PrepareReply>((resolve, reject) => {
+          pendingPrepare.set(requestId, resolve);
+          setTimeout(() => reject(new Error(`no Kernel decision for ${step.actionId}`)), 15_000).unref();
+        });
+        await em.emit("action.prepare", step.actor, {
+          actionId: step.actionId,
+          kind: step.kind,
+          target: step.target,
+          intent: step.intent,
+          external: true,
+          executor: step.executor ?? "provider",
+          requestId,
+        });
+        prepared.set(step.actionId, { ...(await reply), intent: step.intent });
+        break;
+      }
+      case "ledger_write": {
+        const r = prepared.get(step.actionId);
+        if (r?.decision !== "granted") {
+          await writeErr(`ledger_write ${step.actionId} skipped: ${r?.decision ?? "not prepared"}\n`);
+          break;
+        }
+        if (step.lifecycle === "full") await em.emit("action.started", step.actor, { actionId: step.actionId, kind: "ledger.append" });
+        if (step.holdBeforeMs) await new Promise((res) => setTimeout(res, step.holdBeforeMs));
+        appendLedger(ledgerDir(), { t: "entry", actionId: r.effectId!, signature: r.signature, capability: r.capability, entry: r.intent });
+        if (step.holdAfterMs) await new Promise((res) => setTimeout(res, step.holdAfterMs));
+        if (step.lifecycle === "full") await em.emit("action.finished", step.actor, { actionId: step.actionId, kind: "ledger.append", exitCode: 0 });
+        break;
+      }
+      case "spawn_ledger_writer": {
+        const r = prepared.get(step.actionId);
+        if (r?.decision !== "granted") break;
+        const line = JSON.stringify({ t: "entry", actionId: r.effectId, signature: r.signature, capability: r.capability, entry: r.intent }) + "\n";
+        const go = path.join(ledgerDir(), step.goFile);
+        const src = `const fs=require("fs");const t=setInterval(()=>{if(fs.existsSync(${JSON.stringify(go)})){fs.appendFileSync(${JSON.stringify(ledgerFile(ledgerDir()))},${JSON.stringify(line)});fs.writeFileSync(${JSON.stringify(go + ".done")},String(process.pid));clearInterval(t);process.exit(0)}},10);setTimeout(()=>process.exit(0),30000);fs.writeFileSync(${JSON.stringify(go + ".pid")},String(process.pid));`;
+        spawn(process.execPath, ["-e", src], { stdio: "ignore" }).unref();
+        const deadline = Date.now() + 5_000;
+        while (!fs.existsSync(go + ".pid") && Date.now() < deadline) await new Promise((res) => setTimeout(res, 10));
         break;
       }
       case "crash":
@@ -424,6 +489,13 @@ async function handle(cmd: Record<string, unknown>): Promise<void> {
         await writeErr(`scenario error: ${(e as Error).stack}\n`);
         process.exit(70);
       });
+      return;
+    }
+    case "action.prepared": {
+      // B4: the Kernel's decision on an action.prepare (a reply, not a command: no ack).
+      const r = cmd.payload as PrepareReply & { requestId: string };
+      pendingPrepare.get(r.requestId)?.(r);
+      pendingPrepare.delete(r.requestId);
       return;
     }
     case "adapter.shutdown":

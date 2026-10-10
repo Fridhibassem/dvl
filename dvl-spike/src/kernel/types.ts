@@ -43,6 +43,8 @@ export const QUIESCENCE_MS = 250;
 // ───────────────────────── Commands (Kernel → Adapter) §9 ─────────────────────────
 
 export type CommandType =
+  /** B4 — the Kernel's decision on an adapter's action.prepare (a reply: never acknowledged). */
+  | "action.prepared"
   | "adapter.describe"
   | "run.start"
   | "run.stop"
@@ -121,6 +123,8 @@ export const PROVIDER_EVENT_TYPES = [
   "actor.started",
   "actor.finished",
   "action.requested",
+  /** B4 — request to perform a state-mutating / external action (identity + intent). */
+  "action.prepare",
   "action.started",
   "action.updated",
   "action.finished",

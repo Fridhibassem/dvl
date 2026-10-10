@@ -18,6 +18,7 @@ import { EventStore, SpoolIntegrityError, newId, sha256, type ChainHead, type Ch
 import { NdjsonTransport, type TransportIssue } from "./ndjson-transport.js";
 import { RootLock, RootLockError } from "./root-lock.js";
 import { defaultProcessOps, fenceProcessGroup, type ProcessOps } from "./process-fence.js";
+import { actionSignature, capabilityFor, effectIdOf, type EffectBroker, type PreparedAction } from "./effects.js";
 import {
   CONTRACT_VERSION,
   FORBIDDEN_ADAPTER_EVENTS,
@@ -90,6 +91,11 @@ export interface KernelOptions {
   fsProbe?: FsProbe;
   /** B3 — test-only override of process inspection/signalling used to fence old executors. */
   processOps?: Partial<ProcessOps>;
+  /**
+   * B4 — capability broker for state-mutating / external actions. Absent ⇒ no external action
+   * can be prepared (fail closed: no capability is ever issued).
+   */
+  effects?: EffectBroker;
 }
 
 export interface QueueLimits {
@@ -115,7 +121,7 @@ export interface RunTask {
 type RunStatus = "starting" | "running" | "finished" | "failed" | "halted" | "failed_to_start" | "interrupted";
 
 /** Action lifecycle — blocker 2. `finished`/`aborted` are terminal. */
-type ActionState = "requested" | "started" | "finished" | "aborted";
+type ActionState = "requested" | "prepared" | "started" | "finished" | "aborted";
 
 /**
  * H4 — action lifecycle and effect certainty are separate.
@@ -154,6 +160,10 @@ interface RunState {
   interruptPending?: boolean;
   /** B3 — this attempt's executor fencing (absent: not attempted yet). */
   recovery?: { state: "FENCED" | "HOLD_RECOVERY_PROCESS_STILL_ALIVE"; reason: string };
+  /** B4 — this attempt's durably PREPARED external actions. */
+  prepared?: Map<string, PreparedAction>;
+  /** B4 — outcome of every PREPARED signature of earlier attempts of this run (DONE wins). */
+  effectHistory?: Map<string, { attempt: number; actionId: string; outcome: "DONE" | "NOT_DONE" | "UNKNOWN" }>;
   rootActorId?: string;
   actors: ActorTracker;
   actions: Map<string, ActionRecord>;
@@ -163,7 +173,8 @@ interface RunState {
 /** Admission gate — action transitions: event → allowed from-states and resulting state. */
 const ACTION_FSM: Record<string, { from: (ActionState | "none")[]; to: ActionState }> = {
   "action.requested": { from: ["none"], to: "requested" },
-  "action.started": { from: ["none", "requested"], to: "started" },
+  "action.prepare": { from: ["none"], to: "prepared" },
+  "action.started": { from: ["none", "requested", "prepared"], to: "started" },
   "action.updated": { from: ["started"], to: "started" },
   "action.finished": { from: ["started"], to: "finished" },
 };
@@ -380,6 +391,7 @@ export class Kernel {
           run.status = "starting";
 
           // Each Kernel-created attempt owns a fresh action lifecycle and executor fencing.
+          sealAttemptEffects(run);
           run.actions = new Map();
           run.recovery = undefined;
         } else if (run && e.attempt === run.identity.attempt && e.type === "kernel.action_outcome_unknown") {
@@ -404,6 +416,19 @@ export class Kernel {
               existing.effectCertainty = resolution === "CONFIRMED_DONE" ? "CONFIRMED" : "NOT_STARTED";
             }
           }
+        } else if (run && e.attempt === run.identity.attempt && e.type === "kernel.action_prepared") {
+          // B4 — the capability may have been issued: the effect may have happened.
+          const prep = p as unknown as PreparedAction;
+          (run.prepared ??= new Map()).set(prep.actionId, prep);
+          run.actions.set(prep.actionId, { state: "prepared", actorId: prep.actorId, effectCertainty: "UNKNOWN", outcomeUnknownRecorded: false });
+        } else if (run && e.attempt === run.identity.attempt && e.type === "kernel.action_prepare_refused") {
+          run.actions.set(String(p.actionId), { state: "aborted", actorId: String(p.actorId), effectCertainty: "NOT_STARTED", outcomeUnknownRecorded: false });
+        } else if (run && e.attempt === run.identity.attempt && e.type === "kernel.action_execution_started") {
+          const a = run.actions.get(String(p.actionId));
+          if (a) a.state = "started";
+        } else if (run && e.attempt === run.identity.attempt && e.type === "kernel.action_executed") {
+          const a = run.actions.get(String(p.actionId));
+          if (a) Object.assign(a, { state: "finished", effectCertainty: "CONFIRMED" });
         } else if (run && e.attempt === run.identity.attempt && e.type === "kernel.recovery_fenced") {
           this.applyFence(run, String(p.adapterInstanceId));
         } else if (run && e.attempt === run.identity.attempt && e.type === "kernel.recovery_hold") {
@@ -453,7 +478,8 @@ export class Kernel {
           run.actions.set(actionId, {
             state,
             actorId,
-            effectCertainty,
+            // B4: an adapter observation never lowers a PREPARED action below UNKNOWN.
+            effectCertainty: effectCertainty === "NOT_STARTED" && previous?.effectCertainty === "UNKNOWN" ? "UNKNOWN" : effectCertainty,
             outcomeUnknownRecorded: previous?.outcomeUnknownRecorded ?? false,
           });
         }
@@ -706,7 +732,7 @@ export class Kernel {
    * Adapter/provider frames cannot call this path and cannot emit Kernel Truth.
    * The in-memory barrier is cleared only after the reconciliation record is durable.
    */
-  reconcileActionOutcome(runId: string, actionId: string, resolution: ActionOutcomeResolution): void {
+  reconcileActionOutcome(runId: string, actionId: string, resolution: ActionOutcomeResolution, basis: "operator" | "inspection" = "operator"): void {
     this.assertDurable();
     const run = this.runs.get(runId);
     if (!run) throw new Error(`unknown run ${runId}`);
@@ -736,6 +762,7 @@ export class Kernel {
         actorId: action.actorId,
         adapterInstanceId: run.adapterInstanceId,
         resolution,
+        basis,
       },
       runId,
       run.identity.attempt,
@@ -811,7 +838,7 @@ export class Kernel {
     await sleep(quiet);
     if (fingerprint(run.txWorkspace) !== before) return hold(`transaction workspace still changing after the process group was fenced (outcome ${result.outcome})`, []);
 
-    const revokedActions = [...run.actions].filter(([, a]) => a.state === "requested" || a.state === "started").map(([id]) => id);
+    const revokedActions = [...run.actions].filter(([, a]) => a.state === "requested" || a.state === "prepared" || a.state === "started").map(([id]) => id);
     const rec = this.kernelEvent(
       "kernel.recovery_fenced",
       { runId, attempt, adapterInstanceId: aid, processGroupId: spawned.pid, outcome: result.outcome, killed: result.killed, revokedActions, workspaceFingerprint: sha256(before) },
@@ -823,10 +850,112 @@ export class Kernel {
     return this.recoveryStatus(runId);
   }
 
+  /**
+   * B4 — durable-before-effect. An external action becomes executable only via a capability,
+   * and the capability is issued only after kernel.action_prepared (identity, authority,
+   * intent, signature, executor) is durable. Exactly one executor per action: the provider
+   * (gets the capability) or the Kernel (keeps it). A signature already done in an earlier
+   * attempt, or prepared twice in this one, gets no capability.
+   */
+  private prepareAction(run: RunState, ev: StoredEvent, payload: Record<string, unknown>, actorId: string): void {
+    const { runId, attempt } = run.identity;
+    const actionId = String(payload.actionId);
+    const requestId = typeof payload.requestId === "string" ? payload.requestId : "";
+    const kind = String(payload.kind ?? "");
+    const target = String(payload.target ?? "");
+    const intent = payload.intent ?? null;
+    const executor: PreparedAction["executor"] = payload.executor === "kernel" ? "kernel" : "provider";
+    const signature = actionSignature(kind, target, intent);
+    const reply = (decision: string, extra: Record<string, unknown> = {}) => {
+      // Fire-and-forget: a lost reply only means the provider never got the capability.
+      this.transport?.send({ type: "action.prepared", requestId: newId("req"), payload: { requestId, actionId, decision, signature, ...extra } }, 5_000).catch(() => {});
+    };
+    const refuse = (decision: string, detail?: Record<string, unknown>) => {
+      run.actions.set(actionId, { state: "aborted", actorId, effectCertainty: "NOT_STARTED", outcomeUnknownRecorded: false });
+      this.kernelEvent("kernel.action_prepare_refused", { runId, attempt, actionId, actorId, signature, decision, sourceEventId: ev.eventId, ...detail }, runId, attempt);
+      reply(decision);
+    };
+    const broker = this.opts.effects;
+    if (!broker) return refuse("refused_no_broker");
+    if (executor === "kernel" && !broker.execute) return refuse("refused_no_kernel_executor");
+    for (const [id, other] of run.prepared ?? []) {
+      if (id !== actionId && other.signature === signature && run.actions.get(id)?.effectCertainty !== "NOT_STARTED") return refuse("duplicate_signature", { conflictsWith: id });
+    }
+    const prior = run.effectHistory?.get(signature);
+    if (prior?.outcome === "DONE") return refuse("already_done", { doneBy: prior });
+    if (prior?.outcome === "UNKNOWN") return refuse("refused_prior_unknown", { prior });
+
+    const prep: PreparedAction = {
+      actionId,
+      effectId: effectIdOf(runId, attempt, actionId),
+      runId,
+      attempt,
+      taskId: run.identity.taskId,
+      workerId: run.identity.workerId,
+      workspaceId: run.identity.workspaceId,
+      adapterInstanceId: run.adapterInstanceId,
+      actorId,
+      kind,
+      target,
+      intent,
+      signature,
+      external: payload.external !== false,
+      executor,
+    };
+    // THE durable-before-effect point: nothing below runs unless this record is committed.
+    if (!this.kernelEvent("kernel.action_prepared", prep, runId, attempt)) return reply("refused_not_durable");
+    (run.prepared ??= new Map()).set(actionId, prep);
+    run.actions.set(actionId, { state: "prepared", actorId, effectCertainty: "UNKNOWN", outcomeUnknownRecorded: false });
+    const capability = capabilityFor(broker.capabilityKey, prep.effectId, signature);
+    if (executor === "provider") return reply("granted", { capability, effectId: prep.effectId });
+    void this.executeKernelOwned(run, prep, capability, reply);
+  }
+
+  /** B4 — harness = execution: the Kernel performs the effect; the provider never holds the capability. */
+  private async executeKernelOwned(run: RunState, prep: PreparedAction, capability: string, reply: (d: string, x?: Record<string, unknown>) => void): Promise<void> {
+    const { runId, attempt, actionId } = prep;
+    if (!this.kernelEvent("kernel.action_execution_started", { runId, attempt, actionId, signature: prep.signature }, runId, attempt)) return reply("execution_not_started");
+    const action = run.actions.get(actionId)!;
+    action.state = "started";
+    let result: unknown;
+    try {
+      result = await this.opts.effects!.execute!(prep, capability);
+    } catch (e) {
+      // It may have partially happened: the outcome stays UNKNOWN until inspected.
+      this.kernelEvent("kernel.action_execution_failed", { runId, attempt, actionId, reason: (e as Error).message }, runId, attempt);
+      return reply("execution_failed");
+    }
+    if (this.kernelEvent("kernel.action_executed", { runId, attempt, actionId, signature: prep.signature, result }, runId, attempt)) {
+      action.state = "finished";
+      action.effectCertainty = "CONFIRMED";
+    }
+    reply("executed", { result });
+  }
+
+  /**
+   * B4 — resolve an UNKNOWN PREPARED action from the resource itself: revoke its capability
+   * there, then inspect (linearizable, so the answer is final). DONE is recorded at once;
+   * NOT_DONE additionally needs the attempt's executor fenced (B3). Owner-only.
+   */
+  async inspectActionOutcome(runId: string, actionId: string): Promise<"DONE" | "NOT_DONE"> {
+    this.assertDurable();
+    if (!this.ownsRoot) throw new RootLockError("inspection requires ownership of the root: start() this Kernel first", "root_locked");
+    const run = this.runs.get(runId);
+    if (!run) throw new Error(`unknown run ${runId}`);
+    const prep = run.prepared?.get(actionId);
+    if (!prep) throw new Error(`action ${actionId} has no PREPARED record: its outcome cannot be inspected, only reconciled by an operator`);
+    if (run.actions.get(actionId)?.effectCertainty !== "UNKNOWN") throw new Error(`action ${actionId} outcome is not UNKNOWN`);
+    const inspect = this.opts.effects?.revokeAndInspect;
+    if (!inspect) throw new Error("no effect broker inspector configured");
+    const outcome = await inspect(prep);
+    this.reconcileActionOutcome(runId, actionId, outcome === "DONE" ? "CONFIRMED_DONE" : "CONFIRMED_NOT_DONE", "inspection");
+    return outcome;
+  }
+
   /** B3 — the fenced instance and its open actions lose all authority (live and on replay). */
   private applyFence(run: RunState, adapterInstanceId: string): void {
     this.terminatedInstances.add(adapterInstanceId);
-    for (const a of run.actions.values()) if (a.state === "requested" || a.state === "started") a.state = "aborted";
+    for (const a of run.actions.values()) if (a.state === "requested" || a.state === "prepared" || a.state === "started") a.state = "aborted";
     run.recovery = { state: "FENCED", reason: `executor of adapter instance ${adapterInstanceId} fenced` };
   }
 
@@ -866,6 +995,7 @@ export class Kernel {
     run.txWorkspace = txWorkspace;
     run.rootActorId = undefined;
     run.actors = new ActorTracker();
+    sealAttemptEffects(run); // B4: keep what earlier attempts did, keyed by signature
     run.actions = new Map();
     run.endWaiters = [];
     this.kernelEvent(
@@ -1364,6 +1494,8 @@ export class Kernel {
       if (typeof actionId !== "string" || actionId.length === 0) return { reason: "illegal_transition", machine: "action", from: "invalid_action_id" };
       const cur = run.actions.get(actionId);
       if (cur && cur.actorId !== actorId) return { reason: "illegal_transition", machine: "action", from: `owned_by:${cur.actorId}`, actionId };
+      // B4: a Kernel-owned action's lifecycle is the Kernel's alone.
+      if (run.prepared?.get(actionId)?.executor === "kernel") return { reason: "illegal_transition", machine: "action", from: "kernel_owned", actionId };
       const from = cur?.state ?? "none";
       if (!(rule.from as string[]).includes(from)) return { reason: "illegal_transition", machine: "action", from, actionId };
     }
@@ -1408,6 +1540,9 @@ export class Kernel {
         if (!actors.isFullyFinished(actorId)) {
           this.kernelEvent("kernel.actor_finish_pending_children", { actorId, unresolved: actors.unresolved() }, run.identity.runId, ev.attempt);
         }
+        break;
+      case "action.prepare":
+        this.prepareAction(run, ev, payload, actorId);
         break;
       case "action.requested":
         run.actions.set(String(payload.actionId), {
@@ -1704,7 +1839,7 @@ export class Kernel {
       if (run.adapterInstanceId !== adapterInstanceId) continue;
       const { runId, attempt } = run.identity;
       for (const [actionId, a] of run.actions) {
-        if (a.state !== "requested" && a.state !== "started") continue;
+        if (a.state !== "requested" && a.state !== "prepared" && a.state !== "started") continue;
         a.state = "aborted";
         this.kernelEvent("kernel.action_aborted", { actionId, actorId: a.actorId, adapterInstanceId, runId, attempt, reason }, runId, attempt);
       }
@@ -1894,4 +2029,15 @@ function fingerprint(dir: string): string {
       return `${rel}:${st.size}:${st.mtimeMs}`;
     })
     .join("|");
+}
+
+/** B4 — fold an ending attempt's PREPARED actions into the run's signature history. */
+function sealAttemptEffects(run: RunState): void {
+  for (const [actionId, prep] of run.prepared ?? []) {
+    const c = run.actions.get(actionId)?.effectCertainty;
+    const outcome = c === "CONFIRMED" ? "DONE" : c === "NOT_STARTED" ? "NOT_DONE" : "UNKNOWN";
+    const history = (run.effectHistory ??= new Map());
+    if (history.get(prep.signature)?.outcome !== "DONE") history.set(prep.signature, { attempt: prep.attempt, actionId, outcome });
+  }
+  run.prepared = new Map();
 }

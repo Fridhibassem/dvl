@@ -40,6 +40,22 @@ export type Step =
    * setsid() when `escape` is set. It exits by itself after 30s.
    */
   | { op: "spawn_writer"; rel: string; escape?: boolean }
+  /** B4: write to the external ledger (DVL_MOCK_LEDGER) without asking the Kernel (naive provider). */
+  | { op: "ledger_unprepared"; actionId: string; entry: unknown }
+  /** B4: send action.prepare for an external action and wait for the Kernel's decision. */
+  | { op: "prepare"; actor: string; actionId: string; kind: string; target: string; intent: unknown; executor?: "provider" | "kernel" }
+  /**
+   * B4: perform the prepared effect with the granted capability; skipped entirely (no
+   * lifecycle events either) unless the Kernel granted it. `lifecycle`: none, or
+   * action.started before the effect and action.finished after it (full). Holds put the
+   * provider to sleep at a crash boundary.
+   */
+  | { op: "ledger_write"; actor: string; actionId: string; lifecycle?: "none" | "full"; holdBeforeMs?: number; holdAfterMs?: number }
+  /**
+   * B4: hand the granted capability to a child (same process group) that performs the effect
+   * only once `goFile` exists in the ledger directory: a surviving executor, deterministic.
+   */
+  | { op: "spawn_ledger_writer"; actionId: string; goFile: string }
   /** Unreported workspace write (no events). */
   | { op: "write_raw"; rel: string; content: string }
   /**
@@ -53,6 +69,11 @@ export type Step =
   | { op: "cite_registered_artifact"; actor: string; actionId: string };
 
 export const ROOT = "actor_root";
+
+/** B4 — the one logical external effect of the B4 scenarios. */
+const PAY = { pay: 100, to: "acct_42" };
+const prepareStep = (executor: "provider" | "kernel"): Step => ({ op: "prepare", actor: ROOT, actionId: "act_pay", kind: "ledger.append", target: "acct_42", intent: PAY, executor });
+const pay = (executor: "provider" | "kernel"): Step[] => [prepareStep(executor), { op: "ledger_write", actor: ROOT, actionId: "act_pay", lifecycle: "full" }];
 
 /** H4 — the only change the crash test ever stages in a target project. */
 export const H4_PROBE = `import { expect, it } from "vitest";
@@ -450,6 +471,45 @@ export const SCENARIOS: Record<string, Step[]> = {
     { op: "emit", type: "action.started", actor: ROOT, payload: { actionId: "act_h4_probe", kind: "file_write", target: "late-write.log" } },
     { op: "sleep", ms: 60_000 },
   ],
+  /**
+   * B4 repro: a provider that performs an external effect right after dispatch, before any
+   * action record exists, then keeps working. The disposable ledger records the effect.
+   */
+  "b4-effect-at-dispatch": [
+    ...start(),
+    { op: "ledger_unprepared", actionId: "act_pay", entry: { pay: 100, to: "acct_42" } },
+    { op: "sleep", ms: 60_000 },
+  ],
+  // ── B4 crash boundaries. One logical effect: pay 100 to acct_42. ──
+  /** Boundary 1: tries the effect without asking, then asks (the host holds the request). */
+  "b4-eager-then-prepare": [
+    ...start(),
+    { op: "ledger_unprepared", actionId: "act_pay", entry: PAY },
+    ...pay("provider"),
+    ...finish(),
+  ],
+  /** Boundary 2: PREPARED + capability, crash before the effect. */
+  "b4-prepared-hold": [...start(), prepareStep("provider"), { op: "ledger_write", actor: ROOT, actionId: "act_pay", holdBeforeMs: 60_000 }],
+  /** Boundary 3: effect done, crash before any STARTED/FINISHED. */
+  "b4-effect-hold": [...start(), prepareStep("provider"), { op: "ledger_write", actor: ROOT, actionId: "act_pay", holdAfterMs: 60_000 }],
+  /** Boundary 4: outcome durable (action.finished), crash before run.finished. */
+  "b4-finished-hold": [...start(), ...pay("provider"), { op: "sleep", ms: 60_000 }],
+  /** Boundary 5: the capability is handed to a surviving child that acts only on demand. */
+  "b4-survivor": [...start(), prepareStep("provider"), { op: "spawn_ledger_writer", actionId: "act_pay", goFile: "go" }, { op: "sleep", ms: 60_000 }],
+  /** Retry body: the same logical effect, done properly. */
+  "b4-pay": [...start(), ...pay("provider"), ...finish()],
+  /** Kernel-owned execution, plus a provider that also tries to do it natively. */
+  "b4-kernel-owned": [
+    ...start(),
+    prepareStep("kernel"),
+    { op: "ledger_unprepared", actionId: "act_pay_native", entry: PAY }, // native, no capability
+    { op: "prepare", actor: ROOT, actionId: "act_pay_dup", kind: "ledger.append", target: "acct_42", intent: PAY }, // same signature, provider mode
+    { op: "ledger_write", actor: ROOT, actionId: "act_pay_dup", lifecycle: "full" },
+    { op: "emit", type: "action.finished", actor: ROOT, payload: { actionId: "act_pay", kind: "ledger.append" } }, // claims the Kernel's action
+    ...finish(),
+  ],
+  /** Kernel-owned execution only (retry body / crash test). */
+  "b4-kernel-pay": [...start(), prepareStep("kernel"), { op: "sleep", ms: 300 }, ...finish()],
   /** H4 — the same harmless probe, run to completion (retry after recovery, in-process windows). */
   "h4-target-probe-finish": [
     ...start(),

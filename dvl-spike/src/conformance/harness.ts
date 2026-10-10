@@ -134,3 +134,51 @@ export function integrityCode(fn: () => unknown): string {
   }
   throw new Error("expected a SpoolIntegrityError, nothing was thrown");
 }
+
+/**
+ * H4 — run a Kernel in its OWN process (h4-kernel-host) until `cfg.ready` holds, optionally
+ * act on its adapter (e.g. SIGSTOP), then SIGKILL the Kernel. Returns the host-held commit
+ * boundary and identities. `registerPid` receives every process the caller must clean up.
+ */
+export async function crashKernelHost(
+  root: string,
+  cfg: Record<string, unknown> & { scenario: string },
+  opts: { beforeKill?: (adapterPid: number) => void; registerPid?: (pid: number) => void } = {},
+): Promise<{ runId: string; heads: CommitHeads; adapterPid: number }> {
+  const { spawn } = await import("node:child_process");
+  const { createRequire } = await import("node:module");
+  const { fileURLToPath, pathToFileURL } = await import("node:url");
+  const readline = await import("node:readline");
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const tsx = pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href;
+  const host = spawn(process.execPath, ["--import", tsx, path.join(here, "h4-kernel-host.ts")], { stdio: ["pipe", "pipe", "pipe"] });
+  opts.registerPid?.(host.pid!);
+  let stderr = "";
+  host.stderr.on("data", (d) => (stderr += d));
+  host.stdin.write(JSON.stringify({ root, keyHex: keyFor(root).toString("hex"), ...cfg }) + "\n");
+  const st = { heads: undefined as CommitHeads | undefined, runId: "", adapterPid: 0 };
+  const lines = readline.createInterface({ input: host.stdout });
+  await new Promise<void>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`h4 host never became ready; stderr:\n${stderr}`)), 20_000);
+    host.once("exit", (code) => reject(new Error(`h4 host exited early (${code}); stderr:\n${stderr}`)));
+    lines.on("line", (line) => {
+      const m = JSON.parse(line) as { commit?: CommitHeads; run?: { runId: string }; adapterPid?: number; ready?: boolean };
+      if (m.commit) st.heads = m.commit;
+      if (m.run) {
+        st.runId = m.run.runId;
+        st.adapterPid = m.adapterPid!;
+        opts.registerPid?.(m.adapterPid!);
+      }
+      if (m.ready) {
+        clearTimeout(t);
+        resolve();
+      }
+    });
+  });
+  opts.beforeKill?.(st.adapterPid);
+  const exited = new Promise((r) => host.once("exit", r));
+  host.kill("SIGKILL");
+  await exited;
+  lines.close();
+  return { runId: st.runId, heads: st.heads!, adapterPid: st.adapterPid };
+}

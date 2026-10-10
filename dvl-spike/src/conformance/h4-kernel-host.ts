@@ -9,27 +9,52 @@
  *   stdout → { run: RunIdentity, adapterPid }
  *   stdout → { ready: true }              once the scenario's probe write is committed
  */
+import fs from "node:fs";
 import readline from "node:readline";
 import { Kernel } from "../kernel/kernel.js";
 import { mockProviderCommand } from "../kernel/mock-launch.js";
+import { ledgerBroker, ledgerLines } from "../mock-provider/external-ledger.js";
 
 const out = (o: unknown) => process.stdout.write(JSON.stringify(o) + "\n");
 
+interface HostConfig {
+  root: string;
+  keyHex: string;
+  scenario: string;
+  adapterEnv?: Record<string, string>;
+  /** Ready when this has happened (default: the act_h4_probe rules below). */
+  ready?: { kind: "ledger"; ledgerDir: string; actionId: string } | { kind: "event"; type: string; actionId: string } | { kind: "gated"; type: string } | { kind: "file"; path: string };
+  /** B4 — effect broker over the disposable ledger (the key travels in memory only). */
+  effects?: { ledgerDir: string; capKeyHex: string; hangAfterEffect?: boolean };
+  /** B4 — hold this frame type forever before the Kernel processes it (crash before it is durable). */
+  gate?: string;
+}
+let gated: string | null = null;
+
 const rl = readline.createInterface({ input: process.stdin });
 rl.once("line", (line) => {
-  const cfg = JSON.parse(line) as { root: string; keyHex: string; scenario: string };
+  const cfg = JSON.parse(line) as HostConfig;
   void main(cfg).catch((e) => {
     process.stderr.write(`h4 host: ${(e as Error).stack}\n`);
     process.exit(1);
   });
 });
 
-async function main(cfg: { root: string; keyHex: string; scenario: string }): Promise<void> {
+async function main(cfg: HostConfig): Promise<void> {
   const k = new Kernel({
     root: cfg.root,
     adapterCommand: mockProviderCommand(),
     requestTimeoutMs: 5_000,
     integrityKey: Buffer.from(cfg.keyHex, "hex"),
+    adapterEnv: cfg.adapterEnv,
+    effects: cfg.effects && ledgerBroker(cfg.effects.ledgerDir, Buffer.from(cfg.effects.capKeyHex, "hex"), { hangAfterEffect: cfg.effects.hangAfterEffect }),
+    frameGate: cfg.gate
+      ? (type) => {
+          if (type !== cfg.gate) return Promise.resolve();
+          gated = type;
+          return new Promise(() => {});
+        }
+      : undefined,
     limits: { maxDurationMs: 120_000 },
     onCommit: (heads) => out({ commit: heads }),
   });
@@ -40,8 +65,16 @@ async function main(cfg: { root: string; keyHex: string; scenario: string }): Pr
   out({ run, adapterPid: spawned.pid });
   for (;;) {
     const events = k.store.all();
-    const ready =
-      cfg.scenario.startsWith("h4-action-started-")
+    const want = cfg.ready;
+    const ready = want
+      ? want.kind === "gated"
+        ? gated === want.type
+        : want.kind === "file"
+        ? fs.existsSync(want.path)
+        : want.kind === "ledger"
+        ? ledgerLines(want.ledgerDir).some((l) => l.actionId === want.actionId || l.actionId.endsWith(`:${want.actionId}`))
+        : events.some((e) => e.type === want.type && e.runId === run.runId && (e.payload as { actionId?: string } | undefined)?.actionId === want.actionId)
+      : cfg.scenario.startsWith("h4-action-started-")
         ? events.some(
             (e) =>
               e.origin === "adapter" &&
@@ -59,7 +92,7 @@ async function main(cfg: { root: string; keyHex: string; scenario: string }): Pr
     if (ready) break;
     await new Promise((r) => setTimeout(r, 10));
   }
-  await k.settle();
+  if (!gated) await k.settle();
   out({ ready: true });
   // Stay alive mid-run until the test kills this process.
   setInterval(() => {}, 60_000);

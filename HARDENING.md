@@ -116,6 +116,11 @@ killed and verified empty, the attempt workspace quiescent, authority revoked, k
 durable. Not provable ⇒ kernel.recovery_hold, HOLD_RECOVERY_PROCESS_STILL_ALIVE, retryAllowed=false.
 Suite C29. Open review findings: B1 (oversized action.started loses actionId on replay), B2
 (reconcile without root ownership).
+B4 durable-before-effect (H4 spike evidence, pending review; Frozen Contract unchanged): an
+external / state-mutating action is executable only with a per-action capability that the Kernel
+issues after kernel.action_prepared is durable; replay rebuilds PREPARED as UNKNOWN; revoke-then-
+inspect at the resource resolves it; a signature already done is never re-executed. Suite C30.
+Residual: effects through resources that do not demand a DVL capability are not covered (sandbox).
 
 ## Post-review fixes (Codex blocker candidates A–C) — pending independent review
 
