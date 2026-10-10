@@ -17,6 +17,7 @@ import type { FsProbe } from "./confined-fs.js";
 import { EventStore, SpoolIntegrityError, newId, sha256, type ChainHead, type ChainReport, type EventStoreOptions } from "./event-store.js";
 import { NdjsonTransport, type TransportIssue } from "./ndjson-transport.js";
 import { RootLock, RootLockError } from "./root-lock.js";
+import { defaultProcessOps, fenceProcessGroup, type ProcessOps } from "./process-fence.js";
 import {
   CONTRACT_VERSION,
   FORBIDDEN_ADAPTER_EVENTS,
@@ -87,6 +88,8 @@ export interface KernelOptions {
   confinement?: "auto" | "path";
   /** H2 — test-only probe at filesystem check/use points (deterministic race injection). */
   fsProbe?: FsProbe;
+  /** B3 — test-only override of process inspection/signalling used to fence old executors. */
+  processOps?: Partial<ProcessOps>;
 }
 
 export interface QueueLimits {
@@ -149,6 +152,8 @@ interface RunState {
   txWorkspace: string;
   /** H4 — rebuilt from the durable log by a restarted Kernel; `interrupted` not yet recorded. */
   interruptPending?: boolean;
+  /** B3 — this attempt's executor fencing (absent: not attempted yet). */
+  recovery?: { state: "FENCED" | "HOLD_RECOVERY_PROCESS_STILL_ALIVE"; reason: string };
   rootActorId?: string;
   actors: ActorTracker;
   actions: Map<string, ActionRecord>;
@@ -166,6 +171,13 @@ const ACTION_FSM: Record<string, { from: (ActionState | "none")[]; to: ActionSta
 const ACTOR_SCOPED = (type: string) => type.startsWith("actor.") || type.startsWith("action.") || type === "workspace.hint" || type === "approval.requested";
 
 export type ActionOutcomeResolution = "CONFIRMED_DONE" | "CONFIRMED_NOT_DONE";
+
+/** B3 — whether the previous attempt's executor is proven unable to act. */
+export interface RecoveryStatus {
+  state: "NOT_REQUIRED" | "PENDING" | "FENCED" | "HOLD_RECOVERY_PROCESS_STILL_ALIVE";
+  retryAllowed: boolean;
+  reason: string;
+}
 
 export interface RetryOptions {
   /**
@@ -300,6 +312,9 @@ export class Kernel {
   readonly projectId: string;
   /** H4 — exclusive ownership of the root; taken before this Kernel writes anything as owner. */
   private rootLock: RootLock | null = null;
+  /** B3 — durable process identity of every adapter instance (from kernel.adapter_spawned). */
+  private readonly spawnRecords = new Map<string, { pid: number; startToken: string | null }>();
+  private readonly processOps: ProcessOps;
 
   constructor(private readonly opts: KernelOptions) {
     this.store = new EventStore({ root: opts.root, fsync: opts.fsync, integrityKey: opts.integrityKey, expectedHead: opts.expectedHead, expectedHeads: opts.expectedHeads, hostDecision: opts.hostDecision, onCommit: opts.onCommit, onIncident: opts.onIncident, ioFaults: opts.ioFaults, confinement: opts.confinement, fsProbe: opts.fsProbe });
@@ -314,6 +329,7 @@ export class Kernel {
     this.limits = { maxDurationMs: 60_000, maxIncomingBytes: 256 * 1024 * 1024, ...opts.limits };
     this.queueLimits = { maxQueuedFrames: MAX_QUEUED_FRAMES, maxQueuedBytes: MAX_QUEUED_BYTES, ...opts.queueLimits };
     this.projectId = "proj_spike";
+    this.processOps = { ...defaultProcessOps, ...opts.processOps };
     this.rebuildRunsFromReplay();
   }
 
@@ -328,6 +344,11 @@ export class Kernel {
    */
   private rebuildRunsFromReplay(): void {
     for (const e of this.store.all()) {
+      if (e.origin === "kernel" && e.type === "kernel.adapter_spawned") {
+        const sp = (e.payload ?? {}) as { adapterInstanceId?: string; pid?: number; startToken?: string | null };
+        if (sp.adapterInstanceId && typeof sp.pid === "number") this.spawnRecords.set(sp.adapterInstanceId, { pid: sp.pid, startToken: sp.startToken ?? null });
+        continue;
+      }
       if (!e.runId) continue;
 
       const p = (e.payload ?? {}) as Record<string, unknown>;
@@ -358,8 +379,9 @@ export class Kernel {
           run.txWorkspace = path.join(this.opts.root, String(p.txWorkspace));
           run.status = "starting";
 
-          // Each Kernel-created attempt owns a fresh action lifecycle.
+          // Each Kernel-created attempt owns a fresh action lifecycle and executor fencing.
           run.actions = new Map();
+          run.recovery = undefined;
         } else if (run && e.attempt === run.identity.attempt && e.type === "kernel.action_outcome_unknown") {
           const actionId = p.actionId;
           if (typeof actionId === "string" && actionId.length > 0) {
@@ -382,6 +404,10 @@ export class Kernel {
               existing.effectCertainty = resolution === "CONFIRMED_DONE" ? "CONFIRMED" : "NOT_STARTED";
             }
           }
+        } else if (run && e.attempt === run.identity.attempt && e.type === "kernel.recovery_fenced") {
+          this.applyFence(run, String(p.adapterInstanceId));
+        } else if (run && e.attempt === run.identity.attempt && e.type === "kernel.recovery_hold") {
+          run.recovery = { state: "HOLD_RECOVERY_PROCESS_STILL_ALIVE", reason: String(p.reason) };
         } else if (run && e.attempt === run.identity.attempt && TERMINAL_RECORDS.has(e.type)) {
           if (!isTerminal(run.status)) run.status = TERMINAL_RECORDS.get(e.type)!;
         }
@@ -542,9 +568,15 @@ export class Kernel {
     this.closed = false;
     this.adapterInstanceId = adapterInstanceId;
     this.lastAdapterSequence.set(adapterInstanceId, 0);
+    // B3 — durable identity of the executor: on POSIX the detached adapter leads process group
+    // `pid`; the start token tells it apart from a later process that reuses the pid.
+    const startToken = child.pid !== undefined && process.platform !== "win32" ? this.processOps.startToken(child.pid) : null;
+    if (child.pid !== undefined) this.spawnRecords.set(adapterInstanceId, { pid: child.pid, startToken });
     this.kernelEvent("kernel.adapter_spawned", {
       adapterInstanceId,
       pid: child.pid,
+      processGroupId: process.platform !== "win32" ? child.pid : null,
+      startToken,
       argv: this.opts.adapterCommand,
       kernelSpool: path.relative(this.opts.root, spools.kernelDir),
       adapterSpool: path.relative(this.opts.root, spools.adapterDir),
@@ -687,6 +719,13 @@ export class Kernel {
     if (action.effectCertainty !== "UNKNOWN") {
       throw new Error(`action ${actionId} outcome is already resolved (${action.effectCertainty})`);
     }
+    // B3 — "not done" is only true if nothing can still do it: the attempt's executor must be
+    // durably fenced first (fenceRecoveredAttempt), otherwise it may complete the effect later.
+    if (resolution === "CONFIRMED_NOT_DONE" && run.recovery?.state !== "FENCED") {
+      throw new Error(
+        `HOLD_RECOVERY_PROCESS_STILL_ALIVE: run ${runId} attempt ${run.identity.attempt}: CONFIRMED_NOT_DONE requires the attempt's executor to be fenced first (${run.recovery?.reason ?? "not fenced yet"})`,
+      );
+    }
 
     const recorded = this.kernelEvent(
       "kernel.action_outcome_reconciled",
@@ -708,6 +747,89 @@ export class Kernel {
     action.effectCertainty = resolution === "CONFIRMED_DONE" ? "CONFIRMED" : "NOT_STARTED";
   }
 
+  /**
+   * B3 — current fencing state of a run's attempt executor. Retry is allowed only when the
+   * attempt is bound to this Kernel's live, connected adapter instance (NOT_REQUIRED) or its
+   * executor was proven unable to act (FENCED).
+   */
+  recoveryStatus(runId: string): RecoveryStatus {
+    const run = this.runs.get(runId);
+    if (!run) throw new Error(`unknown run ${runId}`);
+    if (!this.executorDetached(run)) return { state: "NOT_REQUIRED", retryAllowed: true, reason: "attempt is bound to the live adapter instance" };
+    if (run.recovery?.state === "FENCED") return { state: "FENCED", retryAllowed: true, reason: run.recovery.reason };
+    if (run.recovery) return { state: run.recovery.state, retryAllowed: false, reason: run.recovery.reason };
+    return { state: "PENDING", retryAllowed: false, reason: "the attempt's executor has not been fenced" };
+  }
+
+  /** The attempt's executor is not this Kernel's live, connected adapter (dead, retired, or a previous Kernel's). */
+  private executorDetached(run: RunState): boolean {
+    return run.adapterInstanceId !== this.adapterInstanceId || this.closed || this.terminatedInstances.has(run.adapterInstanceId);
+  }
+
+  /**
+   * B3 — before recovery may retry (or reconcile CONFIRMED_NOT_DONE), prove the previous
+   * attempt's executor can no longer act: kill its process group (durable pid/token from
+   * kernel.adapter_spawned), verify the group is empty, wait for the attempt workspace to be
+   * quiescent, revoke the instance's and its actions' authority, then record
+   * kernel.recovery_fenced. Anything not provable → kernel.recovery_hold with
+   * HOLD_RECOVERY_PROCESS_STILL_ALIVE, retryAllowed=false. Owner-only (it signals processes).
+   */
+  async fenceRecoveredAttempt(runId: string): Promise<RecoveryStatus> {
+    this.assertDurable();
+    if (!this.ownsRoot) throw new RootLockError("fencing requires ownership of the root: start() this Kernel first", "root_locked");
+    const run = this.runs.get(runId);
+    if (!run) throw new Error(`unknown run ${runId}`);
+    if (!isTerminal(run.status)) throw new Error(`run ${runId} attempt ${run.identity.attempt} is not terminal (status=${run.status})`);
+    const current = this.recoveryStatus(runId);
+    if (current.state === "NOT_REQUIRED" || current.state === "FENCED") return current;
+
+    const { attempt } = run.identity;
+    const aid = run.adapterInstanceId;
+    const hold = (reason: string, survivors: number[]): RecoveryStatus => {
+      if (run.recovery?.reason !== reason) {
+        const rec = this.kernelEvent(
+          "kernel.recovery_hold",
+          { runId, attempt, adapterInstanceId: aid, state: "HOLD_RECOVERY_PROCESS_STILL_ALIVE", retryAllowed: false, reason, survivors },
+          runId,
+          attempt,
+        );
+        if (!rec) throw new Error(`failed to durably record recovery hold for ${runId}/${attempt}`);
+      }
+      run.recovery = { state: "HOLD_RECOVERY_PROCESS_STILL_ALIVE", reason };
+      return { state: "HOLD_RECOVERY_PROCESS_STILL_ALIVE", retryAllowed: false, reason };
+    };
+
+    const spawned = this.spawnRecords.get(aid);
+    if (!spawned) return hold(`no durable spawn record for adapter instance ${aid}`, []);
+    const result = await fenceProcessGroup(spawned, this.processOps);
+    if (!result.fenced) return hold(result.reason, result.survivors);
+
+    // Writers are gone; the workspace must now be still (a writer that escaped the group via
+    // setsid() would show up here).
+    const quiet = this.opts.quiescenceMs ?? QUIESCENCE_MS;
+    const before = fingerprint(run.txWorkspace);
+    await sleep(quiet);
+    if (fingerprint(run.txWorkspace) !== before) return hold(`transaction workspace still changing after the process group was fenced (outcome ${result.outcome})`, []);
+
+    const revokedActions = [...run.actions].filter(([, a]) => a.state === "requested" || a.state === "started").map(([id]) => id);
+    const rec = this.kernelEvent(
+      "kernel.recovery_fenced",
+      { runId, attempt, adapterInstanceId: aid, processGroupId: spawned.pid, outcome: result.outcome, killed: result.killed, revokedActions, workspaceFingerprint: sha256(before) },
+      runId,
+      attempt,
+    );
+    if (!rec) throw new Error(`failed to durably record recovery fencing for ${runId}/${attempt}`);
+    this.applyFence(run, aid);
+    return this.recoveryStatus(runId);
+  }
+
+  /** B3 — the fenced instance and its open actions lose all authority (live and on replay). */
+  private applyFence(run: RunState, adapterInstanceId: string): void {
+    this.terminatedInstances.add(adapterInstanceId);
+    for (const a of run.actions.values()) if (a.state === "requested" || a.state === "started") a.state = "aborted";
+    run.recovery = { state: "FENCED", reason: `executor of adapter instance ${adapterInstanceId} fenced` };
+  }
+
   async retryRun(runId: string, task: RunTask, opts: RetryOptions = {}): Promise<RunIdentity> {
     this.assertDurable();
     if (!this.capabilities) throw new Error("describe() must succeed before run.start");
@@ -723,6 +845,12 @@ export class Kernel {
       throw new Error(
         `run ${runId} attempt ${run.identity.attempt} has unresolved action outcome(s): ${unknownActions.join(", ")}; reconciliation required before retry`,
       );
+    }
+
+    // B3 — never start attempt N+1 while attempt N's executor may still act.
+    const fence = await this.fenceRecoveredAttempt(runId);
+    if (!fence.retryAllowed) {
+      throw new Error(`HOLD_RECOVERY_PROCESS_STILL_ALIVE: run ${runId} attempt ${run.identity.attempt}: retryAllowed=false: ${fence.reason}`);
     }
 
     const checkpoint = opts.resumeFromEvidenceId ? this.loadCheckpoint(runId, opts.resumeFromEvidenceId) : null;

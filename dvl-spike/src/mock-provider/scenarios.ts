@@ -34,6 +34,12 @@ export type Step =
   | { op: "forge_kernel_artifact"; actor: string; actionId: string; via: "__spooled" | "outputRef"; name?: string }
   /** Adversarial (blocker 1): append forged Kernel-origin records directly to the durable logs. */
   | { op: "forge_log_records" }
+  /**
+   * B3: start a background writer that appends to `rel` in the attempt workspace every 20ms and
+   * records its pid in `rel`.pid. It stays in the adapter's process group, or escapes it with
+   * setsid() when `escape` is set. It exits by itself after 30s.
+   */
+  | { op: "spawn_writer"; rel: string; escape?: boolean }
   /** Unreported workspace write (no events). */
   | { op: "write_raw"; rel: string; content: string }
   /**
@@ -430,6 +436,20 @@ export const SCENARIOS: Record<string, Step[]> = {
     { op: "sleep", ms: 60_000 },
   ],
 
+  /** B3 — a group-member writer keeps mutating the workspace; durable action.started once it runs. */
+  "h4-action-started-writer": [
+    ...start(),
+    { op: "spawn_writer", rel: "late-write.log" },
+    { op: "emit", type: "action.started", actor: ROOT, payload: { actionId: "act_h4_probe", kind: "file_write", target: "late-write.log" } },
+    { op: "sleep", ms: 60_000 },
+  ],
+  /** B3 — same, but the writer leaves the process group (setsid): not killable via the group. */
+  "h4-action-started-escapee": [
+    ...start(),
+    { op: "spawn_writer", rel: "late-write.log", escape: true },
+    { op: "emit", type: "action.started", actor: ROOT, payload: { actionId: "act_h4_probe", kind: "file_write", target: "late-write.log" } },
+    { op: "sleep", ms: 60_000 },
+  ],
   /** H4 — the same harmless probe, run to completion (retry after recovery, in-process windows). */
   "h4-target-probe-finish": [
     ...start(),

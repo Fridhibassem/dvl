@@ -213,3 +213,72 @@ takeover still succeeds.
 - Network filesystems (NFS emulates flock with fcntl locks; SMB may lock locally only) and VM boundaries
   (e.g. Docker Desktop with the project mounted from the host) are not fenced.
 - Constructor-time records, the size-only stale check and keyless Kernels stay as described above.
+
+---
+
+## Effect certainty + B3 executor fencing (follow-up)
+
+`d18f8fd` applies the supplied `H4_FINAL_REVIEW.diff` unchanged: effect certainty
+(NOT_STARTED / CONFIRMED / UNKNOWN), `kernel.action_outcome_unknown`, the UNKNOWN retry barrier and
+`reconcileActionOutcome()`. An adversarial review of that diff reproduced three blockers. Only **B3** is
+fixed here; **B1** and **B2** remain open.
+
+### B3: the problem
+
+CONFIRMED_NOT_DONE and retry were accepted while the previous attempt's executor was still alive. The
+old adapter's PID was in `kernel.adapter_spawned`, but nothing used it. An executor that survived the
+Kernel could complete its effect after "not done" was recorded, so the effect would run twice.
+
+### Fix
+
+| Piece | What |
+|---|---|
+| `kernel.adapter_spawned` | Adds `processGroupId` (= PID: the adapter is spawned detached and leads its group) and `startToken` (Linux `/proc/<pid>/stat` starttime, macOS `ps -o lstart=`) |
+| `kernel/process-fence.ts` | `fenceProcessGroup()`. **No live member** → fenced. **Live leader with the recorded token** → SIGKILL the group and verify it is empty. **Live leader with another token** → the PID was reused, which implies our group already emptied: fenced, nothing signalled. **Live members, no leader** → ours (a group ID is never reused while it has members): kill. **Cannot enumerate, cannot verify identity, kill had no effect, or Windows** → HOLD |
+| `Kernel.fenceRecoveredAttempt(runId)` | Owner-only. Run must be terminal. Fence the group, then require the attempt workspace to stay unchanged over the quiescence window, then revoke the instance and its open actions, then durably record `kernel.recovery_fenced`. Otherwise `kernel.recovery_hold {state: HOLD_RECOVERY_PROCESS_STILL_ALIVE, retryAllowed: false, reason, survivors}` (not re-recorded while the reason is unchanged) |
+| `retryRun()` | After the UNKNOWN barrier and before any mutation: fence; `retryAllowed=false` → throws `HOLD_RECOVERY_PROCESS_STILL_ALIVE ... retryAllowed=false` |
+| `reconcileActionOutcome(CONFIRMED_NOT_DONE)` | Requires the attempt to be `FENCED`. CONFIRMED_DONE does not, but retry still fences |
+| `recoveryStatus(runId)` | `NOT_REQUIRED` (bound to the live, connected adapter) / `PENDING` / `FENCED` / `HOLD_RECOVERY_PROCESS_STILL_ALIVE`, plus `retryAllowed` |
+| Replay | Rebuilds the spawn records, `recovery_fenced` (instance terminated, open actions aborted) and `recovery_hold`. A new attempt resets fencing |
+
+### Tests (C29, real processes; the crashing Kernel runs in its own process and is SIGKILLed)
+
+| # | Case |
+|---|---|
+| 1 | **Detached adapter survival**: the adapter outlives the Kernel. NOT_DONE is refused, and a reader cannot fence. Fencing kills it and verifies it dead. Then NOT_DONE and retry → finished |
+| 2 | **Late write**: the adapter exits, but its child (same group) keeps appending after the Kernel died. Fencing kills it, the file stops growing, retry proceeds |
+| 3 | **Kill failure** (EPERM injected): HOLD, `retryAllowed=false`; retry refused with no attempt and no archive; the hold is not duplicated. A fresh Kernel replays the HOLD, fences with a working kill, and retries |
+| 4 | Identity unverifiable: no signal sent, HOLD |
+| 5 | **Escapee** (setsid writer): the workspace is still changing → HOLD until the writer is gone, then FENCED |
+| 6 | **Non-Windows**: adapter death after `action.started`, no Kernel crash → `group_empty`, FENCED, NOT_DONE, retry |
+| 7 | **Windows** (platform injected): HOLD "not supported on win32", nothing signalled, retry and NOT_DONE refused |
+| 8 | Decision table over a fake process table (incl. PID reuse never signalled) |
+
+C27 test 5 now follows the fence → reconcile → retry order and asserts that NOT_DONE is refused before
+fencing.
+
+### Verification (Linux)
+
+| Check | Result |
+|---|---|
+| `npm test` | 29 files, **260/260**, two runs; C29 8/8 three further runs |
+| `npm run typecheck` | clean |
+| Falsify: retry gate removed | C29 3, 7 fail |
+| Falsify: NOT_DONE gate removed | C29 1, 2, 5, 7 fail |
+| Falsify: group kill a no-op | C29 1, 2, 3 fail |
+| Falsify: quiescence check removed | C29 5 fails |
+| Falsify: identity check removed | C29 4, 8 fail |
+| Review repro F3 against the fix | now refused (`HOLD_RECOVERY_PROCESS_STILL_ALIVE`) |
+
+### Limits
+
+- **setsid escapees.** A process that left the group is not killable through it. The workspace-quiescence
+  check catches workspace writes only, not external effects. Closing this needs OS containment (cgroups,
+  Job Objects) or a sandbox.
+- **Windows** always HOLDs. Job Objects would be needed.
+- **macOS path not run.** It relies on `ps` for membership and the start token.
+- **Identity resolution.** macOS `ps -o lstart` has 1-second resolution: a PID reused within the same
+  second with matching output would be taken for ours.
+- **Still open from the review:** B1 (replay drops an oversized `action.started`) and B2
+  (`reconcileActionOutcome` CONFIRMED_DONE, and NOT_DONE on a replayed FENCED attempt, can still be
+  written by a non-owner).

@@ -108,6 +108,14 @@ Split-brain fence (pending review): one live Kernel per root, enforced by an OS-
 (flock(2) on `.dvl/kernel.lock`, Linux + macOS; released on process death, held while paused, not
 inherited by adapter children) taken before any owner write
 in `start()`/`recoverDurableTail()`, plus a stale-replay guard. Suite C28.
+Effect certainty (supplied diff, commit d18f8fd): an action whose durable action.started has no durable
+action.finished is UNKNOWN after a crash; retry is refused until a Kernel-recorded reconciliation.
+B3 executor fencing (pending review): retry and CONFIRMED_NOT_DONE require the previous attempt's
+executor to be proven unable to act: its process group (pid + start token from kernel.adapter_spawned)
+killed and verified empty, the attempt workspace quiescent, authority revoked, kernel.recovery_fenced
+durable. Not provable ⇒ kernel.recovery_hold, HOLD_RECOVERY_PROCESS_STILL_ALIVE, retryAllowed=false.
+Suite C29. Open review findings: B1 (oversized action.started loses actionId on replay), B2
+(reconcile without root ownership).
 
 ## Post-review fixes (Codex blocker candidates A–C) — pending independent review
 

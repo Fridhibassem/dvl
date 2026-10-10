@@ -41,7 +41,7 @@ async function main(cfg: { root: string; keyHex: string; scenario: string }): Pr
   for (;;) {
     const events = k.store.all();
     const ready =
-      cfg.scenario === "h4-action-started-hold"
+      cfg.scenario.startsWith("h4-action-started-")
         ? events.some(
             (e) =>
               e.origin === "adapter" &&

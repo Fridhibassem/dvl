@@ -15,6 +15,7 @@
  *   DVL_MOCK_EMIT_RUN_ID / DVL_MOCK_EMIT_ATTEMPT — adversarial: emit every event under this
  *                        runId / attempt instead of the ones the Kernel assigned in run.start
  */
+import { spawn } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -211,6 +212,14 @@ async function runScenario(name: string, runId: string, attempt: number, txRoot:
       case "sleep":
         await new Promise((r) => setTimeout(r, step.ms));
         break;
+      case "spawn_writer": {
+        const file = path.join(txRoot, step.rel);
+        const src = `const fs=require("fs");fs.writeFileSync(${JSON.stringify(file + ".pid")},String(process.pid));setInterval(()=>fs.appendFileSync(${JSON.stringify(file)},"x"),20);setTimeout(()=>process.exit(0),30000);`;
+        spawn(process.execPath, ["-e", src], { detached: !!step.escape, stdio: "ignore" }).unref();
+        const deadline = Date.now() + 5_000;
+        while (!fs.existsSync(file + ".pid") && Date.now() < deadline) await new Promise((r) => setTimeout(r, 10));
+        break;
+      }
       case "crash":
         process.exit(step.code);
       // falls through (unreachable)

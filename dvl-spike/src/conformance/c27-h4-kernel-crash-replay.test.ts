@@ -7,7 +7,8 @@
  *   - an attempt without a terminal Kernel record is `interrupted` (terminal, never success);
  *   - an adapter run.finished that reached the log is a claim, not a completion;
  *   - the staged change stays in the attempt workspace; the project tree is byte-identical;
- *   - recovery records are written exactly once; retryRun() is allowed only when no action outcome is unresolved.
+ *   - recovery records are written exactly once; retryRun() is allowed only when no action outcome is
+ *     unresolved and the previous attempt's executor is fenced (B3, see C29).
  *
  * Targets: a synthetic project (always) and a REAL project, khedma.tn, when a checkout is
  * available (DVL_H4_TARGET, default: a sibling `khedma.tn` checkout of this repository).
@@ -371,6 +372,10 @@ describe.each(targets)("C27 H4 Kernel crash replay — $name", (target) => {
 
     expect(r.store.ofType("kernel.action_outcome_unknown").filter((e) => e.runId === id.runId)).toHaveLength(1);
 
+    // B3 — "not done" is refused until the attempt's executor is fenced.
+    expect(() => r.reconcileActionOutcome(id.runId, "act_h4_probe", "CONFIRMED_NOT_DONE")).toThrow(/HOLD_RECOVERY_PROCESS_STILL_ALIVE.*fenced first/);
+    expect(await r.fenceRecoveredAttempt(id.runId)).toMatchObject({ state: "FENCED", retryAllowed: true });
+
     r.reconcileActionOutcome(id.runId, "act_h4_probe", "CONFIRMED_NOT_DONE");
 
     const reconciled = r.store.ofType("kernel.action_outcome_reconciled").filter((e) => e.runId === id.runId);
@@ -387,6 +392,7 @@ describe.each(targets)("C27 H4 Kernel crash replay — $name", (target) => {
     // A fresh Kernel must recover the reconciliation from durable Kernel Truth alone.
     const r2 = track(kernelOn(root, { expectedHeads: anchorsFor(root) }));
     expect(r2.runStatus(id.runId)).toBe("interrupted");
+    expect(r2.recoveryStatus(id.runId)).toMatchObject({ state: "FENCED", retryAllowed: true }); // durable
     r2.start();
     await r2.describe();
 
