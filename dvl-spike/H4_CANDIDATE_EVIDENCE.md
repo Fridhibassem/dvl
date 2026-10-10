@@ -1,103 +1,108 @@
-# H4 candidate evidence — H4_DO_NOT_CLOSE
+# H4 authoritative candidate evidence
 
-This is spike evidence. The Frozen Contract is unchanged. The confined macOS ledger profile has a tested durable effect boundary; the broader Kernel still admits an unconfined native launch. A retained regression demonstrates duplicate external mutation through that path. Green regression results do not imply H4 closure.
+**Implementation evaluated:** `d92d0636334a4342b917331fa8bbc2d7e24b9b6a` on `codex/h4-candidate`.
 
-## A. Combined source state
+**Verdict:** `READY_FOR_FINAL_H4_CLOSURE_DECISION` for the scoped Phase 1 spike. This evidence supports a final H4 closure decision; it does not itself declare H4 closed.
 
-One candidate branch: `codex/h4-candidate`, based on `0a54fd7c6ff813d877b130ee1eabf863c7c5c16d`.
+Both this document and `H4_CANDIDATE_TEST_RESULTS.json` describe the exact implementation above. They replace stale candidate counts and unsafe-native-launch statements. This regeneration changes only the two evidence artifacts. Implementation, tests, architecture and Frozen Contract are unchanged. The implementation Git tree is `2cb7865f085d917b548e95c4de59f36540769cdf`. The JSON includes source SHA-256 values, command arguments, timestamps, exit codes, every test name/status, selected-case exclusions and failure lists. Source drift was checked before and after every command.
 
-Commit `108b80049d6f93034157c30dab8485b796589d01` consolidated the existing B1–B4 changes:
+## Physical host and execution
 
-- B1: authenticated structural `StoredEvent.actionId` survives oversized payload spooling; replay restores the corresponding uncertainty.
-- B2: lifecycle abort/interruption preserves effect uncertainty; retry is blocked until explicit durable host reconciliation, which cannot be supplied through provider frames.
-- B3: durable PID/PGID/platform/process-birth information; stale authority revocation; verified group termination and content-based workspace quiescence before retry. Inspection/kill/identity failures and unsupported process fencing produce HOLD.
-- B4: complete immutable PREPARED intent and identities, durable grant/STARTED before the sole host effect invocation, replay UNKNOWN, durable trusted outcome or explicit inspection, no provider-native fallback on prepared runs.
+- macOS 13.7.8, build 22H730, x86_64; Node v24.9.0; Vitest 2.1.9.
+- Evidence campaign: 2026-10-10T23:09:19.461854+00:00 through 2026-10-10T23:16:44.804832+00:00 (UTC).
+- The provider processes actually run under `/usr/bin/sandbox-exec` on this macOS host. Physical Kernel SIGKILL/replay, flock ownership, process-group inspection/termination, HTTP service, SQLite and filesystem tests execute locally.
+- C27 uses seven synthetic cases and seven tracked-file copies of `/Users/user/Desktop/khedma.tn` at `c08ac8154c2c31a4cc6291346ec7195beb825ae7`. The source checkout is checked for changes; ignored files, credentials and node_modules are not copied.
+- Test-file concurrency is bounded to two workers. The focused campaign, isolated counterexample and two full suites run sequentially against the unchanged implementation SHA.
 
-The subsequent confinement commit on this same branch contains the enforcement, C31, updated C30, and authoritative result artifact. Its final commit ID is returned with the review. No parallel branch is an authoritative baseline. Unrelated `.DS_Store` files are excluded.
+## Authoritative test results
 
-## B/C. Authoritative baseline and full suite
+| Run | Tests | Passed | Failed | Skipped/pending/todo |
+|---|---:|---:|---:|---:|
+| C27 | 14 | 14 | 0 | 0 |
+| C28 | 5 | 5 | 0 | 0 |
+| C29 | 11 | 11 | 0 | 0 |
+| C30 | 23 | 23 | 0 | 0 |
+| C31 | 29 | 29 | 0 | 0 |
+| Full suite 1 (31 files) | 318 | 318 | 0 | 0 |
+| Full suite 2 (31 files) | 318 | 318 | 0 | 0 |
 
-The final results and source SHA-256 manifest are recorded in `H4_CANDIDATE_TEST_RESULTS.json`. The counts below must agree with that artifact.
+C27–C31 combined: **82/82**, five files, 0 failures and 0 skipped/pending tests. Full-suite durations: 195.627 seconds and 192.739 seconds, measured around the CLI processes. Full suite 1: **318/318**; full suite 2: **318/318**. Every required test ran on macOS; Linux/Windows policy seams are included, but no Linux/Windows provider process is claimed.
 
-| Suite | Final tests |
-|---|---:|
-| C27 | 14 (7 synthetic + 7 tracked-file copies of real khedma.tn) |
-| C28 | 5 |
-| C29 | 11 |
-| C30 | 23 |
-| C27–C30 | 53 |
-| C31 | 15 (14 confinement/control assertions + 1 retained unsafe counterexample) |
-| C27–C31 | 68 |
-| Full conformance suite | 304 in 31 files |
+Typecheck exit code: **0**. Initial `git diff --check` exit code: **0**. The regenerated artifact diff is checked again before the evidence-only commit.
 
-Final full-suite status: **304/304 PASS, 31/31 files PASS, zero skipped/pending tests**. One passing case deliberately asserts the still-unsafe legacy counterexample. TypeScript typecheck and `git diff --check` pass.
+The extra counterexample-only run executes **1 passed case**, with 0 failures and **28 deliberately deselected C31 cases** due to the name filter. Those cases all execute in the focused C31 run and both full suites; this exclusion is not unsupported-platform skip evidence. Detailed failures and exclusions are recorded in the JSON, including any nonzero command exit.
 
-Count reconciliation: the earlier 259-test B3 run used synthetic C27 only and had no C30. Enabling the real-project C27 copy adds 7; adding C30 adds 23: 289. C31 adds 15: 304. The intermediate 303 count had 14 C31 tests before the explicit legacy counterexample was retained. These are different source/fixture configurations, not competing final baselines.
-
-The first combined baseline run used default file concurrency: 288/289 passed, with C09's 1-second adapter duration test expiring during startup under load. No timer behavior or assertion was relaxed. The bounded run subsequently passed 303/303; the final 304-test run uses the same bounded configuration.
-
-Reproduction, from `dvl-spike`:
+Reproduction from `dvl-spike`, after checking out the implementation SHA:
 
 ```sh
 /usr/local/bin/node node_modules/typescript/bin/tsc --noEmit
-DVL_H4_TARGET=/Users/user/Desktop/khedma.tn /usr/local/bin/node node_modules/vitest/vitest.mjs run --no-cache --maxWorkers=2 --minWorkers=1 --reporter=json --outputFile=/tmp/h4-candidate-final-full.json
+git diff --check
+DVL_H4_TARGET=/Users/user/Desktop/khedma.tn /usr/local/bin/node node_modules/vitest/vitest.mjs run src/conformance/c27-h4-kernel-crash-replay.test.ts src/conformance/c28-h4-root-ownership.test.ts src/conformance/c29-h4-recovery-process-fence.test.ts src/conformance/c30-h4-b4-durable-before-effect.test.ts src/conformance/c31-h4-provider-confinement.test.ts --no-cache --maxWorkers=2 --minWorkers=1
+DVL_H4_TARGET=/Users/user/Desktop/khedma.tn /usr/local/bin/node node_modules/vitest/vitest.mjs run src/conformance/c31-h4-provider-confinement.test.ts --testNamePattern 'closure: former unconfined double-POST counterexample' --no-cache --maxWorkers=2 --minWorkers=1
+DVL_H4_TARGET=/Users/user/Desktop/khedma.tn /usr/local/bin/node node_modules/vitest/vitest.mjs run --no-cache --maxWorkers=2 --minWorkers=1
+DVL_H4_TARGET=/Users/user/Desktop/khedma.tn /usr/local/bin/node node_modules/vitest/vitest.mjs run --no-cache --maxWorkers=2 --minWorkers=1
 ```
 
-Physical evidence is macOS 13.7.8 (22H730), Node 24.9.0, Vitest 2.1.9. C29's Linux/Windows recovery policy and C31's unsupported-platform refusal are exercised through explicit platform seams. This is not physical Linux/Windows execution evidence. C30 requires the verified macOS confinement backend; other platforms cannot execute this mediated profile.
+The executed commands use JSON reporters and distinct output files; their exact argv appears in the JSON artifact. Native dependencies must already be built for this physical host; the local native addon's SHA-256 is recorded separately from tracked source.
 
-## D. Exact enforced boundary
+## B1–B4 and enforced execution boundary
 
-`src/kernel/provider-confinement.ts` generates a host-owned Seatbelt profile and launches `/usr/bin/sandbox-exec -p PROFILE EXECUTABLE ...` before any provider code executes. Sandbox failure terminates the launch; there is no unconfined fallback for a mediated profile. The Kernel refuses a mediated launch without this boundary. An accepted `dvl_tools` provider also requires the durable broker.
-
-The profile denies operations by default. It grants process fork/exec, self-signalling, sysctl reads, filesystem metadata reads, narrowly selected OS/runtime reads, and host-selected trusted code reads. It grants **no filesystem write, network socket, general Mach lookup, task-port, Apple-event, or IPC operation**. Project/state directories cannot be supplied as code read roots. Provider stdin/stdout/stderr are protocol/diagnostic pipes; effect descriptors and credential handles are not inherited.
-
-Filesystem effects, including workspace writes, append, rename and unlink, are denied. Direct TCP/HTTP and external API requests are denied, including loopback to the disposable service. Opening/mutating the disposable SQLite DB is denied. Shells and native CLI tools inherit Seatbelt. A detached Node child in a fresh process group inherits it too; nesting an allow-default sandbox cannot relax it.
-
-The confined child receives a fresh fixed environment plus explicitly named `DVL_PUBLIC_*` inputs. It does not inherit `process.env`, `adapterEnv`, HOME, NODE_OPTIONS, or raw effect tokens. Credential files outside the trusted runtime read set are unreadable, including a symlink from an allowed code directory to a credential file. Reading the host environment through `ps` does not reveal the token. Runtime code read roots are host-trusted assets and must contain no secrets; this is a host configuration trust requirement, not a provider-selected permission.
-
-The provider remains unable to mutate directly even after PREPARED. It proposes an intent. Only the trusted Kernel-owned broker receives the scoped prepared identity and invokes the effect after PREPARED, authority and STARTED commits. No grant/credential is sent to the provider. The Kernel's actual invocation is in `Kernel.executeSpikeAction()`; its checks bind run, attempt, assignment, adapter instance, authority ID, operation identity, intent signature and root ownership. The ledger broker permits only its named append operation and target. Duplicate proposals reuse only a durable trusted outcome for the host-defined operation; native execution has no second lane.
-
-## E. Negative and crash tests
-
-C31 performs actual operations, then checks external state rather than trusting provider reports. The HTTP service is reachable from the host; SQLite has a real initial row; the secret and existing files are readable/writable by the host. Failures are therefore boundary denials, not absent test resources.
-
-| Required case | Evidence |
+| Blocker | Evidence on this implementation |
 |---|---|
-| 1. Direct filesystem write | EPERM for external/project writes, append, rename, unlink; original bytes remain unchanged. |
-| 2. Direct network POST | EPERM; disposable service receives zero mutation requests. |
-| 3. DB/API mutation | Node SQLite insertion denied; host query sees only baseline row. API POST denied, zero requests. |
-| 4. Raw credentials | Environment absent, secret read and alias read denied, host process environment unavailable. |
-| 5. Native shell/tools | Shell redirection, curl POST and sqlite3 INSERT cannot change any target. |
-| 6. Spawned child | Actual detached Node child gets EPERM for filesystem/network mutation; nested sandbox relaxation fails. |
-| 7. Before durable PREPARED | All direct attacks above occur with zero PREPARED/grants; C30's original ledger bypass is denied before its proposal is persisted and remains denied on retry. |
-| 8. Crash after PREPARED before effect | Physical Kernel SIGKILL at PREPARED/authorization/STARTED; no effect; UNKNOWN, retry held until explicit trusted NOT_DONE inspection. |
-| 9. Crash after effect before outcome | One external ledger entry; physical SIGKILL; UNKNOWN/retry hold; trusted DONE inspection avoids another execution. |
-| 10. Surviving old executor | C29 detached survival, late/same-size writes and kill failures; C30 live old planner with kill denied remains B3 HOLD even after NOT_DONE. |
+| B1: crash/replay loses action identity | C27 physically crashes with an oversized/spooled `action.started`; structural authenticated `actionId` survives. Tampering the structural ID with the old MAC is refused. Deleting the payload body does not remove UNKNOWN or allow retry. |
+| B2: stale/non-owner authority or lost uncertainty | C28 refuses both DONE and NOT_DONE reconciliation by a non-owner with `root_locked`, and both durable ledgers remain byte-identical. Explicit trusted reconciliation is durable; provider claims cannot resolve prepared outcomes. |
+| B3: old executor may still mutate | C29 covers detached executor/descendant survival, late and same-size writes, kill/inspection/identity failure, quiescence and Windows policy refusal. C30 keeps B3 HOLD despite NOT_DONE when an old executor cannot be fenced. Stale authority is durably revoked, group termination is proved, workspaces become quiescent and a final fence record precedes retry. |
+| B4: effect precedes durable identity | C30 exercises physical crash boundaries before PREPARED, after PREPARED/grant/STARTED, after effect before outcome, and after durable outcome, plus fsync/publication failures. C31 verifies launch refusal, native denial, scoped mock broker intent/authority binding, and fsync denial. |
 
-Also tested: exactly one broker effect despite denied direct POST, missing confinement, missing broker, forbidden environment overrides, unsupported confinement backends, provider FINISHED forgery, native mode/owner rejection, duplicate proposals and inconsistent operation semantics.
+`Kernel.spawnAdapter()` requires an enforced confinement configuration before executing provider code. The shipped mock automatically selects its host-owned configuration; a custom provider needs an explicit configuration. Both initial launch and replacement use this method. It selects only `confinedProviderLaunch(...).argv` and its fresh environment. **There is no raw `adapterCommand` fallback in this implementation.** Missing/unsupported confinement produces `HOLD_PROVIDER_CONFINEMENT_UNAVAILABLE` with `retryAllowed=false` before provider spawn. Capability declarations, prompts and `nativeEffectsAllowed:false` are not the enforcement boundary.
 
-An uninspectable ledger retains UNKNOWN, reports `HOLD_RECOVERY_ACTION_UNKNOWN`, and has `retryAllowed=false`. Process-fence failure reports `HOLD_RECOVERY_PROCESS_STILL_ALIVE`, independently of outcome resolution. Missing/unsupported confinement reports `HOLD_PROVIDER_CONFINEMENT_UNAVAILABLE`, with `retryAllowed=false`. Explicit inspection cannot bypass B3.
+The macOS Seatbelt profile denies operations by default. It allows narrowly selected runtime/code reads, metadata reads, fork/exec and self-signalling. It provides no direct filesystem mutation, network socket, general Mach lookup, task-port, Apple-event or other general IPC authority. Descendants, shells and native tools inherit confinement, including a detached child and a nested sandbox that tries to relax restrictions. A fresh environment contains fixed public runtime settings and explicit `DVL_PUBLIC_*` configuration. HOME, NODE_OPTIONS, host environment secrets and raw effect credentials are not inherited. Host-selected code read paths must be trusted and contain no effect secrets; the provider cannot choose these paths. Credential file and allowed-code symlink escape attempts are tested.
 
-## F. Fsync and durability scope
+The provider can propose an effect, while the trusted Kernel owns execution. The durable order is:
 
-The mediated profile requires `fsync:true`, a host integrity key and host commit publication. `EventStore.durableAppend()` writes the complete authenticated record, calls `fs.fsyncSync(fd)`, performs integrity checks, and publishes the host boundary before the Kernel proceeds to the next action stage. The ledger executor fsyncs its appended receipt and parent directory.
+```text
+kernel.action_prepared (authenticated, fsynced, host-published)
+  -> kernel.action_execution_authorized
+  -> kernel.action_execution_started
+  -> sole Kernel broker invocation
+  -> durable trusted outcome or UNKNOWN / explicit reconciliation
+```
 
-C30 injects failures at PREPARED, authorization and STARTED fsync: zero effects. Failed PREPARED host publication grants no execution. Failed outcome fsync preserves UNKNOWN through explicit tail recovery; inspection resolves the already applied effect without duplication. Physical SIGKILL tests demonstrate committed records surviving a **process crash** with the OS still running.
+PREPARED contains action/run/attempt, actor, adapter instance, assignment and authority identities, action kind/target/parameters, semantic signature, operation identity, mutation/external classification and execution owner. Replay treats an unresolved prepared action as UNKNOWN even when no STARTED observation exists. Provider FINISHED observations cannot establish prepared-effect outcomes. NOT_DONE inspection does not bypass process fencing. Uninspectable outcomes remain `HOLD_RECOVERY_ACTION_UNKNOWN`, `retryAllowed=false`; unproved old execution remains `HOLD_RECOVERY_PROCESS_STILL_ALIVE`, `retryAllowed=false`.
 
-**OS/power-loss durability is not established.** No power interruption, F_FULLFSYNC/controller flush qualification, storage fault campaign, or host-anchor power-loss recovery test was performed. Successful fsync plus process restart is not evidence of all those guarantees. Event log creation/directory metadata and host anchor persistence also need that durability audit. The tests' host commit heads survive in a separate parent test process, not a simulated host power failure.
+Two implemented effect boundaries are in scope:
 
-## G. Remaining effect paths
+1. `Kernel.executeSpikeAction()` and `ExternalLedgerExecutor`: a validated logical ledger operation, host-owned operation identity, immutable intent and private host target. Confirmed outcomes can be reused for the same explicit logical operation; provider-native ownership/mode and fallback are refused. Native POST attempts remain denied while the broker executes exactly one recorded effect.
+2. `Kernel.executeMockFilesystem()` and `planMockFilesystem()`: the mock's pre-opened private request/response pipes propose operations. The Kernel validates root ownership, live adapter/run/attempt assignment, termination/revocation and scope before mutation. Only live attempt workspace and own adapter artifact paths are writable through this tool. Writes, append, mkdir, rename and removal require durable PREPARED/grant/STARTED first; direct provider syscalls remain denied. Reads are separate and cannot use mutating flags. External paths, Kernel-log writes, aliases, wrong assignments and shell/network/DB/credential method requests are refused. No raw effect descriptor or credential is granted to the provider.
 
-The universal invariant still has a concrete counterexample. `Kernel.spawnAdapter()` only selects the Seatbelt launcher when `providerConfinement` is supplied. Without a spike broker/confinement, it can still select raw `adapterCommand`, inherit the host environment, and admit `gated_native` capabilities. Such a process retains filesystem/network/credential/native-shell/descendant authority before any PREPARED record, including at process startup before describe/dispatch.
+Read-only observation without an effect broker is positively tested under confinement. Kernel-owned event/evidence/diagnostic/transaction bookkeeping is trusted internal storage, not provider mutation authority. The test host can inject historical hostile bytes for independent integrity defenses. In C29 it deliberately seeds a historical unconfined executor to test recovery; that fixture is not a reachable unconfined launch through the current Kernel.
 
-C31 retains an actual disposable HTTP-ledger reproduction: an unconfined native provider receives run.start, POSTs `/ledger`, reports run.failed, and leaves zero durable action records. After Kernel shutdown and authenticated reconstruction, B3 establishes the old process is gone. `retryRun()` sees no UNKNOWN actions and dispatches attempt 2, which POSTs again. There are two external mutations and still zero PREPARED or UNKNOWN records. This reproduces even across clean shutdown, without needing a crash. The assertion passes because it preserves the failure evidence.
+## Former unsafe native counterexample
 
-Existing native implementations also bypass the durable boundary: `mock-provider.ts`'s `write_file` emits a STARTED observation then writes without a durable Kernel grant; `write_raw` writes without any action observation. The default `src/spike.ts` launches the native mock without the confined broker profile. For legacy actions, provider FINISHED observations still set effect certainty CONFIRMED; the prepared lane explicitly ignores those claims for outcome resolution.
+Exact retained case: `C31 enforced provider confinement (actual Seatbelt) closure: former unconfined double-POST counterexample is blocked before launch with zero PREPARED and zero mutations`.
 
-No provider escape was observed in the enforced macOS external-ledger profile. This does not certify arbitrary trusted executor implementations, test hooks, real remote DB/API brokers, or provider integrations. Host validation/identity hooks must be pure; remote accepted requests need proven revocation/settlement and authoritative inspection. An instantaneous NOT_DONE/absence observation or provider claim cannot prove no delayed external mutation. Unsupported/uninspectable operations must remain UNKNOWN/HOLD rather than acquiring a speculative retry path.
+On `d92d0636334a4342b917331fa8bbc2d7e24b9b6a`, the attempted uncertified native launch is refused before any provider code executes. The disposable service is reachable from the trusted host, so zero effects are not attributed to an unavailable service. The host's POST recorder is asserted empty: **external mutation count = 0**. Durable adapter-spawn records = **0**; PREPARED records = **0**; refusal is `HOLD_PROVIDER_CONFINEMENT_UNAVAILABLE`, `retryAllowed=false`.
 
-## H/I. Closure decisions
+The isolated case passes and also passes within C31, full suite 1 and full suite 2. C31 separately covers filesystem writes, network POST, SQLite mutation, external API POST, raw credentials, native shell/tools, detached subprocess and nested-sandbox escapes. Additional default/native launch cases for all these attacks are refused before spawn. The current result replaces the earlier unsafe double-POST result. No launch guard was removed or other implementation mutation performed in this evidence campaign.
 
-**B4 cannot honestly close for the implementation as a whole.** The confined macOS ledger lane passes the requested attacks and crash boundaries, but the reachable native/default launch still defeats the durable-before-effect invariant. Closure requires enforcing the boundary before executable provider code on every supported production launch, or disabling the uncertified lanes, and qualifying any additional broker/OS backend.
+## Platform scope
 
-**H4_DO_NOT_CLOSE.** No new retry heuristic was added. The remaining blocker is execution authority outside the durable boundary. The Frozen Contract was not modified.
+| Platform | Provider runtime scope | Fail-closed behavior and evidence |
+|---|---|---|
+| macOS | **Verified provider confinement backend on the physical host/version above.** | Seatbelt is applied before provider code. Missing confinement is held before launch; required adversarial and crash tests physically run. Other macOS/runtime/storage configurations require qualification. |
+| Linux | **Provider execution unsupported; no verified confinement backend.** | Confinement selection refuses with `HOLD_PROVIDER_CONFINEMENT_UNAVAILABLE`, `retryAllowed=false`; no native fallback. C31 tests this Linux policy through a platform parameter on macOS. Linux flock/process-fence code does not imply Linux provider runtime support. |
+| Windows | **Provider execution unsupported; no verified confinement backend.** | Ordinary `Kernel.start()` fails earlier in `RootLock.acquire()` with `RootLockError.code=root_lock_unsupported`, before provider launch. The confinement selector independently refuses `win32` with `HOLD_PROVIDER_CONFINEMENT_UNAVAILABLE`, `retryAllowed=false` if reached. C29/C31 policy seams run on macOS, not Windows. |
+
+## Durability scope
+
+**Process-crash durability: tested.** The OS remains running while actual Kernel processes are SIGKILLed. A separate host process retains the integrity key and published commit heads. Event records are authenticated and committed with fsync before grant/effect. The ledger fsyncs its receipt and parent directory. C30 verifies no effect after PREPARED/grant/STARTED fsync failure or failed host publication; outcome fsync failure leaves ambiguity and explicit inspection resolves the existing effect without repetition. C31 verifies disabled/failed filesystem PREPARED fsync cannot execute the requested mutation.
+
+**Power-loss durability: not proven.** No OS/power interruption, F_FULLFSYNC/controller/storage qualification, or power-loss qualification of event-log directory metadata, host keys and host commit-anchor persistence was performed. Successful fsync and a Kernel restart are not claimed as proof of power-loss recovery. This evidence makes no power-loss guarantee.
+
+## Remaining scope and final decision readiness
+
+No implementation defect was exposed by this campaign. All requested checks passed. No reachable unconfined provider mutation path was reproduced on this exact macOS candidate. Every exercised provider mutation route is either refused before execution or mediated by a durable Kernel action; no provider-native second execution lane was observed.
+
+This is Phase 1 spike evidence for the shipped filesystem tool, disposable ledger executor and macOS enforcement. It does not certify arbitrary host-supplied executors, real provider integrations, remote DB/API broker settlement, malicious host configuration, network filesystems/VM lock boundaries, Linux/Windows runtimes, or power-loss durability. The host configuration, integrity key, commit publication and broker implementation are trusted. Additional operations need their own validated effect and authoritative inspection/revocation semantics; an absent remote result alone is not a NOT_DONE proof.
+
+**READY_FOR_FINAL_H4_CLOSURE_DECISION.** Final H4 closure must use the stated platform/durability/operation scope. The Frozen Contract has not been modified.
