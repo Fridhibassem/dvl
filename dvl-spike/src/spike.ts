@@ -5,6 +5,7 @@
  * drain/ingest → (snapshot under no-writer rule) → shutdown → print summary.
  * Artifacts are kept under ./.spike-runs/<timestamp>/<scenario>/.dvl for inspection.
  */
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { Kernel } from "./kernel/kernel.js";
@@ -15,7 +16,7 @@ const SCENARIOS = ["happy", "noisy", "oversized-spooled", "oversized-inline", "c
 async function runOne(base: string, scenario: string) {
   const root = path.join(base, scenario);
   fs.mkdirSync(root, { recursive: true });
-  const k = new Kernel({ root, adapterCommand: mockProviderCommand() });
+  const k = new Kernel({ root, adapterCommand: mockProviderCommand(), fsync: true, integrityKey: crypto.randomBytes(32), onCommit: () => {} });
   const t0 = Date.now();
   k.start();
   const caps = await k.describe();

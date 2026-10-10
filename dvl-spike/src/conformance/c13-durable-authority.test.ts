@@ -1,8 +1,8 @@
 /**
  * C13 — Blocker 1: untrusted execution can never manufacture durable Kernel authority.
  *
- * Trust boundary (Phase 1, no OS sandbox): the adapter runs as the same OS user and CAN
- * write .dvl/events/events.jsonl and .dvl/evidence/evidence.jsonl. JSON fields such as
+ * Defense in depth: the confined adapter cannot write Kernel logs. Host fault injection
+ * still models hostile historical bytes in events.jsonl and evidence.jsonl. JSON fields such as
  * origin:"kernel" / trust:"kernel_truth", or mere presence in the log, prove nothing.
  * Authority = a record authenticated by the Kernel: an HMAC chain keyed by a secret the
  * HOST hands to the Kernel in memory (never env, disk, or the adapter). Replay accepts
@@ -29,12 +29,20 @@ const writeLines = (file: string, ls: string[]) => fs.writeFileSync(file, ls.joi
 const integrityEvents = (k: Kernel) => k.store.ofType("kernel.integrity_violation").map((e) => e.payload as Record<string, unknown>);
 
 describe("C13 durable authority is Kernel-authenticated (blocker 1)", () => {
-  it("1. adapter-appended forged origin:kernel records (registration + VALIDATED evidence) are rejected on replay", async () => {
+  it("1. provider forgery is blocked; host-injected forged registration and VALIDATED evidence are rejected on replay", async () => {
     const k = track(makeKernel("c13-forge"));
     const { status } = await runScenario(k, "forge-log");
     expect(status).toBe("finished");
     await k.shutdown();
     const root = rootOf(k);
+    expect(lines(k.store.eventsPath).some((l) => l.includes("evt_forged_registration"))).toBe(false);
+    expect(lines(k.store.evidencePath).some((l) => l.includes("evd_forged"))).toBe(false);
+    const owner = k.currentAdapterInstanceId!, planted = Buffer.from("host-injected historical forged bytes");
+    const ref = { artifactRef: "art_forged", path: `.dvl/spool/${owner}/forged.log`, hash: sha256(planted), byteSize: planted.length,
+      mimeType: "text/plain", summary: "forged", adapterInstanceId: owner };
+    fs.writeFileSync(path.join(root, ref.path), planted);
+    fs.appendFileSync(k.store.eventsPath, JSON.stringify({ eventId: "evt_forged_registration", origin: "kernel", trust: "kernel_truth", type: "kernel.artifact_registered", payload: ref, mac: "0".repeat(64) }) + "\n");
+    fs.appendFileSync(k.store.evidencePath, JSON.stringify({ evidenceId: "evd_forged", validationStatus: "VALIDATED", artifactRefs: [ref], mac: "0".repeat(64) }) + "\n");
     const forgedLine = lines(k.store.eventsPath).find((l) => l.includes("evt_forged_registration"))!;
     expect(JSON.parse(forgedLine)).toMatchObject({ origin: "kernel", trust: "kernel_truth", type: "kernel.artifact_registered" });
     const forged = JSON.parse(forgedLine).payload as ArtifactRef;
@@ -164,7 +172,9 @@ describe("C13 durable authority is Kernel-authenticated (blocker 1)", () => {
     const dumpLine = stderr.toString("utf8").split("\n").find((l) => l.startsWith("DVL_MOCK_ENV_DUMP "));
     expect(dumpLine).toBeDefined(); // non-vacuous: we really saw the adapter's environment
     const childEnv = JSON.parse(dumpLine!.slice("DVL_MOCK_ENV_DUMP ".length)) as Record<string, string>;
-    expect(childEnv.DVL_PROJECT_ROOT).toBe(rootOf(k));
+    expect(childEnv.DVL_PUBLIC_PROJECT_ROOT).toBe(rootOf(k));
+    expect(childEnv.HOME).toBeUndefined();
+    expect(childEnv.NODE_OPTIONS).toBeUndefined();
     const dump = Buffer.from(dumpLine!);
     for (const f of forms) expect(dump.includes(f)).toBe(false);
     // Same root, different key (e.g. an attacker's or a misconfigured host): nothing authenticates.

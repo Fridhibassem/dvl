@@ -3,7 +3,7 @@
  *
  * Owns: process supervision, protocol validation, ordering, the Event Store,
  * actor lifecycle (no-writer rule), payload spooling, and EvidenceRecord creation.
- * Opted-in H4 spike: Seatbelt provider isolation and durable Kernel-owned effects.
+ * H4 spike: mandatory Seatbelt provider isolation and durable Kernel-owned effects.
  *
  * Does NOT own (out of Phase 1 scope): verification gates, integration gate,
  * general authorization classification, general-purpose sandboxing, real providers.
@@ -14,10 +14,14 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { StringDecoder } from "node:string_decoder";
+import type { Readable } from "node:stream";
 import type { FsProbe } from "./confined-fs.js";
 import { EventStore, SpoolIntegrityError, newId, sha256, type ChainHead, type ChainReport, type EventStoreOptions } from "./event-store.js";
 import { NdjsonTransport, type TransportIssue } from "./ndjson-transport.js";
 import { RootLock, RootLockError } from "./root-lock.js";
+import { isMockProviderCommand, mockProviderReadPaths } from "./mock-launch.js";
+import { planMockFilesystem, type MockFilesystemRequest } from "./mock-filesystem-boundary.js";
 import { confinedProviderLaunch, type ProviderConfinement } from "./provider-confinement.js";
 import { recoveryProcessOps, stopRecoveredExecution, type RecoveryExecution, type RecoveryProcessOps } from "./recovery-process.js";
 import { freezeAction, normalizeSpikeIntent, spikeSemanticSignature, type PreparedSpikeAction, type SpikeActionBoundary, type SpikeEffectExecutor } from "./spike-action-protocol.js";
@@ -96,7 +100,7 @@ export interface KernelOptions {
   recoveryTimeoutMs?: number;
   /** B4 experiment: host-owned effect capability. Provider-native effects have no fallback. */
   spikeEffectExecutor?: SpikeEffectExecutor;
-  /** Required for the mediated profile; applied before any adapter code executes. */
+  /** Host-certified read-only boundary for custom providers; shipped mock selects its boundary automatically. */
   providerConfinement?: ProviderConfinement;
   spikeActionBoundary?: (boundary: SpikeActionBoundary, action: Readonly<PreparedSpikeAction>) => Promise<void>;
 }
@@ -326,7 +330,7 @@ export class Kernel {
 
   constructor(private readonly opts: KernelOptions) {
     if (opts.spikeEffectExecutor && (!opts.fsync || !opts.integrityKey || !opts.onCommit)) throw new Error("B4 effects require fsync, a host integrity key, and host commit publication");
-    this.store = new EventStore({ root: opts.root, fsync: opts.fsync, integrityKey: opts.integrityKey, expectedHead: opts.expectedHead, expectedHeads: opts.expectedHeads, hostDecision: opts.hostDecision, onCommit: opts.onCommit, onIncident: opts.onIncident, ioFaults: opts.ioFaults, confinement: opts.confinement, fsProbe: opts.fsProbe });
+    this.store = new EventStore({ root: opts.root, fsync: opts.fsync ?? isMockProviderCommand(opts.adapterCommand), integrityKey: opts.integrityKey, expectedHead: opts.expectedHead, expectedHeads: opts.expectedHeads, hostDecision: opts.hostDecision, onCommit: opts.onCommit, onIncident: opts.onIncident, ioFaults: opts.ioFaults, confinement: opts.confinement, fsProbe: opts.fsProbe });
     const { events, evidence } = this.store.integrity;
     if (!events.ok || !evidence.ok) {
       // Fail closed: rejected records stay on disk as inert bytes and confer nothing.
@@ -669,6 +673,9 @@ export class Kernel {
    * per-instance: the caller must describe() again before run.start.
    */
   restartAdapter(opts: { force?: boolean } = {}): void {
+    this.assertDurable();
+    if (this.spikeActionDrains.size) throw new Error("in-flight Kernel effect executor has not relinquished authority");
+    this.acquireRoot();
     if (!this.child) throw new Error("kernel not started");
     if (!this.closed) {
       if (!opts.force) throw new Error("restartAdapter: previous adapter instance is still running");
@@ -681,6 +688,7 @@ export class Kernel {
       this.closeWaiters.splice(0).forEach((w) => w());
     }
     this.capabilities = null;
+    this.spikeEffectsRevoked = false; // new instance only; old pipe owner is still fenced
     this.spawnAdapter();
   }
 
@@ -689,26 +697,39 @@ export class Kernel {
   }
 
   private spawnAdapter(): void {
-    let launch: ReturnType<typeof confinedProviderLaunch> | null = null;
+    const mockBoundary = isMockProviderCommand(this.opts.adapterCommand) && !this.opts.spikeEffectExecutor;
+    let launch: ReturnType<typeof confinedProviderLaunch>;
     try {
       this.assertProviderConfinement();
-      if (this.opts.spikeEffectExecutor && !this.opts.providerConfinement) throw new Error("mediated execution requires enforced provider confinement");
-      if (this.opts.providerConfinement) launch = confinedProviderLaunch(this.opts.adapterCommand, this.opts.root, this.opts.providerConfinement);
+      // H4_LAUNCH_FAIL_CLOSED_BEGIN — no raw adapterCommand fallback exists.
+      const confinement = this.opts.providerConfinement ?? (mockBoundary ? { codeReadPaths: mockProviderReadPaths() } : null);
+      if (!confinement) throw new Error("provider execution requires a certified confinement/effect boundary");
+      launch = confinedProviderLaunch(this.opts.adapterCommand, this.opts.root, confinement);
+      // H4_LAUNCH_FAIL_CLOSED_END
     } catch (e) {
       this.providerConfinementHold = (e as Error).message;
       this.kernelEvent("kernel.provider_confinement_hold", { reason: this.providerConfinementHold, retryAllowed: false });
       this.assertProviderConfinement();
+      throw e; // unreachable; retain definite assignment even if the assertion changes
     }
-    const [cmd, ...args] = launch?.argv ?? this.opts.adapterCommand;
+    const [cmd, ...args] = launch.argv;
     if (!cmd) throw new Error("adapterCommand is empty");
     // H2: the instance id exists BEFORE the process, so its spool areas can be created
     // fresh (never shared, never inherited) and handed to it at spawn.
     const adapterInstanceId = this.newAdapterInstanceId();
     const spools = this.store.createInstanceSpools(adapterInstanceId);
+    if (mockBoundary) {
+      launch.env.DVL_PUBLIC_PROJECT_ROOT = this.opts.root;
+      launch.env.DVL_PUBLIC_ADAPTER_SPOOL_DIR = spools.adapterDir;
+      launch.env.DVL_PUBLIC_MOCK_BROKER = "1";
+      for (const [name, value] of Object.entries(this.opts.adapterEnv ?? {})) {
+        if (/^DVL_MOCK_(DESCRIBE|DUMP_ENV|ACK_DELAY_MS|STOP_READING|EMIT_RUN_ID|EMIT_ATTEMPT)$/.test(name)) launch.env[name.replace("DVL_MOCK_", "DVL_PUBLIC_MOCK_")] = value;
+      }
+    }
     const child = spawn(cmd, args, {
       cwd: this.opts.root,
-      stdio: ["pipe", "pipe", "pipe"],
-      env: launch ? launch.env : { ...process.env, ...this.opts.adapterEnv, DVL_PROJECT_ROOT: this.opts.root, DVL_ADAPTER_SPOOL_DIR: spools.adapterDir },
+      stdio: mockBoundary ? ["pipe", "pipe", "pipe", "pipe", "pipe"] : ["pipe", "pipe", "pipe"],
+      env: launch.env,
       detached: process.platform !== "win32", // own process group → killable as a unit
     });
     this.child = child;
@@ -722,7 +743,7 @@ export class Kernel {
       platform: process.platform,
       processBirth: child.pid ? recoveryProcessOps.birth(child.pid) : null,
       argv: this.opts.adapterCommand,
-      providerConfinement: launch?.evidence ?? null,
+      providerConfinement: launch.evidence,
       kernelSpool: path.relative(this.opts.root, spools.kernelDir),
       adapterSpool: path.relative(this.opts.root, spools.adapterDir),
     });
@@ -743,6 +764,8 @@ export class Kernel {
       throw e;
     }
 
+    if (mockBoundary) this.attachMockFilesystem(child, adapterInstanceId, spools.adapterDir, spools.kernelDir);
+
     const spawnedAt = Date.now();
     this.durationTimer = setTimeout(() => {
       // Only ever halts the instance it was armed for.
@@ -750,6 +773,57 @@ export class Kernel {
       this.haltForSafety(`maxDurationMs ${this.limits.maxDurationMs} exceeded`, { kind: "max_duration", maxDurationMs: this.limits.maxDurationMs, elapsedMs: Date.now() - spawnedAt });
     }, this.limits.maxDurationMs);
     this.durationTimer.unref();
+  }
+
+  /** A scoped host tool on private pipes; the adapter itself remains OS read-only. */
+  private attachMockFilesystem(child: ChildProcess, owner: string, adapterDir: string, kernelDir: string): void {
+    const input = child.stdio[3] as Readable;
+    const output = child.stdio[4] as NodeJS.WritableStream;
+    output.on("error", () => {});
+    let tail = "", requests = 0;
+    const decoder = new StringDecoder("utf8");
+    input.on("data", (data: Buffer) => {
+      tail += decoder.write(data);
+      if (Buffer.byteLength(tail) > 8 * 1024 * 1024) { tail = ""; input.destroy(); this.haltForSafety("filesystem broker request exceeds limit", { kind: "effect_request_limit" }); return; }
+      while (tail.includes("\n")) {
+        const end = tail.indexOf("\n"), line = tail.slice(0, end); tail = tail.slice(end + 1);
+        let req: MockFilesystemRequest | undefined;
+        try {
+          req = JSON.parse(line) as MockFilesystemRequest;
+          if (++requests > 256) throw new Error("filesystem capability request budget exceeded");
+          const result = this.executeMockFilesystem(req, owner, adapterDir, kernelDir);
+          output.write(JSON.stringify({ id: req.id, ...result }) + "\n");
+        } catch (e) {
+          output.write(JSON.stringify({ id: req?.id, error: (e as Error).message, code: (e as NodeJS.ErrnoException).code ?? "EPERM" }) + "\n");
+        }
+      }
+    });
+  }
+
+  private executeMockFilesystem(req: MockFilesystemRequest, owner: string, adapterDir: string, kernelDir: string): object {
+    this.assertDurable();
+    const run = this.runs.get(req.runId);
+    if (!this.ownsRoot || this.spikeEffectsRevoked || owner !== this.adapterInstanceId || this.terminatedInstances.has(owner) ||
+      !run || run.adapterInstanceId !== owner || run.identity.attempt !== req.attempt || isTerminal(run.status)) throw new Error("filesystem assignment authority revoked");
+    const plan = planMockFilesystem(req, this.opts.root, run.txWorkspace, adapterDir, kernelDir);
+    if (!plan.mutating) return plan.execute();
+    if (this.opts.fsync === false || !this.opts.integrityKey || !this.opts.onCommit) throw new Error("filesystem effects require fsync and durable host authority");
+    const action = freezeAction({ actionId: `act_mock_fs_${req.id}`, runId: req.runId, attempt: req.attempt, actorId: "actor_root",
+      adapterInstanceId: owner, assignmentId: sha256(JSON.stringify([req.runId, req.attempt, run.identity.workerId, owner])),
+      authorityId: newId("effect_authority"), kind: `mock_fs.${req.method}`, target: plan.target, parameters: plan.parameters,
+      stateMutating: true, external: false, executionOwner: "kernel" as const,
+      effectOperationId: `${req.runId}:${req.attempt}:fs:${req.id}`, semanticSignature: spikeSemanticSignature({ actionId: "pending", kind: `mock_fs.${req.method}`, target: plan.target, parameters: plan.parameters, stateMutating: true, external: false, executionOwner: "kernel" }) });
+    if (run.actions.has(action.actionId)) throw new Error("filesystem action identity reused");
+    const commit = (type: string, payload: unknown) => { if (!this.kernelEvent(type, payload, req!.runId, req!.attempt)) throw new Error(`unable to durably commit ${type}`); };
+    commit("kernel.action_prepared", action);
+    const observed: ActionRecord = { state: "requested", actorId: action.actorId, effectCertainty: "UNKNOWN", outcomeUnknownRecorded: false, prepared: action };
+    run.actions.set(action.actionId, observed);
+    commit("kernel.action_execution_authorized", { actionId: action.actionId, authorityId: action.authorityId, assignmentId: action.assignmentId, semanticSignature: action.semanticSignature, executionOwner: "kernel" });
+    commit("kernel.action_execution_started", { actionId: action.actionId, authorityId: action.authorityId }); observed.state = "started";
+    const result = plan.execute();
+    commit("kernel.action_outcome_confirmed", { actionId: action.actionId, authorityId: action.authorityId, executed: true, receiptId: sha256(JSON.stringify(result)) });
+    observed.state = "finished"; observed.effectCertainty = "CONFIRMED";
+    return result;
   }
 
   private newTransport(child: ChildProcess, adapterInstanceId: string, kernelDir: string): NdjsonTransport {
@@ -922,7 +996,7 @@ export class Kernel {
     if (!this.capabilities) throw new Error("describe() must succeed before run.start");
     const run = this.runs.get(runId);
     if (!run) throw new Error(`unknown run ${runId}`);
-    if (!this.opts.spikeEffectExecutor && this.store.ofType("kernel.action_prepared").some((e) => e.runId === runId && e.origin === "kernel")) throw new Error("B4 run requires its mediated executor; provider-native fallback denied");
+    if (!this.opts.spikeEffectExecutor && this.store.ofType("kernel.action_prepared").some((e) => e.runId === runId && e.origin === "kernel" && (!isMockProviderCommand(this.opts.adapterCommand) || !(e.payload as PreparedSpikeAction).kind.startsWith("mock_fs.") || (e.payload as PreparedSpikeAction).external))) throw new Error("B4 run requires its mediated executor; provider-native fallback denied");
     if (!isTerminal(run.status)) throw new Error(`run ${runId} attempt ${run.identity.attempt} is not terminal (status=${run.status})`);
 
     const unknownActions = [...run.actions.entries()]

@@ -1,8 +1,8 @@
 /**
  * C20 — H2 adapter / Kernel spool isolation regressions.
  *
- * Trust boundary (Phase 1, no OS sandbox): the adapter runs as the same OS user and CAN
- * create, replace, symlink and hard-link anything under the project root. H2 therefore
+ * Defense in depth: the adapter is now OS-confined. Host fault injection still models
+ * historical replacement, symlink and hard-link attacks under the root. H2 therefore
  * guarantees, on the Kernel side:
  *   - the Kernel never READS adapter material from outside the adapter's own area
  *     (canonical-root containment, no symlinks, no hard-link aliases);
@@ -10,8 +10,7 @@
  *     files, durable logs, diagnostics: exclusive + no-follow + canonical directory checks);
  *   - imported material is a Kernel-made copy with recorded provenance;
  *   - adapter overwrites of Kernel-owned material are detected and never trusted.
- * Steps below that "act as the adapter" use the test process, which has exactly the
- * adapter's capabilities (same OS user, knows the root and its instance id).
+ * Steps below that "act as the adapter" use the test process, which has host authority beyond the confined adapter.
  */
 import { EventEmitter } from "node:events";
 import fs from "node:fs";
@@ -246,10 +245,14 @@ describe("C20 H2 adapter/Kernel spool isolation", () => {
     const alias = evidenceFor(k, "act_alias")!;
     expect(alias.validationStatus).toBe("CORRUPTED");
     expect(alias.artifactRefs).toEqual([]);
-    expect(alias.statusReason).toMatch(/hard-linked/);
+    expect(alias.statusReason).toMatch(/missing|ENOENT/i); // broker denied provider link creation
     expect(k.store.ofType("kernel.artifact_imported")).toHaveLength(1); // only the genuine one
-    // While the adapter's alias exists, the Kernel file has a second name the adapter can write
-    // through: it is refused as aliased. Once the alias is gone it verifies again (bytes intact).
+    const aliasPath = path.join(k.store.adapterSpoolDirOf(k.currentAdapterInstanceId!), "alias.log");
+    expect(fs.existsSync(aliasPath)).toBe(false);
+    expect(k.store.verifyKernelArtifact(src.artifactRefs[0]!)).toEqual({ ok: true });
+    // Inject a historical alias with host authority; retain the independent H2 defense.
+    fs.linkSync(path.join(rootOf(k), src.artifactRefs[0]!.path), aliasPath);
+    expect(reason(k.store.importAdapterArtifact(claimFor(path.relative(rootOf(k), aliasPath), fs.readFileSync(aliasPath)), k.currentAdapterInstanceId!))).toMatch(/hard-linked/);
     expect(reason(k.store.verifyKernelArtifact(src.artifactRefs[0]!))).toMatch(/hard-linked/);
     fs.rmSync(path.join(k.store.adapterSpoolDirOf(k.currentAdapterInstanceId!), "alias.log"));
     expect(k.store.verifyKernelArtifact(src.artifactRefs[0]!)).toEqual({ ok: true });

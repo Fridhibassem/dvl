@@ -152,9 +152,10 @@ describe("C28 H4 single-Kernel root ownership", () => {
     const reader = track(kernelOn(root, { expectedHeads: owner.state.heads }));
     expect(reader.runStatus(runId)).toBe("interrupted");
 
-    expect(
-      lockCode(() => reader.reconcileActionOutcome(runId, "act_h4_probe", "CONFIRMED_NOT_DONE")),
-    ).toBe("root_locked");
+    for (const resolution of ["CONFIRMED_NOT_DONE", "CONFIRMED_DONE"] as const) {
+      expect(lockCode(() => reader.reconcileActionOutcome(runId, "act_h4_probe", resolution))).toBe("root_locked");
+      expect(logBytes(root)).toEqual(before); // each refusal, both durable ledgers byte-identical
+    }
 
     expect(reader.ownsRoot).toBe(false);
     expect(reader.store.ofType("kernel.action_outcome_reconciled").filter((e) => e.runId === runId)).toHaveLength(0);

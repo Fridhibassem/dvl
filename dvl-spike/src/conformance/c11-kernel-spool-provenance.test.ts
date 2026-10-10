@@ -1,8 +1,8 @@
 /**
  * C11 — Blocker B: filesystem location alone never grants Kernel provenance.
  *
- * There is no OS sandbox in the Spike: the adapter process CAN physically write into
- * `.dvl/spool/<adapterInstanceId>/` (test 1 proves it). What must hold instead is that a
+ * The confined adapter cannot plant Kernel-spool bytes (test 1). Host-injected historical
+ * files still exercise the provenance defense: a
  * file there is trusted only if the Kernel itself created/imported it and recorded that
  * provenance (kernel.artifact_registered: id, owner, path, hash, size, run/attempt), and
  * that the bytes re-verify against that record at consumption time.
@@ -26,12 +26,12 @@ const rootOf = (k: Kernel) => path.dirname(k.store.dvlDir);
 const evidenceFor = (k: Kernel, actionId: string) => k.store.readEvidenceFromDisk().find((e) => e.relatedActionId === actionId);
 
 describe("C11 Kernel spool provenance (blocker B)", () => {
-  it("1. a spawned adapter physically plants a file in its Kernel spool (no OS sandbox)", async () => {
+  it("1. a spawned adapter cannot plant a file in its Kernel spool through the scoped broker", async () => {
     const k = track(makeKernel("c11-plant"));
     await runScenario(k, "forge-spooled");
     const planted = path.join(k.store.spoolDir, k.currentAdapterInstanceId!, "art_00000000000000000000.log");
-    expect(fs.existsSync(planted)).toBe(true);
-    expect(fs.readFileSync(planted, "utf8")).toContain("PLANTED");
+    expect(fs.existsSync(planted)).toBe(false);
+    expect(k.store.ofType("kernel.action_prepared").some((e) => (e.payload as { target: string }).target.includes("art_00000000000000000000"))).toBe(false);
   });
 
   it("2. a planted file cited via the reserved inline __spooled key never becomes evidence material", async () => {
@@ -129,7 +129,7 @@ describe("C11 Kernel spool provenance (blocker B)", () => {
     const forgedEv = k.store.all().find((e) => e.type === "kernel.artifact_registered" && e.origin === "adapter")!;
     expect(forgedEv.trust).toBe("protocol_violation"); // stored as an untrusted, unknown adapter type
     const forged = forgedEv.payload as ArtifactRef;
-    expect(fs.existsSync(path.join(rootOf(k), forged.path))).toBe(true); // bytes really planted, hash correct
+    expect(fs.existsSync(path.join(rootOf(k), forged.path))).toBe(false); // scoped broker blocked planting
     expect((k.store.verifyKernelArtifact(forged) as { reason: string }).reason).toMatch(/not registered/);
     await k.shutdown();
     const replay = track(kernelOn(rootOf(k)));

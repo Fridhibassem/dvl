@@ -16,3 +16,13 @@ export function mockProviderCommand(): string[] {
   const entry = path.resolve(here, "..", "mock-provider", "mock-provider.ts");
   return [process.execPath, "--import", tsxLoader, entry];
 }
+
+/** Host-owned automatic boundary for this shipped deterministic adapter, not a capability claim. */
+export function isMockProviderCommand(command: string[]): boolean {
+  return JSON.stringify(command) === JSON.stringify(mockProviderCommand());
+}
+export function mockProviderReadPaths(): string[] {
+  const require = createRequire(import.meta.url);
+  return [path.resolve(here, "../mock-provider"), path.resolve(here, "frame.ts"), path.resolve(here, "types.ts"),
+    path.resolve(here, "../../package.json"), path.dirname(path.dirname(path.dirname(require.resolve("tsx"))))];
+}

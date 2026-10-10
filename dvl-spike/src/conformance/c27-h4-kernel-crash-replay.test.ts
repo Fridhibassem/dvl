@@ -480,6 +480,23 @@ describe.each(targets)("C27 H4 Kernel crash replay — $name", (target) => {
 
     const { run, heads } = await crashKernelMidRun(root, "h4-action-started-hold-large-payload");
 
+    const log = path.join(root, ".dvl/events/events.jsonl"), bytes = fs.readFileSync(log);
+    const rows = bytes.toString().split("\n").filter(Boolean);
+    const at = rows.findIndex((line) => { const e = JSON.parse(line); return e.type === "action.started" && e.actionId === "act_h4_big"; });
+    expect(at).toBeGreaterThanOrEqual(0);
+    const durable = JSON.parse(rows[at]!);
+    expect(durable.mac).toMatch(/^[a-f0-9]{64}$/);
+    // Changing structural identity while retaining the MAC must not create a new action.
+    try {
+      const tampered = [...rows]; tampered[at] = JSON.stringify({ ...durable, actionId: "act_attacker" });
+      fs.writeFileSync(log, tampered.join("\n") + "\n");
+      const refused = track(kernelOn(root, { expectedHeads: heads }));
+      expect(refused.store.integrity.events.rejected.some((e) => e.reason === "mac_mismatch")).toBe(true);
+      expect(() => refused.start()).toThrow();
+    } finally { fs.writeFileSync(log, bytes); }
+    // Neither payload availability nor payload parsing may determine action reconstruction.
+    fs.rmSync(path.join(root, durable.payload.__spooled.path));
+
     const r = track(kernelOn(root, { expectedHeads: heads }));
     expect(r.store.integrity.events).toMatchObject({ ok: true, rejected: [], truncated: false });
     expect(r.store.recovery).toBeNull();

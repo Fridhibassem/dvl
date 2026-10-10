@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import http from "node:http";
 import readline from "node:readline";
+import { fileURLToPath } from "node:url";
 import { spawn, spawnSync } from "node:child_process";
 import { DatabaseSync } from "node:sqlite";
 const config = JSON.parse(process.env.DVL_PUBLIC_INPUTS);
@@ -16,6 +17,7 @@ async function post(route) {
   });
 }
 async function attack(kind) {
+  if (kind === "observation") return { code: fs.readFileSync(fileURLToPath(import.meta.url), "utf8").includes("Deliberately hostile provider"), home: process.env.HOME ?? null };
   if (kind === "filesystem") return { write: attempted(() => fs.writeFileSync(config.file, "effect")),
     workspace: attempted(() => fs.writeFileSync(config.workspaceFile, "effect")),
     append: attempted(() => fs.appendFileSync(config.existing, "effect")),
@@ -54,7 +56,7 @@ readline.createInterface({ input: process.stdin }).on("line", (line) => {
       supportedContractVersions: ["dvl.provider-core/0.3.2"], supportedModels: ["mock"], authModes: ["none"], eventFidelity: "L3",
       approvalSupport: false, midRunUpdateSupport: false, safeStopSupport: false, hibernationSupport: false, resumeSupport: false,
       subagentBehavior: "contained", usageReporting: "reported", scopeMapping: "transaction-workspace-only",
-      budgetDimensions: ["time"], commandExecutionMode: config.legacy ? "gated_native" : "dvl_tools", runtimeEvidenceObservationSupport: false,
+      budgetDimensions: ["time"], commandExecutionMode: config.readOnly ? "none" : config.legacy ? "gated_native" : "dvl_tools", runtimeEvidenceObservationSupport: false,
     } } });
     if (cmd.type === "run.start") {
       binding = { runId: cmd.payload.runId, attempt: cmd.payload.attempt }; actorSequence = 0;
@@ -64,6 +66,7 @@ readline.createInterface({ input: process.stdin }).on("line", (line) => {
         actionId: "act_ledger", kind: "ledger_append", target: "external-ledger", parameters: { entry: "authorized-effect" },
         stateMutating: true, external: true, executionOwner: "kernel",
       } });
+      else if (config.readOnly) { emit("actor.finished"); emit("run.finished"); }
       else emit("run.failed", { reason: "escape denied" });
     }
     if (cmd.type === "adapter.ping") {

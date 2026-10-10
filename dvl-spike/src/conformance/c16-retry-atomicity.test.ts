@@ -63,9 +63,10 @@ describe("C16 atomic retry dispatch (blocker 4)", () => {
     env.DVL_MOCK_ACK_DELAY_MS = String(ACK_DELAY_MS);
     k.restartAdapter();
     await k.describe();
-    await expect(k.retryRun(a.id.runId, task("happy"))).rejects.toThrow(/timed out/);
+    await expect(k.retryRun(a.id.runId, task("burst-100"))).rejects.toThrow(/timed out/);
     expect(k.runStatus(a.id.runId)).toBe("failed_to_start");
-    // The adapter did receive run.start: it acks late and emits the whole happy script.
+    // The adapter did receive run.start: it acks late and emits observation-only events. Filesystem mutation authority
+    // has already been revoked by dispatch failure; this fixture must not depend on late writes.
     const lateOf = () => k.store.all().filter((e) => e.origin === "adapter" && e.runId === a.id.runId && e.attempt === 2 && e.adapterSequence !== undefined);
     await until(() => lateOf().some((e) => e.type === "run.finished"), "the late adapter's full script");
     await k.settle();
@@ -83,13 +84,13 @@ describe("C16 atomic retry dispatch (blocker 4)", () => {
     k.start();
     await k.describe();
     const before = k.store.all().length;
-    await expect(k.startRun(task("happy"))).rejects.toThrow(/timed out/);
+    await expect(k.startRun(task("burst-100"))).rejects.toThrow(/timed out/);
     const runId = k.store.all().slice(before).find((e) => e.type === "kernel.run_created")!.runId!;
     expect(k.runStatus(runId)).toBe("failed_to_start");
     expect(dispatchFailed(k)).toEqual([expect.objectContaining({ runId, attempt: 1 })]);
     // The next retry is ADMITTED (attempt 1 is terminal), creating attempt 2; the adapter is
     // still too slow, so attempt 2 gets its own terminal disposition too.
-    await expect(k.retryRun(runId, task("happy"))).rejects.toThrow(/timed out/);
+    await expect(k.retryRun(runId, task("burst-100"))).rejects.toThrow(/timed out/);
     expect(attemptsCreated(k)).toEqual([2]);
     expect(dispatchFailed(k).map((d) => d.attempt)).toEqual([1, 2]);
     expect(k.runStatus(runId)).toBe("failed_to_start");

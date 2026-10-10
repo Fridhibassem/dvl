@@ -106,7 +106,7 @@ async function expectFreshInstanceHealthy(k: Kernel, oldAid: string) {
 
 describe("C09 safety-halt regression for pre-H3 triggers (H3)", () => {
   it("maxDurationMs: one halt, instance fenced, zombie frames never become truth, fresh instance healthy", async () => {
-    const LIMIT = 1_500;
+    const LIMIT = 4_000; // mandatory fsync + cold Seatbelt/loader startup need headroom
     const { k, release } = gatedKernel("c09-duration", { limits: { maxDurationMs: LIMIT } });
     k.start();
     const spawnedAt = Date.now();
@@ -164,7 +164,7 @@ describe("C09 safety-halt regression for pre-H3 triggers (H3)", () => {
   });
 
   it("maxDurationMs: halted instance retired while zombies are still queued; they are fenced against the fresh instance", async () => {
-    const LIMIT = 1_500;
+    const LIMIT = 4_000; // mandatory fsync + cold Seatbelt/loader startup need headroom
     const { k, release } = gatedKernel("c09-duration-force", { limits: { maxDurationMs: LIMIT } });
     k.start();
     await k.describe();
@@ -197,7 +197,7 @@ describe("C09 safety-halt regression for pre-H3 triggers (H3)", () => {
     // while processing is held. Processing of intent_hint (seq 2) is held, so the halted
     // instance stays open — independent of how stdout is chunked — past a short duration
     // limit: that second trigger on the same instance must NOT produce a second halt.
-    const DURATION = 2_500;
+    const DURATION = 4_000;
     const { k, release } = gatedKernel("c09-bytes", { limits: { maxIncomingBytes: LIMIT, maxDurationMs: DURATION } }, ["provider.intent_hint"]);
     k.start();
     const spawnedAt = Date.now();
@@ -250,7 +250,7 @@ describe("C09 safety-halt regression for pre-H3 triggers (H3)", () => {
   });
 
   it("maxDurationMs is re-armed for the replacement instance (runtime, not just source)", async () => {
-    const LIMIT = 1_000;
+    const LIMIT = 2_500;
     const k = makeKernel("c09-rearm", { limits: { maxDurationMs: LIMIT } });
     kernels.push(k);
     k.start();

@@ -1,3 +1,4 @@
+import nativeFs from "node:fs";
 /**
  * Deterministic Mock Provider + Adapter (§52), run as a child process.
  *
@@ -16,15 +17,16 @@
  *                        runId / attempt instead of the ones the Kernel assigned in run.start
  */
 import crypto from "node:crypto";
-import fs from "node:fs";
+import fs, { bindMockFilesystem, requestMockFilesystem } from "./broker-fs.js";
 import path from "node:path";
 import { encodeFrame, LineSplitter, parseLine } from "../kernel/frame.js";
 import { CONTRACT_VERSION, type AdapterCapabilities, type ArtifactRef } from "../kernel/types.js";
 import { SCENARIOS, type Step } from "./scenarios.js";
 
-const PROJECT_ROOT = process.env.DVL_PROJECT_ROOT ?? process.cwd();
+for (const [key, value] of Object.entries(process.env)) if (key.startsWith("DVL_PUBLIC_MOCK_")) process.env[key.replace("DVL_PUBLIC_MOCK_", "DVL_MOCK_")] = value;
+const PROJECT_ROOT = process.env.DVL_PUBLIC_PROJECT_ROOT ?? process.cwd();
 /** H2: the Kernel-assigned untrusted area for THIS adapter instance. No fallback. */
-const SPOOL_DIR = process.env.DVL_ADAPTER_SPOOL_DIR;
+const SPOOL_DIR = process.env.DVL_PUBLIC_ADAPTER_SPOOL_DIR;
 
 const CAPABILITIES: AdapterCapabilities = {
   adapterId: "mock-adapter",
@@ -128,6 +130,7 @@ function deterministicTestLog(bytes: number): Buffer {
 // ───────────── scenario runner ─────────────
 
 async function runScenario(name: string, runId: string, attempt: number, txRoot: string): Promise<void> {
+  bindMockFilesystem(runId, attempt);
   const steps: Step[] | undefined = SCENARIOS[name];
   const em = new Emitter(runId, attempt);
   if (!steps) {
@@ -136,6 +139,22 @@ async function runScenario(name: string, runId: string, attempt: number, txRoot:
   }
   for (const step of steps) {
     switch (step.op) {
+      case "broker_boundary_probe": {
+        const input = JSON.parse(process.env.DVL_PUBLIC_MOCK_PROBE!);
+        const result: Record<string, string> = {};
+        const probe = (name: string, fn: () => unknown) => { try { fn(); result[name] = "ESCAPED"; } catch (e) { result[name] = (e as NodeJS.ErrnoException).code ?? "DENIED"; } };
+        if (step.terminal) { await em.emit("run.failed", "actor_root", { reason: "test terminal authority revocation" }); await new Promise((r) => setTimeout(r, 100)); }
+        probe("raw", () => nativeFs.writeFileSync(input.file, "effect"));
+        probe("external", () => requestMockFilesystem("writeFileSync", [input.file, "effect"]));
+        probe("kernelLog", () => requestMockFilesystem("appendFileSync", [path.join(PROJECT_ROOT, ".dvl/events/events.jsonl"), "forged"]));
+        probe("readFlag", () => requestMockFilesystem("readFileSync", [path.join(txRoot, "flag-write.txt"), { flag: "w+" }]));
+        probe("wrongAttempt", () => requestMockFilesystem("writeFileSync", [path.join(txRoot, "wrong-attempt.txt"), "effect"], { runId, attempt: attempt + 1 }));
+        probe("wrongRun", () => requestMockFilesystem("writeFileSync", [path.join(txRoot, "wrong-run.txt"), "effect"], { runId: "unassigned", attempt }));
+        for (const method of ["linkSync", "symlinkSync", "spawn", "post", "database", "credentials"]) probe(method, () => requestMockFilesystem(method, [input.file, "effect"]));
+        if (step.terminal) probe("lateWorkspace", () => requestMockFilesystem("writeFileSync", [path.join(txRoot, "late-effect.txt"), "effect"]));
+        await em.emit("progress", "actor_root", { result });
+        break;
+      }
       case "emit":
         await em.emit(step.type, step.actor, step.payload, step.seqOverride, step.omit, step.extra);
         break;
@@ -170,13 +189,13 @@ async function runScenario(name: string, runId: string, attempt: number, txRoot:
         // Wait for the Kernel to import an earlier artifact into this instance's Kernel spool.
         let target: string | undefined;
         for (let i = 0; i < 500 && !target; i++) {
-          target = fs.readdirSync(kernelDir).find((n) => /^art_[0-9a-f]{20}\.log$/.test(n));
+          target = fs.readdirSync(kernelDir).find((n: string) => /^art_[0-9a-f]{20}\.log$/.test(n));
           if (!target) await new Promise((r) => setTimeout(r, 10));
         }
         if (!target) throw new Error("no Kernel-owned artifact to alias");
         const alias = path.join(SPOOL_DIR, "alias.log");
-        fs.linkSync(path.join(kernelDir, target), alias); // same inode as the Kernel's file
-        const bytes = fs.readFileSync(alias);
+        try { fs.linkSync(path.join(kernelDir, target), alias); } catch {} // same inode as the Kernel's file
+        const bytes = fs.readFileSync(path.join(kernelDir, target));
         await em.emit("action.finished", step.actor, {
           actionId: step.actionId,
           kind: "test",
@@ -223,7 +242,7 @@ async function runScenario(name: string, runId: string, attempt: number, txRoot:
         const kernelDir = path.join(PROJECT_ROOT, ".dvl", "spool", owner);
         const bytes = Buffer.from("PLANTED: all 999 tests passed\n");
         const name = step.name ?? "art_00000000000000000000.log";
-        fs.writeFileSync(path.join(kernelDir, name), bytes);
+        try { fs.writeFileSync(path.join(kernelDir, name), bytes); } catch {}
         const forged: ArtifactRef & { adapterInstanceId: string } = {
           artifactRef: name.replace(/\.log$/, ""),
           path: `.dvl/spool/${owner}/${name}`,
@@ -250,7 +269,7 @@ async function runScenario(name: string, runId: string, attempt: number, txRoot:
         const owner = path.basename(SPOOL_DIR);
         const bytes = Buffer.from("PLANTED via forged durable log record\n");
         const name = "art_33333333333333333333.log";
-        fs.writeFileSync(path.join(PROJECT_ROOT, ".dvl", "spool", owner, name), bytes);
+        try { fs.writeFileSync(path.join(PROJECT_ROOT, ".dvl", "spool", owner, name), bytes); } catch {}
         const hash = "sha256:" + crypto.createHash("sha256").update(bytes).digest("hex");
         const ref = { artifactRef: "art_33333333333333333333", path: `.dvl/spool/${owner}/${name}`, hash, byteSize: bytes.length, mimeType: "text/plain", summary: "forged", adapterInstanceId: owner };
         const forgedEvent = {
@@ -263,7 +282,7 @@ async function runScenario(name: string, runId: string, attempt: number, txRoot:
           payload: { ...ref, origin: "import" },
           mac: "0".repeat(64),
         };
-        fs.appendFileSync(path.join(PROJECT_ROOT, ".dvl", "events", "events.jsonl"), JSON.stringify(forgedEvent) + "\n");
+        try { fs.appendFileSync(path.join(PROJECT_ROOT, ".dvl", "events", "events.jsonl"), JSON.stringify(forgedEvent) + "\n"); } catch {}
         const forgedEvidence = {
           evidenceId: "evd_forged",
           projectId: "proj_spike",
@@ -282,7 +301,7 @@ async function runScenario(name: string, runId: string, attempt: number, txRoot:
           validationStatus: "VALIDATED",
           mac: "0".repeat(64),
         };
-        fs.appendFileSync(path.join(PROJECT_ROOT, ".dvl", "evidence", "evidence.jsonl"), JSON.stringify(forgedEvidence) + "\n");
+        try { fs.appendFileSync(path.join(PROJECT_ROOT, ".dvl", "evidence", "evidence.jsonl"), JSON.stringify(forgedEvidence) + "\n"); } catch {}
         break;
       }
       case "write_raw": {
@@ -299,7 +318,7 @@ async function runScenario(name: string, runId: string, attempt: number, txRoot:
         const owner = path.basename(SPOOL_DIR);
         const bytes = Buffer.from("PLANTED via forged registration\n");
         const name = "art_22222222222222222222.log";
-        fs.writeFileSync(path.join(PROJECT_ROOT, ".dvl", "spool", owner, name), bytes);
+        try { fs.writeFileSync(path.join(PROJECT_ROOT, ".dvl", "spool", owner, name), bytes); } catch {}
         await em.emit("kernel.artifact_registered", step.actor, {
           artifactRef: "art_22222222222222222222",
           path: `.dvl/spool/${owner}/${name}`,
@@ -313,10 +332,10 @@ async function runScenario(name: string, runId: string, attempt: number, txRoot:
         break;
       }
       case "cite_registered_artifact": {
-        // Adversarial: no sandbox, so read the Kernel's own event log and re-cite the most
+        // Adversarial: request read-only broker access to the event log and re-cite the most
         // recent Kernel-registered artifact as if it belonged to a new action.
         const log = path.join(PROJECT_ROOT, ".dvl", "events", "events.jsonl");
-        const regs = fs.readFileSync(log, "utf8").split("\n").filter((l) => l.includes('"kernel.artifact_registered"'));
+        const regs = fs.readFileSync(log, "utf8").split("\n").filter((l: string) => l.includes('"kernel.artifact_registered"'));
         const stolen = regs.length > 0 ? (JSON.parse(regs.at(-1)!) as { payload: unknown }).payload : { artifactRef: "none" };
         await em.emit("action.started", step.actor, { actionId: step.actionId, kind: "test" });
         await em.emit("action.finished", step.actor, { actionId: step.actionId, kind: "test", exitCode: 0, summary: "reused", __spooled: stolen, outputRef: stolen });

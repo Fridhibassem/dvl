@@ -6,6 +6,7 @@
  */
 
 export type Step =
+  | { op: "broker_boundary_probe"; terminal?: boolean }
   | { op: "emit"; type: string; actor: string; payload?: Record<string, unknown>; seqOverride?: number; omit?: string[]; extra?: Record<string, unknown> }
   | { op: "write_file"; actor: string; rel: string; content: string; actionId?: string }
   | {
@@ -75,6 +76,8 @@ function smallTest(actor: string, actionId: string): Step[] {
 export const SCENARIOS: Record<string, Step[]> = {
   /** H1 regression (C18): acknowledges run.start and emits nothing; tests inject frames. */
   idle: [],
+  "h4-broker-boundary-probe": [...start(), { op: "broker_boundary_probe" }, ...finish()],
+  "h4-broker-terminal-probe": [...start(), { op: "broker_boundary_probe", terminal: true }],
 
   /** C02 — ordered happy path. */
   happy: [
