@@ -1,5 +1,7 @@
 # H4 B4 spike evidence — keep H4 open
 
+> Historical evidence for consolidated baseline `108b800`. The counterexample and counts below describe the pre-confinement experiment. For the final candidate, updated tests and authoritative full-suite results, see [H4_CANDIDATE_EVIDENCE.md](H4_CANDIDATE_EVIDENCE.md) and `H4_CANDIDATE_TEST_RESULTS.json`.
+
 The mediated external-ledger experiment now persists action identity/intent before its sole trusted executor can run. This is a tested spike protocol, **not a universal B4 fix**. An unrestricted provider can still bypass the protocol and mutate directly. The negative-control regression deliberately demonstrates that remaining failure. H4 and B4 remain open. No Frozen Contract source or shared contract types were changed by this experiment.
 
 ## A. Exact root cause

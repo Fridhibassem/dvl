@@ -3,9 +3,10 @@
  *
  * Owns: process supervision, protocol validation, ordering, the Event Store,
  * actor lifecycle (no-writer rule), payload spooling, and EvidenceRecord creation.
+ * Opted-in H4 spike: Seatbelt provider isolation and durable Kernel-owned effects.
  *
  * Does NOT own (out of Phase 1 scope): verification gates, integration gate,
- * authorization classification, sandboxing, real providers.
+ * general authorization classification, general-purpose sandboxing, real providers.
  *
  * Trust rule enforced everywhere here: every adapter frame is an untrusted
  * observation. Only code in this file creates kernel_truth events or evidence.
@@ -17,6 +18,7 @@ import type { FsProbe } from "./confined-fs.js";
 import { EventStore, SpoolIntegrityError, newId, sha256, type ChainHead, type ChainReport, type EventStoreOptions } from "./event-store.js";
 import { NdjsonTransport, type TransportIssue } from "./ndjson-transport.js";
 import { RootLock, RootLockError } from "./root-lock.js";
+import { confinedProviderLaunch, type ProviderConfinement } from "./provider-confinement.js";
 import { recoveryProcessOps, stopRecoveredExecution, type RecoveryExecution, type RecoveryProcessOps } from "./recovery-process.js";
 import { freezeAction, normalizeSpikeIntent, spikeSemanticSignature, type PreparedSpikeAction, type SpikeActionBoundary, type SpikeEffectExecutor } from "./spike-action-protocol.js";
 import {
@@ -94,6 +96,8 @@ export interface KernelOptions {
   recoveryTimeoutMs?: number;
   /** B4 experiment: host-owned effect capability. Provider-native effects have no fallback. */
   spikeEffectExecutor?: SpikeEffectExecutor;
+  /** Required for the mediated profile; applied before any adapter code executes. */
+  providerConfinement?: ProviderConfinement;
   spikeActionBoundary?: (boundary: SpikeActionBoundary, action: Readonly<PreparedSpikeAction>) => Promise<void>;
 }
 
@@ -313,6 +317,7 @@ export class Kernel {
   private readonly recoveredExecutions = new Map<string, RecoveryExecution>();
   private recoveryWork: Promise<void> | null = null;
   private recoveryState: RecoveryProcessStatus = "READY";
+  private providerConfinementHold: string | null = null;
   private recoveryReason: string | null = null;
   private readonly confirmedSpikeEffects = new Map<string, PreparedSpikeAction>();
   private readonly executingSpikeActions = new Set<string>();
@@ -530,7 +535,7 @@ export class Kernel {
             actionId,
             actorId: action.actorId,
             adapterInstanceId: run.adapterInstanceId,
-            reason: "Kernel restarted after durable action.started without durable action.finished",
+            reason: "Kernel restarted with durable action intent/start and no durable resolved outcome",
           },
           runId,
           attempt,
@@ -553,11 +558,21 @@ export class Kernel {
   }
 
   /** Process authority is independent of action outcome reconciliation. */
-  get recoveryStatus(): { status: RecoveryProcessStatus; retryAllowed: boolean; reason: string | null } {
-    return { status: this.recoveryState, retryAllowed: this.recoveryState === "READY", reason: this.recoveryReason };
+  get recoveryStatus(): { status: RecoveryProcessStatus | "HOLD_PROVIDER_CONFINEMENT_UNAVAILABLE" | "HOLD_RECOVERY_ACTION_UNKNOWN"; retryAllowed: boolean; reason: string | null } {
+    if (this.providerConfinementHold) return { status: "HOLD_PROVIDER_CONFINEMENT_UNAVAILABLE", retryAllowed: false, reason: this.providerConfinementHold };
+    if (this.recoveryState !== "READY") return { status: this.recoveryState, retryAllowed: false, reason: this.recoveryReason };
+    if ([...this.runs.values()].some((r) => isTerminal(r.status) && [...r.actions.values()].some((a) => a.effectCertainty === "UNKNOWN"))) {
+      return { status: "HOLD_RECOVERY_ACTION_UNKNOWN", retryAllowed: false, reason: "unresolved action outcome requires explicit reconciliation" };
+    }
+    return { status: "READY", retryAllowed: true, reason: null };
+  }
+
+  private assertProviderConfinement(): void {
+    if (this.providerConfinementHold) throw new Error(`HOLD_PROVIDER_CONFINEMENT_UNAVAILABLE: ${this.providerConfinementHold}; retryAllowed=false`);
   }
 
   async waitForRecovery(): Promise<void> {
+    this.assertProviderConfinement();
     if (!this.recoveryWork && this.recoveryState !== "READY") {
       throw new Error(`${this.recoveryState}: ${this.recoveryReason ?? "start() must take ownership before executor recovery"}; retryAllowed=false`);
     }
@@ -674,7 +689,17 @@ export class Kernel {
   }
 
   private spawnAdapter(): void {
-    const [cmd, ...args] = this.opts.adapterCommand;
+    let launch: ReturnType<typeof confinedProviderLaunch> | null = null;
+    try {
+      this.assertProviderConfinement();
+      if (this.opts.spikeEffectExecutor && !this.opts.providerConfinement) throw new Error("mediated execution requires enforced provider confinement");
+      if (this.opts.providerConfinement) launch = confinedProviderLaunch(this.opts.adapterCommand, this.opts.root, this.opts.providerConfinement);
+    } catch (e) {
+      this.providerConfinementHold = (e as Error).message;
+      this.kernelEvent("kernel.provider_confinement_hold", { reason: this.providerConfinementHold, retryAllowed: false });
+      this.assertProviderConfinement();
+    }
+    const [cmd, ...args] = launch?.argv ?? this.opts.adapterCommand;
     if (!cmd) throw new Error("adapterCommand is empty");
     // H2: the instance id exists BEFORE the process, so its spool areas can be created
     // fresh (never shared, never inherited) and handed to it at spawn.
@@ -683,7 +708,7 @@ export class Kernel {
     const child = spawn(cmd, args, {
       cwd: this.opts.root,
       stdio: ["pipe", "pipe", "pipe"],
-      env: { ...process.env, ...this.opts.adapterEnv, DVL_PROJECT_ROOT: this.opts.root, DVL_ADAPTER_SPOOL_DIR: spools.adapterDir },
+      env: launch ? launch.env : { ...process.env, ...this.opts.adapterEnv, DVL_PROJECT_ROOT: this.opts.root, DVL_ADAPTER_SPOOL_DIR: spools.adapterDir },
       detached: process.platform !== "win32", // own process group → killable as a unit
     });
     this.child = child;
@@ -697,6 +722,7 @@ export class Kernel {
       platform: process.platform,
       processBirth: child.pid ? recoveryProcessOps.birth(child.pid) : null,
       argv: this.opts.adapterCommand,
+      providerConfinement: launch?.evidence ?? null,
       kernelSpool: path.relative(this.opts.root, spools.kernelDir),
       adapterSpool: path.relative(this.opts.root, spools.adapterDir),
     });
@@ -785,6 +811,12 @@ export class Kernel {
       this.kernelEvent("kernel.capabilities_rejected", { reason: "contract version", offered: caps.supportedContractVersions });
       throw new Error(`adapter does not support ${CONTRACT_VERSION}`);
     }
+    if (caps.commandExecutionMode === "dvl_tools" && (!this.opts.providerConfinement || !this.opts.spikeEffectExecutor)) {
+      this.providerConfinementHold = "dvl_tools requires enforced confinement and a durable effect broker";
+      this.kernelEvent("kernel.provider_confinement_hold", { reason: this.providerConfinementHold, retryAllowed: false });
+      this.kill("SIGKILL");
+      this.assertProviderConfinement();
+    }
     this.capabilities = caps as AdapterCapabilities;
     this.kernelEvent("kernel.capabilities_accepted", { adapterId: caps.adapterId, commandExecutionMode: caps.commandExecutionMode, eventFidelity: caps.eventFidelity });
     return this.capabilities;
@@ -792,6 +824,7 @@ export class Kernel {
 
   /** §11 — DVL issues identity; the provider receives a task, never ownership. */
   async startRun(task: RunTask, attempt = 1): Promise<RunIdentity> {
+    this.assertProviderConfinement();
     if (this.recoveryState !== "READY") await this.waitForRecovery();
     this.assertDurable();
     if (!this.capabilities) throw new Error("describe() must succeed before run.start");
@@ -882,6 +915,7 @@ export class Kernel {
   }
 
   async retryRun(runId: string, task: RunTask, opts: RetryOptions = {}): Promise<RunIdentity> {
+    this.assertProviderConfinement();
     if (this.recoveryState !== "READY") await this.waitForRecovery();
     this.assertDurable();
     this.acquireRoot();

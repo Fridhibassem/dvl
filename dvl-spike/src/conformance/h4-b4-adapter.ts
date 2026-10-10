@@ -12,7 +12,7 @@ const caps = {
   supportedContractVersions: [CONTRACT_VERSION], supportedModels: ["mock"], authModes: ["none"], eventFidelity: "L3",
   approvalSupport: false, midRunUpdateSupport: false, safeStopSupport: false, hibernationSupport: false,
   resumeSupport: false, subagentBehavior: "contained", usageReporting: "reported", scopeMapping: "transaction-workspace-only",
-  budgetDimensions: ["time"], commandExecutionMode: process.env.DVL_B4_NATIVE_MODE ? "gated_native" : "dvl_tools", runtimeEvidenceObservationSupport: false,
+  budgetDimensions: ["time"], commandExecutionMode: process.env.DVL_PUBLIC_B4_NATIVE_MODE ? "gated_native" : "dvl_tools", runtimeEvidenceObservationSupport: false,
 };
 let binding: { runId: string; attempt: number };
 let duplicated = false;
@@ -24,8 +24,8 @@ function emit(type: string, payload?: unknown) {
 }
 function request(actionId: string) {
   emit("action.requested", { actionId, spikeActionIntent: {
-    actionId, kind: "ledger_append", target: "external-ledger", parameters: { entry: duplicated && process.env.DVL_B4_CHANGE_DUPLICATE ? "different-effect" : "external-effect" },
-    stateMutating: true, external: true, executionOwner: process.env.DVL_B4_REQUEST_NATIVE ? "provider-native" : "kernel",
+    actionId, kind: "ledger_append", target: "external-ledger", parameters: { entry: duplicated && process.env.DVL_PUBLIC_B4_CHANGE_DUPLICATE ? "different-effect" : "external-effect" },
+    stateMutating: true, external: true, executionOwner: process.env.DVL_PUBLIC_B4_REQUEST_NATIVE ? "provider-native" : "kernel",
   } });
 }
 readline.createInterface({ input: process.stdin }).on("line", (line) => {
@@ -38,17 +38,20 @@ readline.createInterface({ input: process.stdin }).on("line", (line) => {
     emit("run.started");
     // Deliberate negative control: without OS isolation, a lying planner can still bypass
     // the entire protocol. This path must remain reported as an H4 blocker.
-    if (process.env.DVL_B4_UNMEDIATED_LEDGER) fs.appendFileSync(process.env.DVL_B4_UNMEDIATED_LEDGER, "unmediated-effect\n");
+    if (process.env.DVL_PUBLIC_B4_UNMEDIATED_LEDGER) {
+      try { fs.appendFileSync(process.env.DVL_PUBLIC_B4_UNMEDIATED_LEDGER, "unmediated-effect\n"); emit("progress", { escape: "filesystem", result: "ESCAPED" }); }
+      catch (e) { emit("progress", { escape: "filesystem", result: (e as NodeJS.ErrnoException).code }); }
+    }
     request("act_ledger");
-    if (process.env.DVL_B4_FORGE_FINISH) emit("action.finished", { actionId: "act_ledger", claim: "effect done" });
+    if (process.env.DVL_PUBLIC_B4_FORGE_FINISH) emit("action.finished", { actionId: "act_ledger", claim: "effect done" });
   }
   if (cmd.type === "adapter.ping") {
     const outcome = cmd.payload?.spikeActionOutcome;
     if (outcome) {
-      if (process.env.DVL_B4_DUPLICATE && !duplicated) {
+      if (process.env.DVL_PUBLIC_B4_DUPLICATE && !duplicated) {
         duplicated = true;
-        request(process.env.DVL_B4_DUPLICATE === "new-id" ? "act_duplicate" : "act_ledger");
-        if (process.env.DVL_B4_DUPLICATE === "new-id") return;
+        request(process.env.DVL_PUBLIC_B4_DUPLICATE === "new-id" ? "act_duplicate" : "act_ledger");
+        if (process.env.DVL_PUBLIC_B4_DUPLICATE === "new-id") return;
       }
       emit("actor.finished");
       emit("run.finished");

@@ -1,4 +1,7 @@
 import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 import readline from "node:readline";
 import { Kernel } from "../kernel/kernel.js";
 import { ExternalLedgerExecutor } from "../kernel/spike-action-protocol.js";
@@ -9,12 +12,14 @@ readline.createInterface({ input: process.stdin }).once("line", (line) => {
     const cfg = JSON.parse(line);
     let k: Kernel;
     k = new Kernel({ root: cfg.root, integrityKey: Buffer.from(cfg.keyHex, "hex"), fsync: true,
-      adapterCommand: cfg.command, adapterEnv: cfg.adapterEnv,
+      adapterCommand: cfg.command,
+      providerConfinement: { codeReadPaths: [path.join(path.dirname(fileURLToPath(import.meta.url)), "../../package.json"), path.dirname(fileURLToPath(import.meta.url)), path.join(path.dirname(fileURLToPath(import.meta.url)), "../kernel/types.ts"), path.dirname(path.dirname(path.dirname(createRequire(import.meta.url).resolve("tsx"))))], publicEnv: cfg.adapterEnv },
       spikeEffectExecutor: new ExternalLedgerExecutor(cfg.ledger), onCommit: (commit) => out({ commit }),
       // Negative control reproduces effect-before-durable-action by gating the observation.
       frameGate: cfg.unmediated ? async (type) => {
         if (type !== "action.requested") return;
-        while (!fs.existsSync(cfg.ledger)) await new Promise((r) => setTimeout(r, 10));
+        // The confined provider attempted and was denied the direct effect before proposing.
+        if (fs.existsSync(cfg.ledger)) throw new Error("provider escaped confinement");
         const run = k.store.ofType("kernel.run_created")[0]!;
         out({ ready: true, run: run.payload, execution: k.store.ofType("kernel.adapter_spawned")[0]!.payload });
         await new Promise(() => {});

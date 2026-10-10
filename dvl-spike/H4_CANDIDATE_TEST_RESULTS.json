@@ -1,0 +1,3851 @@
+{
+  "branch": "codex/h4-candidate",
+  "consolidatedBaselineCommit": "108b80049d6f93034157c30dab8485b796589d01",
+  "platform": "macOS 13.7.8 / 22H730",
+  "node": "v24.9.0",
+  "vitest": "2.1.9",
+  "realProjectTarget": "/Users/user/Desktop/khedma.tn",
+  "realProjectHead": "c08ac8154c2c31a4cc6291346ec7195beb825ae7",
+  "command": "DVL_H4_TARGET=/Users/user/Desktop/khedma.tn /usr/local/bin/node node_modules/vitest/vitest.mjs run --no-cache --maxWorkers=2 --minWorkers=1 --reporter=json --outputFile=/tmp/h4-candidate-final-full.json",
+  "totalTests": 304,
+  "passedTests": 304,
+  "failedTests": 0,
+  "pendingTests": 0,
+  "testFiles": 31,
+  "suites": {
+    "c01-handshake.test.ts": {
+      "tests": 6,
+      "status": "passed"
+    },
+    "c02-ordered-events.test.ts": {
+      "tests": 4,
+      "status": "passed"
+    },
+    "c03-frame-prefix-noise.test.ts": {
+      "tests": 6,
+      "status": "passed"
+    },
+    "c04-oversized-payload-spool.test.ts": {
+      "tests": 4,
+      "status": "passed"
+    },
+    "c05-actor-lifecycle.test.ts": {
+      "tests": 4,
+      "status": "passed"
+    },
+    "c06-adapter-instance-id.test.ts": {
+      "tests": 13,
+      "status": "passed"
+    },
+    "c07-adapter-spool-isolation.test.ts": {
+      "tests": 10,
+      "status": "passed"
+    },
+    "c08-queue-limits.test.ts": {
+      "tests": 14,
+      "status": "passed"
+    },
+    "c09-safety-halt-regression.test.ts": {
+      "tests": 4,
+      "status": "passed"
+    },
+    "c10-run-binding.test.ts": {
+      "tests": 7,
+      "status": "passed"
+    },
+    "c11-kernel-spool-provenance.test.ts": {
+      "tests": 7,
+      "status": "passed"
+    },
+    "c12-incoming-bytes-at-drain.test.ts": {
+      "tests": 5,
+      "status": "passed"
+    },
+    "c13-durable-authority.test.ts": {
+      "tests": 6,
+      "status": "passed"
+    },
+    "c14-lifecycle-fsm.test.ts": {
+      "tests": 8,
+      "status": "passed"
+    },
+    "c15-attempt-workspace.test.ts": {
+      "tests": 5,
+      "status": "passed"
+    },
+    "c16-retry-atomicity.test.ts": {
+      "tests": 3,
+      "status": "passed"
+    },
+    "c17-bounded-io-metadata.test.ts": {
+      "tests": 2,
+      "status": "passed"
+    },
+    "c18-h1-run-isolation.test.ts": {
+      "tests": 8,
+      "status": "passed"
+    },
+    "c19-h1-actor-sequence-isolation.test.ts": {
+      "tests": 3,
+      "status": "passed"
+    },
+    "c20-h2-adapter-kernel-spool-isolation.test.ts": {
+      "tests": 7,
+      "status": "passed"
+    },
+    "c21-h2-review-fixes.test.ts": {
+      "tests": 26,
+      "status": "passed"
+    },
+    "c22-h2-second-review-fixes.test.ts": {
+      "tests": 18,
+      "status": "passed"
+    },
+    "c23-h2-durable-commit-semantics.test.ts": {
+      "tests": 10,
+      "status": "passed"
+    },
+    "c24-h2-anchor-publication-recovery.test.ts": {
+      "tests": 18,
+      "status": "passed"
+    },
+    "c25-h2-zero-anchor-prefix-recovery.test.ts": {
+      "tests": 11,
+      "status": "passed"
+    },
+    "c26-h3-transport-input-bounding.test.ts": {
+      "tests": 27,
+      "status": "passed"
+    },
+    "c27-h4-kernel-crash-replay.test.ts": {
+      "tests": 14,
+      "status": "passed"
+    },
+    "c28-h4-root-ownership.test.ts": {
+      "tests": 5,
+      "status": "passed"
+    },
+    "c29-h4-recovery-process-fence.test.ts": {
+      "tests": 11,
+      "status": "passed"
+    },
+    "c30-h4-b4-durable-before-effect.test.ts": {
+      "tests": 23,
+      "status": "passed"
+    },
+    "c31-h4-provider-confinement.test.ts": {
+      "tests": 15,
+      "status": "passed"
+    }
+  },
+  "typecheck": "PASS",
+  "diffCheck": "PASS",
+  "safetyVerdict": "H4_DO_NOT_CLOSE",
+  "counterexample": "C31 retains a passing assertion of two unmediated legacy POSTs across reconstruction with zero durable actions; a green suite is not closure evidence.",
+  "testedSourceSHA256": {
+    "src/conformance/c01-handshake.test.ts": "fd1fb665f2576f924043e0a4b3448cbd0231f101e6232f9a60c9885bfc109600",
+    "src/conformance/c02-ordered-events.test.ts": "e65ce0caad08292372fb08ec494edb9000808e63011cdbff80e62592f645d98d",
+    "src/conformance/c03-frame-prefix-noise.test.ts": "3cdbe1786c7162aeec22526a61b467fc0fc6fbef24a6ec9ff200b6479dd82f84",
+    "src/conformance/c04-oversized-payload-spool.test.ts": "76d7014c494d422fa8ee8584d696ce2c5854ccdecb5658aeb2bf5e821c894b63",
+    "src/conformance/c05-actor-lifecycle.test.ts": "70db92dfa285c76b9b2867264b0c0dbb5d4df2dea6d3e12f072766a242c07cfa",
+    "src/conformance/c06-adapter-instance-id.test.ts": "587518cd8068c94e8378c4baeabdfe42dec3e1e88333229f97dd612ffc72d08b",
+    "src/conformance/c07-adapter-spool-isolation.test.ts": "6cea699afdfbcb61d0fabc542a337967b01d8da6d5ecd4caa52dcedd2f630c76",
+    "src/conformance/c08-queue-limits.test.ts": "1095b1f9728b91319fe81b141f015215736669f3a358a03ea531cfb1d7017b78",
+    "src/conformance/c09-safety-halt-regression.test.ts": "058d3569a77f4af89fa0239e3f5924e462087501ba9a66e459e5d8a929348f49",
+    "src/conformance/c10-run-binding.test.ts": "937df1a43058ff95f88f6460acddd6d483d3644b41a7d9c80b24257e47b6153a",
+    "src/conformance/c11-kernel-spool-provenance.test.ts": "e683ab3acb895b6fd00d0708d6d4c56cd0779ba38517c8866c77f3f5160c3415",
+    "src/conformance/c12-incoming-bytes-at-drain.test.ts": "2452e2faee6230c3d8725774471fe5787ebfacd7a31f5100468dd0dce2a64561",
+    "src/conformance/c13-durable-authority.test.ts": "1097cd9163b8c94db79f6273173b79d9e0aacdc05bb3a8df22160c77cb5e67f7",
+    "src/conformance/c14-lifecycle-fsm.test.ts": "177ca9ea65e9f5506c5152ad4df46849f8514494df409aca9ed67619a2bd1141",
+    "src/conformance/c15-attempt-workspace.test.ts": "ed21294ffd14d804e90c5cd896c267e6e6e8683ac2925f5e8c36b3083aff4ff0",
+    "src/conformance/c16-retry-atomicity.test.ts": "d65e75e47f2e7411a0c039df0e620682c242a85b64c5ed56d504765f63f3cae5",
+    "src/conformance/c17-bounded-io-metadata.test.ts": "afe68ab2d494f3d2d1e4f7b6aa4c245d53f36d7cf927b0917ed0f72e96520e95",
+    "src/conformance/c18-h1-run-isolation.test.ts": "26ea50efa3f7c74fabd3fcbd982f110bd53e1b1f5d629d05e0c90ef98d1340e4",
+    "src/conformance/c19-h1-actor-sequence-isolation.test.ts": "bc5e8d7a53d1cd45024c464f3e5fd1a620cdb355f7eab74e3d49b42786e3aba2",
+    "src/conformance/c20-h2-adapter-kernel-spool-isolation.test.ts": "a4646f9bceed19bd99f27f99effc738722b69181a5e957287f612a991aaea6c5",
+    "src/conformance/c21-h2-review-fixes.test.ts": "01da8c964583747dbeb7fd2c51628d7f7c658c2635c040569019085735376861",
+    "src/conformance/c22-h2-second-review-fixes.test.ts": "ada0d9a577e3a887baba34b432888170887fd2fb6b5a12a06b4e0c46a379fda5",
+    "src/conformance/c23-h2-durable-commit-semantics.test.ts": "e26c39476ea87e9d53222e79fc18f0015995831ec5e3d1b4aa8a628550e6ad15",
+    "src/conformance/c24-h2-anchor-publication-recovery.test.ts": "0b617293b882dd027ad47f13c7d42468dea60b1f806ffef8e101ab370c517d6c",
+    "src/conformance/c25-h2-zero-anchor-prefix-recovery.test.ts": "9911abde8a827cbd782c3237b611f14769ea473fdd8a13b7b31d9e21889a4556",
+    "src/conformance/c26-h3-transport-input-bounding.test.ts": "6d18c2a0e306fda5b7c52fb184d1328bb94a9092a146c9aae20c930917dea38d",
+    "src/conformance/c27-h4-kernel-crash-replay.test.ts": "5be9950f07cc44ca11e81e0057d61ff50aa0fbad4f892bcefd7872960d86e997",
+    "src/conformance/c28-h4-root-ownership.test.ts": "60036995edf4b2a274ed1b1e64dc9eccfe732bea4bef0978248524db428ed478",
+    "src/conformance/c29-h4-recovery-process-fence.test.ts": "3312ddf7d405aad1d50a8698fd77c6457238b50f1cf8b77154814335817d2609",
+    "src/conformance/c30-h4-b4-durable-before-effect.test.ts": "4f1508f976f7993bf247325aaeef494aae4606cb83b8cd5cec5c155fa578c2dc",
+    "src/conformance/c31-h4-provider-confinement.test.ts": "f1431b8a353fa5932035741dc3db866bb7596e5f56273a0c9b8de4574013e38c",
+    "src/conformance/h4-b4-adapter.ts": "9617c8df79a046737259e29acd7c7a67b7585d5af09a5926183c5c649bf6c6d1",
+    "src/conformance/h4-b4-kernel-host.ts": "9c6287f17bf7be8e42acaf1c50bd41ab8a8db8f8f075acf537abeae5b3c80a28",
+    "src/conformance/h4-confinement-adapter.mjs": "e7e33a7d4dc14b74124af6e450bfa06cc215e4d0dad8c9b55a8898eb850ba719",
+    "src/conformance/h4-kernel-host.ts": "72362a36ce72dd3324e885ac983d7a283d301031031de2769e4dfd3d9a54e1c6",
+    "src/conformance/h4-surviving-adapter.ts": "36794ebafc684f33f11255f753920a71ac8f890393647eb2d7fe1490dd90b222",
+    "src/conformance/h4-survivor-kernel-host.ts": "ae7bca721b7a4a4610ae872dd50108c34f7deaeef82a42c47e51c6f38cb1bf4f",
+    "src/conformance/harness.ts": "4ef4c289246bfbf3f36ecbd57cecfef35794be08a06aba3576b4039cfe4435c0",
+    "src/kernel/confined-fs.ts": "914ca573e2da31fcbb52b986479ee96882358c7faeebfe2adbee02d03d0b7d6f",
+    "src/kernel/event-store.ts": "ec63e55a0295533784200a3df4f2f193bcb3800291425cb18472508d93a2a0dd",
+    "src/kernel/frame.ts": "b80f0ba3b307a18cd6572a022914977b02af82305c7668bea21f6645beccd99f",
+    "src/kernel/kernel.ts": "cfcc55863c646def903da7f9680a5f58797e19c35c4e29ebbade356429f19862",
+    "src/kernel/mock-launch.ts": "216e28e142e8da996fb93d66951996157efc8d2256c977ee5cae085f028c6907",
+    "src/kernel/ndjson-transport.ts": "9c7b4f7f6c83f51e21cd9a01e726a25f6426fa34ed6d32cad5d84977dcf87494",
+    "src/kernel/provider-confinement.ts": "0de2a7c3e14dd1e5462c6943c69da41c9f6b53de76740eeaab3baada56d5d985",
+    "src/kernel/recovery-process.ts": "4032e60cdc5ce28c09174a030b779a25a1b32a85eac777f41892b8aefc4c56a5",
+    "src/kernel/root-lock.ts": "1518553af5d62dfc998596469a368590d915327cd0cf4c058077ebc169d48758",
+    "src/kernel/spike-action-protocol.ts": "75a1059c967fbfe810ea63a7ebf11f441130b8f0e1bab6439cc58b10d1241ce9",
+    "src/kernel/types.ts": "c13c47978d1d5a2c428b8c39acd9cfb2a0eac90eb9fedad6a0a33308d8c64430",
+    "src/mock-provider/mock-provider.ts": "2e3ee736a8f3dfc96eec6a08c7b8e952924578e0c245bb90066d428754d29198",
+    "src/mock-provider/scenarios.ts": "980d2f1fd8b3cb346456730f5e12886948a7c3f3348dc9bed6085d4d641ad6c2",
+    "src/spike.ts": "adb1a070beb681aab230f5ff60bd2b2b67b4387ab680b5e19b9b6b37d9012d4c",
+    "native/dvl_flock.c": "dda576e32a6a63f2858e7e1658eb0cc8da859e6a087cb8d8c65dfcc9dbeeee3d",
+    "build/Release/dvl_flock.node": "0bd0da8af69ed118354a34a28ec3d7125b87704160b28e676ac07c39546ce45a",
+    "package.json": "438f062723f52603ecfd1d5e7e6def6d97e22392542b4c4ee8a074b6d92efb83",
+    "package-lock.json": "2c553e6c7bedaafff26ec386da4ba19c4ed0e7212d7d0f55099b555e2d9199a4",
+    "vitest.config.ts": "81df8b63567c611b7113eb6d37931f841ee15b6ba9c0efba8455b52b0cc84908",
+    "tsconfig.json": "215524ab8c69e9ad21ea769390a939f498924af190b1283aa864ee61d3c7471c"
+  },
+  "vitestReport": {
+    "numTotalTestSuites": 71,
+    "numPassedTestSuites": 71,
+    "numFailedTestSuites": 0,
+    "numPendingTestSuites": 0,
+    "numTotalTests": 304,
+    "numPassedTests": 304,
+    "numFailedTests": 0,
+    "numPendingTests": 0,
+    "numTodoTests": 0,
+    "snapshot": {
+      "added": 0,
+      "failure": false,
+      "filesAdded": 0,
+      "filesRemoved": 0,
+      "filesRemovedList": [],
+      "filesUnmatched": 0,
+      "filesUpdated": 0,
+      "matched": 0,
+      "total": 0,
+      "unchecked": 0,
+      "uncheckedKeysByFile": [],
+      "unmatched": 0,
+      "updated": 0,
+      "didUpdate": false
+    },
+    "startTime": 1791670452883,
+    "success": true,
+    "testResults": [
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C01 handshake and capability declaration"
+            ],
+            "fullName": "C01 handshake and capability declaration spawns the Mock Provider as a child process and completes adapter.describe",
+            "status": "passed",
+            "title": "spawns the Mock Provider as a child process and completes adapter.describe",
+            "duration": 710.0397159999999,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C01 handshake and capability declaration"
+            ],
+            "fullName": "C01 handshake and capability declaration persists the handshake to JSONL in causal order (command_sent \u2192 described \u2192 accepted)",
+            "status": "passed",
+            "title": "persists the handshake to JSONL in causal order (command_sent \u2192 described \u2192 accepted)",
+            "duration": 678.954002,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C01 handshake and capability declaration"
+            ],
+            "fullName": "C01 handshake and capability declaration rejects an incomplete capability declaration (unsupported must be reported, not faked)",
+            "status": "passed",
+            "title": "rejects an incomplete capability declaration (unsupported must be reported, not faked)",
+            "duration": 463.1178100000002,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C01 handshake and capability declaration"
+            ],
+            "fullName": "C01 handshake and capability declaration rejects an adapter that does not support the frozen contract version",
+            "status": "passed",
+            "title": "rejects an adapter that does not support the frozen contract version",
+            "duration": 359.298276,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C01 handshake and capability declaration"
+            ],
+            "fullName": "C01 handshake and capability declaration times out (normalized 'timeout') when the adapter never answers",
+            "status": "passed",
+            "title": "times out (normalized 'timeout') when the adapter never answers",
+            "duration": 531.7311380000001,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C01 handshake and capability declaration"
+            ],
+            "fullName": "C01 handshake and capability declaration refuses run.start before a successful handshake",
+            "status": "passed",
+            "title": "refuses run.start before a successful handshake",
+            "duration": 418.3239639999997,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670626766,
+        "endTime": 1791670629928.324,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c01-handshake.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C02 happy path with ordered events"
+            ],
+            "fullName": "C02 happy path with ordered events receives a gap-free, strictly increasing adapterSequence and persists it to JSONL",
+            "status": "passed",
+            "title": "receives a gap-free, strictly increasing adapterSequence and persists it to JSONL",
+            "duration": 529.1025790000001,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C02 happy path with ordered events"
+            ],
+            "fullName": "C02 happy path with ordered events creates a basic EvidenceRecord from action.finished \u2014 bounded trust, never VALIDATED",
+            "status": "passed",
+            "title": "creates a basic EvidenceRecord from action.finished \u2014 bounded trust, never VALIDATED",
+            "duration": 509.559851,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C02 happy path with ordered events"
+            ],
+            "fullName": "C02 happy path with ordered events drops duplicates, records gaps, flags forbidden truth events and unknown types",
+            "status": "passed",
+            "title": "drops duplicates, records gaps, flags forbidden truth events and unknown types",
+            "duration": 398.65294700000004,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C02 happy path with ordered events"
+            ],
+            "fullName": "C02 happy path with ordered events adapter death mid-run \u2192 run failed (provider_unavailable), never finished",
+            "status": "passed",
+            "title": "adapter death mid-run \u2192 run failed (provider_unavailable), never finished",
+            "duration": 380.1800370000001,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670624118,
+        "endTime": 1791670625936.18,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c02-ordered-events.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C03 frame-prefix handling of stdout noise"
+            ],
+            "fullName": "C03 frame-prefix handling of stdout noise unit: only lines starting exactly with 'DVL1:' are frames",
+            "status": "passed",
+            "title": "unit: only lines starting exactly with 'DVL1:' are frames",
+            "duration": 3.2252509999999575,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C03 frame-prefix handling of stdout noise"
+            ],
+            "fullName": "C03 frame-prefix handling of stdout noise unit: splitter reassembles frames split across chunks, incl. multi-byte UTF-8",
+            "status": "passed",
+            "title": "unit: splitter reassembles frames split across chunks, incl. multi-byte UTF-8",
+            "duration": 2.9257270000000517,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C03 frame-prefix handling of stdout noise"
+            ],
+            "fullName": "C03 frame-prefix handling of stdout noise unit: an oversized line is discarded without buffering it whole",
+            "status": "passed",
+            "title": "unit: an oversized line is discarded without buffering it whole",
+            "duration": 1.5764670000000933,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C03 frame-prefix handling of stdout noise"
+            ],
+            "fullName": "C03 frame-prefix handling of stdout noise end-to-end: noise never becomes protocol; the run still completes correctly",
+            "status": "passed",
+            "title": "end-to-end: noise never becomes protocol; the run still completes correctly",
+            "duration": 1958.1089060000002,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C03 frame-prefix handling of stdout noise"
+            ],
+            "fullName": "C03 frame-prefix handling of stdout noise stderr is continuously drained to the diagnostic spool, byte-exact",
+            "status": "passed",
+            "title": "stderr is continuously drained to the diagnostic spool, byte-exact",
+            "duration": 1243.4793009999999,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C03 frame-prefix handling of stdout noise"
+            ],
+            "fullName": "C03 frame-prefix handling of stdout noise drain is independent of processing: a BLOCKED Kernel does not stall the provider",
+            "status": "passed",
+            "title": "drain is independent of processing: a BLOCKED Kernel does not stall the provider",
+            "duration": 1318.9119950000004,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670606894,
+        "endTime": 1791670611422.912,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c03-frame-prefix-noise.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C04 oversized payload spooling"
+            ],
+            "fullName": "C04 oversized payload spooling conformant adapter: 512KB output is spooled by the adapter, verified and imported into the Kernel spool",
+            "status": "passed",
+            "title": "conformant adapter: 512KB output is spooled by the adapter, verified and imported into the Kernel spool",
+            "duration": 512.067479,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C04 oversized payload spooling"
+            ],
+            "fullName": "C04 oversized payload spooling non-conformant adapter: >32KB inline payload is spooled by the Kernel and flagged",
+            "status": "passed",
+            "title": "non-conformant adapter: >32KB inline payload is spooled by the Kernel and flagged",
+            "duration": 513.5835379999999,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C04 oversized payload spooling"
+            ],
+            "fullName": "C04 oversized payload spooling adapter lies about the artifact hash \u2192 evidence CORRUPTED, never PERSISTED",
+            "status": "passed",
+            "title": "adapter lies about the artifact hash \u2192 evidence CORRUPTED, never PERSISTED",
+            "duration": 784.5905270000001,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C04 oversized payload spooling"
+            ],
+            "fullName": "C04 oversized payload spooling artifactRef path traversal outside the adapter's own area is rejected",
+            "status": "passed",
+            "title": "artifactRef path traversal outside the adapter's own area is rejected",
+            "duration": 7.641994000000068,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670621463,
+        "endTime": 1791670623281.642,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c04-oversized-payload-spool.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C05 actor lifecycle prevents premature snapshot"
+            ],
+            "fullName": "C05 actor lifecycle prevents premature snapshot unit: parent is not fully finished while declared children are unresolved",
+            "status": "passed",
+            "title": "unit: parent is not fully finished while declared children are unresolved",
+            "duration": 2.706133999999963,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C05 actor lifecycle prevents premature snapshot"
+            ],
+            "fullName": "C05 actor lifecycle prevents premature snapshot refuses to snapshot after a premature parent finish, then snapshots the COMPLETE state",
+            "status": "passed",
+            "title": "refuses to snapshot after a premature parent finish, then snapshots the COMPLETE state",
+            "duration": 1626.0217519999999,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C05 actor lifecycle prevents premature snapshot"
+            ],
+            "fullName": "C05 actor lifecycle prevents premature snapshot fork race: child started before actor.fork still blocks the snapshot",
+            "status": "passed",
+            "title": "fork race: child started before actor.fork still blocks the snapshot",
+            "duration": 1294.4871089999997,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C05 actor lifecycle prevents premature snapshot"
+            ],
+            "fullName": "C05 actor lifecycle prevents premature snapshot no snapshot is possible before the root actor has even started",
+            "status": "passed",
+            "title": "no snapshot is possible before the root actor has even started",
+            "duration": 360.0226749999997,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670617586,
+        "endTime": 1791670620869.0227,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c05-actor-lifecycle.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C06 adapterInstanceId (H1)"
+            ],
+            "fullName": "C06 adapterInstanceId (H1) stamps the Kernel-assigned adapterInstanceId on every adapter-origin record, in memory and on disk",
+            "status": "passed",
+            "title": "stamps the Kernel-assigned adapterInstanceId on every adapter-origin record, in memory and on disk",
+            "duration": 486.18256799999995,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C06 adapterInstanceId (H1)"
+            ],
+            "fullName": "C06 adapterInstanceId (H1) rejects a duplicate adapterSequence within the same instance and records a protocol violation",
+            "status": "passed",
+            "title": "rejects a duplicate adapterSequence within the same instance and records a protocol violation",
+            "duration": 478.721804,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C06 adapterInstanceId (H1)"
+            ],
+            "fullName": "C06 adapterInstanceId (H1) allows the same adapterSequence from a new adapterInstanceId after restart",
+            "status": "passed",
+            "title": "allows the same adapterSequence from a new adapterInstanceId after restart",
+            "duration": 860.6185029999999,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C06 adapterInstanceId (H1)"
+            ],
+            "fullName": "C06 adapterInstanceId (H1) restart after an adapter crash: old run stays failed, new instance starts clean at sequence 1",
+            "status": "passed",
+            "title": "restart after an adapter crash: old run stays failed, new instance starts clean at sequence 1",
+            "duration": 815.6616279999998,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C06 adapterInstanceId (H1)"
+            ],
+            "fullName": "C06 adapterInstanceId (H1) a new instance whose first event is not sequence 1 is recorded as an event_gap for that instance",
+            "status": "passed",
+            "title": "a new instance whose first event is not sequence 1 is recorded as an event_gap for that instance",
+            "duration": 884.5852080000004,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C06 adapterInstanceId (H1)"
+            ],
+            "fullName": "C06 adapterInstanceId (H1) refuses restart while the instance is live, and requires a fresh handshake per instance",
+            "status": "passed",
+            "title": "refuses restart while the instance is live, and requires a fresh handshake per instance",
+            "duration": 889.871032,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C06 adapterInstanceId (H1)"
+            ],
+            "fullName": "C06 adapterInstanceId (H1) an adapter-claimed adapterInstanceId is never trusted",
+            "status": "passed",
+            "title": "an adapter-claimed adapterInstanceId is never trusted",
+            "duration": 422.5245880000002,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C06 adapterInstanceId (H1)"
+            ],
+            "fullName": "C06 adapterInstanceId (H1) replay from JSONL preserves per-instance identity; legacy lines without an id still load",
+            "status": "passed",
+            "title": "replay from JSONL preserves per-instance identity; legacy lines without an id still load",
+            "duration": 1346.0970280000001,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C06 adapterInstanceId (H1)"
+            ],
+            "fullName": "C06 adapterInstanceId (H1) two runs in the same adapter process keep one increasing adapterSequence",
+            "status": "passed",
+            "title": "two runs in the same adapter process keep one increasing adapterSequence",
+            "duration": 447.0321640000002,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C06 adapterInstanceId (H1)"
+            ],
+            "fullName": "C06 adapterInstanceId (H1) fences a retired adapter instance: its late events are rejected and cannot complete its run",
+            "status": "passed",
+            "title": "fences a retired adapter instance: its late events are rejected and cannot complete its run",
+            "duration": 1060.424930000001,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C06 adapterInstanceId (H1)"
+            ],
+            "fullName": "C06 adapterInstanceId (H1) adapter crash with an active child actor and action does not deadlock the snapshot gate",
+            "status": "passed",
+            "title": "adapter crash with an active child actor and action does not deadlock the snapshot gate",
+            "duration": 594.0833270000003,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C06 adapterInstanceId (H1)"
+            ],
+            "fullName": "C06 adapterInstanceId (H1) actorSequence is scoped per adapterInstanceId: B restarts worker-main at 1 after A crashed",
+            "status": "passed",
+            "title": "actorSequence is scoped per adapterInstanceId: B restarts worker-main at 1 after A crashed",
+            "duration": 838.8834470000002,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C06 adapterInstanceId (H1)"
+            ],
+            "fullName": "C06 adapterInstanceId (H1) kill is never sent to an adapter process that has already exited",
+            "status": "passed",
+            "title": "kill is never sent to an adapter process that has already exited",
+            "duration": 376.3411669999987,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670508270,
+        "endTime": 1791670517772.341,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c06-adapter-instance-id.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C07 adapter spool isolation (H2)"
+            ],
+            "fullName": "C07 adapter spool isolation (H2) 1. every adapter instance gets its own fresh Kernel spool root and untrusted adapter area",
+            "status": "passed",
+            "title": "1. every adapter instance gets its own fresh Kernel spool root and untrusted adapter area",
+            "duration": 1559.177663,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C07 adapter spool isolation (H2)"
+            ],
+            "fullName": "C07 adapter spool isolation (H2) 2. stderr of successive instances on one root is drained into each instance's own spool, byte-exact, never mixed",
+            "status": "passed",
+            "title": "2. stderr of successive instances on one root is drained into each instance's own spool, byte-exact, never mixed",
+            "duration": 4170.412147999999,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C07 adapter spool isolation (H2)"
+            ],
+            "fullName": "C07 adapter spool isolation (H2) 3. non-DVL1 stdout goes to the instance's diagnostic spool and is never parsed as protocol",
+            "status": "passed",
+            "title": "3. non-DVL1 stdout goes to the instance's diagnostic spool and is never parsed as protocol",
+            "duration": 2745.728240999999,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C07 adapter spool isolation (H2)"
+            ],
+            "fullName": "C07 adapter spool isolation (H2) 4. large payloads are spooled and represented by artifactRef (adapter-spooled and Kernel-spooled)",
+            "status": "passed",
+            "title": "4. large payloads are spooled and represented by artifactRef (adapter-spooled and Kernel-spooled)",
+            "duration": 1462.1427509999994,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C07 adapter spool isolation (H2)"
+            ],
+            "fullName": "C07 adapter spool isolation (H2) 5. Kernel-issued artifactRef carries ownership metadata; the adapter's claim is never reused",
+            "status": "passed",
+            "title": "5. Kernel-issued artifactRef carries ownership metadata; the adapter's claim is never reused",
+            "duration": 853.2994830000007,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C07 adapter spool isolation (H2)"
+            ],
+            "fullName": "C07 adapter spool isolation (H2) 6. adapter instances on one root never share, overwrite, or read each other's spool",
+            "status": "passed",
+            "title": "6. adapter instances on one root never share, overwrite, or read each other's spool",
+            "duration": 1473.952539,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C07 adapter spool isolation (H2)"
+            ],
+            "fullName": "C07 adapter spool isolation (H2) 7. late output of a retired instance is fenced: no import, no evidence, nothing in the live instance's spool",
+            "status": "passed",
+            "title": "7. late output of a retired instance is fenced: no import, no evidence, nothing in the live instance's spool",
+            "duration": 1075.3168430000005,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C07 adapter spool isolation (H2)"
+            ],
+            "fullName": "C07 adapter spool isolation (H2) 8. path traversal, unsafe names, symlink escape and any adapter-controlled escape are rejected",
+            "status": "passed",
+            "title": "8. path traversal, unsafe names, symlink escape and any adapter-controlled escape are rejected",
+            "duration": 1163.3540130000001,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C07 adapter spool isolation (H2)"
+            ],
+            "fullName": "C07 adapter spool isolation (H2) 9. retention removes only non-live untrusted areas; never the active instance's spool or Kernel spool",
+            "status": "passed",
+            "title": "9. retention removes only non-live untrusted areas; never the active instance's spool or Kernel spool",
+            "duration": 842.588898,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C07 adapter spool isolation (H2)"
+            ],
+            "fullName": "C07 adapter spool isolation (H2) 10. corrupted or missing artifacts never become trusted material; spool alone never creates evidence",
+            "status": "passed",
+            "title": "10. corrupted or missing artifacts never become trusted material; spool alone never creates evidence",
+            "duration": 2039.3984800000017,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670483533,
+        "endTime": 1791670500919.3984,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c07-adapter-spool-isolation.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C08 protocol queue limits (H3)"
+            ],
+            "fullName": "C08 protocol queue limits (H3) 1. normal traffic below capacity is processed strictly FIFO with no violations",
+            "status": "passed",
+            "title": "1. normal traffic below capacity is processed strictly FIFO with no violations",
+            "duration": 1536.3262710000001,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C08 protocol queue limits (H3)"
+            ],
+            "fullName": "C08 protocol queue limits (H3) 2. a burst that fills the queue but stays within capacity succeeds",
+            "status": "passed",
+            "title": "2. a burst that fills the queue but stays within capacity succeeds",
+            "duration": 595.7601669999999,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C08 protocol queue limits (H3)"
+            ],
+            "fullName": "C08 protocol queue limits (H3) 3. overflow triggers one deterministic safety halt (frame bound and byte bound)",
+            "status": "passed",
+            "title": "3. overflow triggers one deterministic safety halt (frame bound and byte bound)",
+            "duration": 2373.0649569999996,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C08 protocol queue limits (H3)"
+            ],
+            "fullName": "C08 protocol queue limits (H3) 4. overflow never silently drops and continues: every received frame is accounted for",
+            "status": "passed",
+            "title": "4. overflow never silently drops and continues: every received frame is accounted for",
+            "duration": 1032.7384419999998,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C08 protocol queue limits (H3)"
+            ],
+            "fullName": "C08 protocol queue limits (H3) 5. events accepted before the overflow remain preserved and valid",
+            "status": "passed",
+            "title": "5. events accepted before the overflow remain preserved and valid",
+            "duration": 630.4100399999998,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C08 protocol queue limits (H3)"
+            ],
+            "fullName": "C08 protocol queue limits (H3) 6. frames after the overflow are never processed as current truth",
+            "status": "passed",
+            "title": "6. frames after the overflow are never processed as current truth",
+            "duration": 825.9084989999992,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C08 protocol queue limits (H3)"
+            ],
+            "fullName": "C08 protocol queue limits (H3) 7. parallel adapters have isolated queue state",
+            "status": "passed",
+            "title": "7. parallel adapters have isolated queue state",
+            "duration": 1440.7573820000007,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C08 protocol queue limits (H3)"
+            ],
+            "fullName": "C08 protocol queue limits (H3) 8. a dead instance's queued frames stay fenced during and after overflow + restart",
+            "status": "passed",
+            "title": "8. a dead instance's queued frames stay fenced during and after overflow + restart",
+            "duration": 1201.5441030000002,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C08 protocol queue limits (H3)"
+            ],
+            "fullName": "C08 protocol queue limits (H3) 9. stdout keeps draining while Kernel processing is blocked",
+            "status": "passed",
+            "title": "9. stdout keeps draining while Kernel processing is blocked",
+            "duration": 1812.5245290000003,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C08 protocol queue limits (H3)"
+            ],
+            "fullName": "C08 protocol queue limits (H3) 10. stderr keeps draining into the instance's spool while the queue is under pressure",
+            "status": "passed",
+            "title": "10. stderr keeps draining into the instance's spool while the queue is under pressure",
+            "duration": 2112.816439,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C08 protocol queue limits (H3)"
+            ],
+            "fullName": "C08 protocol queue limits (H3) 11. a restarted adapter instance gets a fresh, empty, unsealed queue",
+            "status": "passed",
+            "title": "11. a restarted adapter instance gets a fresh, empty, unsealed queue",
+            "duration": 1270.752869,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C08 protocol queue limits (H3)"
+            ],
+            "fullName": "C08 protocol queue limits (H3) 12. overflow cannot produce completion, evidence, validation or integration",
+            "status": "passed",
+            "title": "12. overflow cannot produce completion, evidence, validation or integration",
+            "duration": 726.2246510000004,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C08 protocol queue limits (H3)"
+            ],
+            "fullName": "C08 protocol queue limits (H3) 13. the safety halt record carries the queue violation metadata",
+            "status": "passed",
+            "title": "13. the safety halt record carries the queue violation metadata",
+            "duration": 929.764475,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C08 protocol queue limits (H3)"
+            ],
+            "fullName": "C08 protocol queue limits (H3) 14. queue memory and state are released after the adapter instance terminates",
+            "status": "passed",
+            "title": "14. queue memory and state are released after the adapter instance terminates",
+            "duration": 597.7255269999987,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670527915,
+        "endTime": 1791670545002.7256,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c08-queue-limits.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C09 safety-halt regression for pre-H3 triggers (H3)"
+            ],
+            "fullName": "C09 safety-halt regression for pre-H3 triggers (H3) maxDurationMs: one halt, instance fenced, zombie frames never become truth, fresh instance healthy",
+            "status": "passed",
+            "title": "maxDurationMs: one halt, instance fenced, zombie frames never become truth, fresh instance healthy",
+            "duration": 2384.35296,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C09 safety-halt regression for pre-H3 triggers (H3)"
+            ],
+            "fullName": "C09 safety-halt regression for pre-H3 triggers (H3) maxDurationMs: halted instance retired while zombies are still queued; they are fenced against the fresh instance",
+            "status": "passed",
+            "title": "maxDurationMs: halted instance retired while zombies are still queued; they are fenced against the fresh instance",
+            "duration": 2435.994886,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C09 safety-halt regression for pre-H3 triggers (H3)"
+            ],
+            "fullName": "C09 safety-halt regression for pre-H3 triggers (H3) maxIncomingBytes: one halt with limit metadata, trailing frames fenced, fresh instance healthy",
+            "status": "passed",
+            "title": "maxIncomingBytes: one halt with limit metadata, trailing frames fenced, fresh instance healthy",
+            "duration": 3502.8612949999997,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C09 safety-halt regression for pre-H3 triggers (H3)"
+            ],
+            "fullName": "C09 safety-halt regression for pre-H3 triggers (H3) maxDurationMs is re-armed for the replacement instance (runtime, not just source)",
+            "status": "passed",
+            "title": "maxDurationMs is re-armed for the replacement instance (runtime, not just source)",
+            "duration": 2068.1607409999997,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670557883,
+        "endTime": 1791670568275.1606,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c09-safety-halt-regression.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C10 run/attempt binding fence (blocker A)"
+            ],
+            "fullName": "C10 run/attempt binding fence (blocker A) fresh adapter B naming A's terminal run: no revival, no evidence, no actor/action state",
+            "status": "passed",
+            "title": "fresh adapter B naming A's terminal run: no revival, no evidence, no actor/action state",
+            "duration": 1761.164026,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C10 run/attempt binding fence (blocker A)"
+            ],
+            "fullName": "C10 run/attempt binding fence (blocker A) correct fresh adapter, correct run, wrong attempt: rejected and run does not progress",
+            "status": "passed",
+            "title": "correct fresh adapter, correct run, wrong attempt: rejected and run does not progress",
+            "duration": 1440.8174170000002,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C10 run/attempt binding fence (blocker A)"
+            ],
+            "fullName": "C10 run/attempt binding fence (blocker A) same instance after its own terminal run: run.started/actor/action/run.failed all rejected",
+            "status": "passed",
+            "title": "same instance after its own terminal run: run.started/actor/action/run.failed all rejected",
+            "duration": 996.9173730000002,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C10 run/attempt binding fence (blocker A)"
+            ],
+            "fullName": "C10 run/attempt binding fence (blocker A) a second run.started on a live run is an illegal transition, not a lifecycle reset",
+            "status": "passed",
+            "title": "a second run.started on a live run is an illegal transition, not a lifecycle reset",
+            "duration": 808.2311809999992,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C10 run/attempt binding fence (blocker A)"
+            ],
+            "fullName": "C10 run/attempt binding fence (blocker A) legal continuation: Kernel-created attempt 2 rebinds the run to the fresh instance",
+            "status": "passed",
+            "title": "legal continuation: Kernel-created attempt 2 rebinds the run to the fresh instance",
+            "duration": 1434.4876130000002,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C10 run/attempt binding fence (blocker A)"
+            ],
+            "fullName": "C10 run/attempt binding fence (blocker A) after a Kernel-created attempt 2, the fresh instance still cannot write into attempt 1",
+            "status": "passed",
+            "title": "after a Kernel-created attempt 2, the fresh instance still cannot write into attempt 1",
+            "duration": 1760.6313119999995,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C10 run/attempt binding fence (blocker A)"
+            ],
+            "fullName": "C10 run/attempt binding fence (blocker A) retryRun refuses a run that is not terminal",
+            "status": "passed",
+            "title": "retryRun refuses a run that is not terminal",
+            "duration": 1257.6559259999995,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670580400,
+        "endTime": 1791670589860.656,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c10-run-binding.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C11 Kernel spool provenance (blocker B)"
+            ],
+            "fullName": "C11 Kernel spool provenance (blocker B) 1. a spawned adapter physically plants a file in its Kernel spool (no OS sandbox)",
+            "status": "passed",
+            "title": "1. a spawned adapter physically plants a file in its Kernel spool (no OS sandbox)",
+            "duration": 589.491269,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C11 Kernel spool provenance (blocker B)"
+            ],
+            "fullName": "C11 Kernel spool provenance (blocker B) 2. a planted file cited via the reserved inline __spooled key never becomes evidence material",
+            "status": "passed",
+            "title": "2. a planted file cited via the reserved inline __spooled key never becomes evidence material",
+            "duration": 628.1183849999998,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C11 Kernel spool provenance (blocker B)"
+            ],
+            "fullName": "C11 Kernel spool provenance (blocker B) 3. a planted file cited via outputRef is rejected (CORRUPTED, nothing attached or imported)",
+            "status": "passed",
+            "title": "3. a planted file cited via outputRef is rejected (CORRUPTED, nothing attached or imported)",
+            "duration": 696.9647770000001,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C11 Kernel spool provenance (blocker B)"
+            ],
+            "fullName": "C11 Kernel spool provenance (blocker B) 4. verify rejects unregistered planted bytes, forged ids, and tampered registered refs",
+            "status": "passed",
+            "title": "4. verify rejects unregistered planted bytes, forged ids, and tampered registered refs",
+            "duration": 640.2738730000001,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C11 Kernel spool provenance (blocker B)"
+            ],
+            "fullName": "C11 Kernel spool provenance (blocker B) 5. legitimate Kernel-spooled and imported artifacts stay valid, including across Kernel replay",
+            "status": "passed",
+            "title": "5. legitimate Kernel-spooled and imported artifacts stay valid, including across Kernel replay",
+            "duration": 1249.709809,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C11 Kernel spool provenance (blocker B)"
+            ],
+            "fullName": "C11 Kernel spool provenance (blocker B) 6. a registered artifact cannot be re-attached to new evidence by citing it (inline or outputRef)",
+            "status": "passed",
+            "title": "6. a registered artifact cannot be re-attached to new evidence by citing it (inline or outputRef)",
+            "duration": 984.1115959999997,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C11 Kernel spool provenance (blocker B)"
+            ],
+            "fullName": "C11 Kernel spool provenance (blocker B) 7. an adapter frame mimicking kernel.artifact_registered never creates provenance (live or on replay)",
+            "status": "passed",
+            "title": "7. an adapter frame mimicking kernel.artifact_registered never creates provenance (live or on replay)",
+            "duration": 671.04,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670590816,
+        "endTime": 1791670596276.04,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c11-kernel-spool-provenance.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C12 maxIncomingBytes at the drain boundary (blocker C)"
+            ],
+            "fullName": "C12 maxIncomingBytes at the drain boundary (blocker C) non-DVL1 stdout noise trips the limit; one halt; fresh instance gets a fresh budget",
+            "status": "passed",
+            "title": "non-DVL1 stdout noise trips the limit; one halt; fresh instance gets a fresh budget",
+            "duration": 1483.145483,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C12 maxIncomingBytes at the drain boundary (blocker C)"
+            ],
+            "fullName": "C12 maxIncomingBytes at the drain boundary (blocker C) stderr volume trips the limit even though it is never parsed",
+            "status": "passed",
+            "title": "stderr volume trips the limit even though it is never parsed",
+            "duration": 642.7038070000003,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C12 maxIncomingBytes at the drain boundary (blocker C)"
+            ],
+            "fullName": "C12 maxIncomingBytes at the drain boundary (blocker C) protocol frames trip the limit while Kernel processing is blocked; nothing after the breach is truth",
+            "status": "passed",
+            "title": "protocol frames trip the limit while Kernel processing is blocked; nothing after the breach is truth",
+            "duration": 605.70478,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C12 maxIncomingBytes at the drain boundary (blocker C)"
+            ],
+            "fullName": "C12 maxIncomingBytes at the drain boundary (blocker C) bytes are charged exactly once (no second charge in ingest)",
+            "status": "passed",
+            "title": "bytes are charged exactly once (no second charge in ingest)",
+            "duration": 1252.4059259999995,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C12 maxIncomingBytes at the drain boundary (blocker C)"
+            ],
+            "fullName": "C12 maxIncomingBytes at the drain boundary (blocker C) transport: after a breach the queue is sealed \u2014 later frames go to disk, never into memory; one issue",
+            "status": "passed",
+            "title": "transport: after a breach the queue is sealed \u2014 later frames go to disk, never into memory; one issue",
+            "duration": 7.90858500000013,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670581036,
+        "endTime": 1791670585027.9087,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c12-incoming-bytes-at-drain.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C13 durable authority is Kernel-authenticated (blocker 1)"
+            ],
+            "fullName": "C13 durable authority is Kernel-authenticated (blocker 1) 1. adapter-appended forged origin:kernel records (registration + VALIDATED evidence) are rejected on replay",
+            "status": "passed",
+            "title": "1. adapter-appended forged origin:kernel records (registration + VALIDATED evidence) are rejected on replay",
+            "duration": 917.3284880000001,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C13 durable authority is Kernel-authenticated (blocker 1)"
+            ],
+            "fullName": "C13 durable authority is Kernel-authenticated (blocker 1) 2. a modified Kernel record is detected and stops conferring authority",
+            "status": "passed",
+            "title": "2. a modified Kernel record is detected and stops conferring authority",
+            "duration": 941.4600500000001,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C13 durable authority is Kernel-authenticated (blocker 1)"
+            ],
+            "fullName": "C13 durable authority is Kernel-authenticated (blocker 1) 3. inserted, deleted and reordered records are handled fail-closed",
+            "status": "passed",
+            "title": "3. inserted, deleted and reordered records are handled fail-closed",
+            "duration": 735.428038,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C13 durable authority is Kernel-authenticated (blocker 1)"
+            ],
+            "fullName": "C13 durable authority is Kernel-authenticated (blocker 1) 4. tail truncation / rollback is detected only against a host-held head anchor",
+            "status": "passed",
+            "title": "4. tail truncation / rollback is detected only against a host-held head anchor",
+            "duration": 1012.4863439999999,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C13 durable authority is Kernel-authenticated (blocker 1)"
+            ],
+            "fullName": "C13 durable authority is Kernel-authenticated (blocker 1) 5. legitimate Kernel records replay completely; evidence and provenance are rebuilt",
+            "status": "passed",
+            "title": "5. legitimate Kernel records replay completely; evidence and provenance are rebuilt",
+            "duration": 1586.3331480000006,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C13 durable authority is Kernel-authenticated (blocker 1)"
+            ],
+            "fullName": "C13 durable authority is Kernel-authenticated (blocker 1) 6. the integrity key never reaches the adapter; a Kernel without the host key trusts nothing",
+            "status": "passed",
+            "title": "6. the integrity key never reaches the adapter; a Kernel without the host key trusts nothing",
+            "duration": 456.9935770000002,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670574551,
+        "endTime": 1791670580200.9937,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c13-durable-authority.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C14 authoritative lifecycle FSM (blocker 2)"
+            ],
+            "fullName": "C14 authoritative lifecycle FSM (blocker 2) action.finished without action.started: rejected, no Evidence",
+            "status": "passed",
+            "title": "action.finished without action.started: rejected, no Evidence",
+            "duration": 864.645516,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C14 authoritative lifecycle FSM (blocker 2)"
+            ],
+            "fullName": "C14 authoritative lifecycle FSM (blocker 2) duplicate action.finished: exactly one Evidence; the second is rejected",
+            "status": "passed",
+            "title": "duplicate action.finished: exactly one Evidence; the second is rejected",
+            "duration": 1051.7728590000002,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C14 authoritative lifecycle FSM (blocker 2)"
+            ],
+            "fullName": "C14 authoritative lifecycle FSM (blocker 2) action.updated before action.started is rejected; the later legal path still works",
+            "status": "passed",
+            "title": "action.updated before action.started is rejected; the later legal path still works",
+            "duration": 1065.1661490000001,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C14 authoritative lifecycle FSM (blocker 2)"
+            ],
+            "fullName": "C14 authoritative lifecycle FSM (blocker 2) run.finished (and actions) before run.started: rejected; run never becomes running or finished",
+            "status": "passed",
+            "title": "run.finished (and actions) before run.started: rejected; run never becomes running or finished",
+            "duration": 1296.4254959999998,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C14 authoritative lifecycle FSM (blocker 2)"
+            ],
+            "fullName": "C14 authoritative lifecycle FSM (blocker 2) a finished actor cannot act or finish again",
+            "status": "passed",
+            "title": "a finished actor cannot act or finish again",
+            "duration": 931.4789090000004,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C14 authoritative lifecycle FSM (blocker 2)"
+            ],
+            "fullName": "C14 authoritative lifecycle FSM (blocker 2) an actor cannot advance another actor's action",
+            "status": "passed",
+            "title": "an actor cannot advance another actor's action",
+            "duration": 943.7407430000003,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C14 authoritative lifecycle FSM (blocker 2)"
+            ],
+            "fullName": "C14 authoritative lifecycle FSM (blocker 2) legal normal path: no illegal transitions, evidence as before",
+            "status": "passed",
+            "title": "legal normal path: no illegal transitions, evidence as before",
+            "duration": 505.37993499999993,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C14 authoritative lifecycle FSM (blocker 2)"
+            ],
+            "fullName": "C14 authoritative lifecycle FSM (blocker 2) every rejected transition is stored as a violation and mutates nothing (all scenarios)",
+            "status": "passed",
+            "title": "every rejected transition is stored as a violation and mutates nothing (all scenarios)",
+            "duration": 6252.364689,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670604153,
+        "endTime": 1791670617064.3647,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c14-lifecycle-fsm.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C15 attempt-owned workspaces (blocker 3)"
+            ],
+            "fullName": "C15 attempt-owned workspaces (blocker 3) default retry: fresh workspace; the failed attempt's partial file never reaches the retry snapshot",
+            "status": "passed",
+            "title": "default retry: fresh workspace; the failed attempt's partial file never reaches the retry snapshot",
+            "duration": 1679.3960270000002,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C15 attempt-owned workspaces (blocker 3)"
+            ],
+            "fullName": "C15 attempt-owned workspaces (blocker 3) the failed attempt's dirty workspace is archived with a Kernel-registered manifest",
+            "status": "passed",
+            "title": "the failed attempt's dirty workspace is archived with a Kernel-registered manifest",
+            "duration": 1477.2503239999996,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C15 attempt-owned workspaces (blocker 3)"
+            ],
+            "fullName": "C15 attempt-owned workspaces (blocker 3) intentional resume from a safe mechanical checkpoint carries exactly the checkpointed bytes",
+            "status": "passed",
+            "title": "intentional resume from a safe mechanical checkpoint carries exactly the checkpointed bytes",
+            "duration": 2699.888303,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C15 attempt-owned workspaces (blocker 3)"
+            ],
+            "fullName": "C15 attempt-owned workspaces (blocker 3) unsafe checkpoints are refused before any attempt is created",
+            "status": "passed",
+            "title": "unsafe checkpoints are refused before any attempt is created",
+            "duration": 2477.745840999999,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C15 attempt-owned workspaces (blocker 3)"
+            ],
+            "fullName": "C15 attempt-owned workspaces (blocker 3) only a VALIDATED FILE_SNAPSHOT of the same run is a checkpoint",
+            "status": "passed",
+            "title": "only a VALIDATED FILE_SNAPSHOT of the same run is a checkpoint",
+            "duration": 777.3933059999999,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670597196,
+        "endTime": 1791670606308.3933,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c15-attempt-workspace.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C16 atomic retry dispatch (blocker 4)"
+            ],
+            "fullName": "C16 atomic retry dispatch (blocker 4) retry over a closed transport: attempt 2 is failed_to_start, recorded, and attempt 3 is legal",
+            "status": "passed",
+            "title": "retry over a closed transport: attempt 2 is failed_to_start, recorded, and attempt 3 is legal",
+            "duration": 1314.0153370000003,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C16 atomic retry dispatch (blocker 4)"
+            ],
+            "fullName": "C16 atomic retry dispatch (blocker 4) run.start not acknowledged in time: failed_to_start; the late adapter's events and Evidence are rejected",
+            "status": "passed",
+            "title": "run.start not acknowledged in time: failed_to_start; the late adapter's events and Evidence are rejected",
+            "duration": 5963.288933,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C16 atomic retry dispatch (blocker 4)"
+            ],
+            "fullName": "C16 atomic retry dispatch (blocker 4) first-attempt dispatch failure is terminal too (startRun)",
+            "status": "passed",
+            "title": "first-attempt dispatch failure is terminal too (startRun)",
+            "duration": 6604.195742999999,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670612208,
+        "endTime": 1791670626090.1958,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c16-retry-atomicity.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C17 bounded I/O and artifact metadata binding"
+            ],
+            "fullName": "C17 bounded I/O and artifact metadata binding shutdown(timeout) returns in bounded time when the adapter stopped reading stdin",
+            "status": "passed",
+            "title": "shutdown(timeout) returns in bounded time when the adapter stopped reading stdin",
+            "duration": 665.4691049999999,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C17 bounded I/O and artifact metadata binding"
+            ],
+            "fullName": "C17 bounded I/O and artifact metadata binding every ArtifactRef field is bound to the Kernel registration",
+            "status": "passed",
+            "title": "every ArtifactRef field is bound to the Kernel registration",
+            "duration": 539.819624,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670627157,
+        "endTime": 1791670628361.8196,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c17-bounded-io-metadata.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C18 H1 run/attempt isolation from the current adapter"
+            ],
+            "fullName": "C18 H1 run/attempt isolation from the current adapter 1. same actionId in two concurrent runs: one run cannot clear, finish, or create Evidence for the other's action",
+            "status": "passed",
+            "title": "1. same actionId in two concurrent runs: one run cannot clear, finish, or create Evidence for the other's action",
+            "duration": 650.3841840000001,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C18 H1 run/attempt isolation from the current adapter"
+            ],
+            "fullName": "C18 H1 run/attempt isolation from the current adapter 2. same actorId in two concurrent runs: actor lifecycle and no-writer state stay per run",
+            "status": "passed",
+            "title": "2. same actorId in two concurrent runs: actor lifecycle and no-writer state stay per run",
+            "duration": 507.89905,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C18 H1 run/attempt isolation from the current adapter"
+            ],
+            "fullName": "C18 H1 run/attempt isolation from the current adapter 3. same actorId after adapter replacement: the previous run's actor state is unchanged",
+            "status": "passed",
+            "title": "3. same actorId after adapter replacement: the previous run's actor state is unchanged",
+            "duration": 894.2193000000002,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C18 H1 run/attempt isolation from the current adapter"
+            ],
+            "fullName": "C18 H1 run/attempt isolation from the current adapter 4. current valid adapter targets a HALTED old run: stays halted, no Evidence, no state change",
+            "status": "passed",
+            "title": "4. current valid adapter targets a HALTED old run: stays halted, no Evidence, no state change",
+            "duration": 2363.329272,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C18 H1 run/attempt isolation from the current adapter"
+            ],
+            "fullName": "C18 H1 run/attempt isolation from the current adapter 5. same current adapter targets its own FAILED run: stays failed, no Evidence",
+            "status": "passed",
+            "title": "5. same current adapter targets its own FAILED run: stays failed, no Evidence",
+            "duration": 384.9781579999999,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C18 H1 run/attempt isolation from the current adapter"
+            ],
+            "fullName": "C18 H1 run/attempt isolation from the current adapter 6. wrong attempt against an old run cannot modify execution state",
+            "status": "passed",
+            "title": "6. wrong attempt against an old run cannot modify execution state",
+            "duration": 1231.0982779999995,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C18 H1 run/attempt isolation from the current adapter"
+            ],
+            "fullName": "C18 H1 run/attempt isolation from the current adapter 7. action.finished without a matching action.started: no Evidence, no state change",
+            "status": "passed",
+            "title": "7. action.finished without a matching action.started: no Evidence, no state change",
+            "duration": 500.1749740000005,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C18 H1 run/attempt isolation from the current adapter"
+            ],
+            "fullName": "C18 H1 run/attempt isolation from the current adapter 8. normal valid current run completes with all H1 guards active",
+            "status": "passed",
+            "title": "8. normal valid current run completes with all H1 guards active",
+            "duration": 358.5602630000003,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670556919,
+        "endTime": 1791670563810.5603,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c18-h1-run-isolation.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C19 H1 actor ordering is isolated by attempt"
+            ],
+            "fullName": "C19 H1 actor ordering is isolated by attempt A. same-instance retry: attempt 2 restarts root actorSequence at 1 with no false actor_sequence_gap",
+            "status": "passed",
+            "title": "A. same-instance retry: attempt 2 restarts root actorSequence at 1 with no false actor_sequence_gap",
+            "duration": 595.124646,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C19 H1 actor ordering is isolated by attempt"
+            ],
+            "fullName": "C19 H1 actor ordering is isolated by attempt B. rejected wrong-attempt frames do not move the authorized attempt's actor ordering",
+            "status": "passed",
+            "title": "B. rejected wrong-attempt frames do not move the authorized attempt's actor ordering",
+            "duration": 496.19395299999996,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C19 H1 actor ordering is isolated by attempt"
+            ],
+            "fullName": "C19 H1 actor ordering is isolated by attempt C. a lifecycle-rejected frame of the authorized attempt still occupies its sequence slot (no false gap after it)",
+            "status": "passed",
+            "title": "C. a lifecycle-rejected frame of the authorized attempt still occupies its sequence slot (no false gap after it)",
+            "duration": 484.2771180000002,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670602122,
+        "endTime": 1791670603698.277,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c19-h1-actor-sequence-isolation.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C20 H2 adapter/Kernel spool isolation"
+            ],
+            "fullName": "C20 H2 adapter/Kernel spool isolation 1. claims outside the adapter's permitted area (../, absolute, Kernel spool, other instance) never import anything",
+            "status": "passed",
+            "title": "1. claims outside the adapter's permitted area (../, absolute, Kernel spool, other instance) never import anything",
+            "duration": 521.137618,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C20 H2 adapter/Kernel spool isolation"
+            ],
+            "fullName": "C20 H2 adapter/Kernel spool isolation 2. symlink escapes on the read side are rejected: file link, area link, and a symlinked adapter-spool root",
+            "status": "passed",
+            "title": "2. symlink escapes on the read side are rejected: file link, area link, and a symlinked adapter-spool root",
+            "duration": 13.20682799999986,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C20 H2 adapter/Kernel spool isolation"
+            ],
+            "fullName": "C20 H2 adapter/Kernel spool isolation 3. Kernel spool writes never follow a planted symlink; an import into a hijacked spool is CORRUPTED, nothing written outside",
+            "status": "passed",
+            "title": "3. Kernel spool writes never follow a planted symlink; an import into a hijacked spool is CORRUPTED, nothing written outside",
+            "duration": 426.2273499999999,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C20 H2 adapter/Kernel spool isolation"
+            ],
+            "fullName": "C20 H2 adapter/Kernel spool isolation 4. adapter attempts to overwrite Kernel logs/spool: no write through planted links, overwrites detected and never trusted",
+            "status": "passed",
+            "title": "4. adapter attempts to overwrite Kernel logs/spool: no write through planted links, overwrites detected and never trusted",
+            "duration": 505.5126670000002,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C20 H2 adapter/Kernel spool isolation"
+            ],
+            "fullName": "C20 H2 adapter/Kernel spool isolation 5. queue-overflow diagnostics are never written through a planted symlink; stderr/noise files must be fresh",
+            "status": "passed",
+            "title": "5. queue-overflow diagnostics are never written through a planted symlink; stderr/noise files must be fresh",
+            "duration": 8.785551999999825,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C20 H2 adapter/Kernel spool isolation"
+            ],
+            "fullName": "C20 H2 adapter/Kernel spool isolation 6. hard-link aliases are rejected: Kernel-owned bytes re-presented as adapter output (end to end) and files outside the project",
+            "status": "passed",
+            "title": "6. hard-link aliases are rejected: Kernel-owned bytes re-presented as adapter output (end to end) and files outside the project",
+            "duration": 484.9484140000004,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C20 H2 adapter/Kernel spool isolation"
+            ],
+            "fullName": "C20 H2 adapter/Kernel spool isolation 7. a valid artifact is copied by the Kernel and its hash and provenance are recorded (live and on replay)",
+            "status": "passed",
+            "title": "7. a valid artifact is copied by the Kernel and its hash and provenance are recorded (live and on replay)",
+            "duration": 467.2141409999999,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670518495,
+        "endTime": 1791670520922.214,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c20-h2-adapter-kernel-spool-isolation.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C21 H2 review fixes [confinement=auto]"
+            ],
+            "fullName": "C21 H2 review fixes [confinement=auto] 0. confinement mode in effect",
+            "status": "passed",
+            "title": "0. confinement mode in effect",
+            "duration": 22.309421000000043,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C21 H2 review fixes [confinement=auto]"
+            ],
+            "fullName": "C21 H2 review fixes [confinement=auto] 1a. lazy overflow diagnostics: swapped owner directory \u2192 refused and counted, nothing written outside",
+            "status": "passed",
+            "title": "1a. lazy overflow diagnostics: swapped owner directory \u2192 refused and counted, nothing written outside",
+            "duration": 767.7823850000001,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C21 H2 review fixes [confinement=auto]"
+            ],
+            "fullName": "C21 H2 review fixes [confinement=auto] 1b. lazy overflow diagnostics: swapped spool root (ancestor) \u2192 refused and counted, nothing written outside",
+            "status": "passed",
+            "title": "1b. lazy overflow diagnostics: swapped spool root (ancestor) \u2192 refused and counted, nothing written outside",
+            "duration": 801.6502030000001,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C21 H2 review fixes [confinement=auto]"
+            ],
+            "fullName": "C21 H2 review fixes [confinement=auto] 1c. constructor diagnostics: parent swapped between check and open \u2192 spawn refused, child killed, nothing outside",
+            "status": "passed",
+            "title": "1c. constructor diagnostics: parent swapped between check and open \u2192 spawn refused, child killed, nothing outside",
+            "duration": 36.587363000000096,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C21 H2 review fixes [confinement=auto]"
+            ],
+            "fullName": "C21 H2 review fixes [confinement=auto] 1d. constructor diagnostics: owner directory already a symlink \u2192 refused before any write",
+            "status": "passed",
+            "title": "1d. constructor diagnostics: owner directory already a symlink \u2192 refused before any write",
+            "duration": 16.591077999999925,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C21 H2 review fixes [confinement=auto]"
+            ],
+            "fullName": "C21 H2 review fixes [confinement=auto] 2. a log replaced by a hard link to an outside file is refused: victim unchanged, chain/history not advanced",
+            "status": "passed",
+            "title": "2. a log replaced by a hard link to an outside file is refused: victim unchanged, chain/history not advanced",
+            "duration": 35.67640699999993,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C21 H2 review fixes [confinement=auto]"
+            ],
+            "fullName": "C21 H2 review fixes [confinement=auto] 3. replay and disk reads refuse symlinked or hard-linked log files (even with authentic content)",
+            "status": "passed",
+            "title": "3. replay and disk reads refuse symlinked or hard-linked log files (even with authentic content)",
+            "duration": 554.415998,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C21 H2 review fixes [confinement=auto]"
+            ],
+            "fullName": "C21 H2 review fixes [confinement=auto] 4a. log directory swapped between validation and open \u2192 refused, victim unchanged, history not advanced",
+            "status": "passed",
+            "title": "4a. log directory swapped between validation and open \u2192 refused, victim unchanged, history not advanced",
+            "duration": 15.15400099999988,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C21 H2 review fixes [confinement=auto]"
+            ],
+            "fullName": "C21 H2 review fixes [confinement=auto] 4b. log name swapped between open and write \u2192 refused, neither file written, history not advanced",
+            "status": "passed",
+            "title": "4b. log name swapped between open and write \u2192 refused, neither file written, history not advanced",
+            "duration": 17.504007,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C21 H2 review fixes [confinement=auto]"
+            ],
+            "fullName": "C21 H2 review fixes [confinement=auto] 4c. Kernel spool dir swapped between validation and create \u2192 refused, nothing outside, no leftovers, nothing registered",
+            "status": "passed",
+            "title": "4c. Kernel spool dir swapped between validation and create \u2192 refused, nothing outside, no leftovers, nothing registered",
+            "duration": 19.899676,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C21 H2 review fixes [confinement=auto]"
+            ],
+            "fullName": "C21 H2 review fixes [confinement=auto] 4d. import: adapter area disappears or is swapped after the area check \u2192 rejection result, never an exception",
+            "status": "passed",
+            "title": "4d. import: adapter area disappears or is swapped after the area check \u2192 rejection result, never an exception",
+            "duration": 28.451375999999982,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C21 H2 review fixes [confinement=auto]"
+            ],
+            "fullName": "C21 H2 review fixes [confinement=auto] 4e. end to end: area vanishes mid-import \u2192 CORRUPTED evidence recorded, run completes, no handler exception",
+            "status": "passed",
+            "title": "4e. end to end: area vanishes mid-import \u2192 CORRUPTED evidence recorded, run completes, no handler exception",
+            "duration": 488.49644100000023,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C21 H2 review fixes [confinement=auto]"
+            ],
+            "fullName": "C21 H2 review fixes [confinement=auto] 4f. end to end: Kernel cannot spool an oversized payload safely \u2192 event kept, evidence CORRUPTED, nothing outside",
+            "status": "passed",
+            "title": "4f. end to end: Kernel cannot spool an oversized payload safely \u2192 event kept, evidence CORRUPTED, nothing outside",
+            "duration": 459.4887170000002,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C21 H2 review fixes [confinement=path]"
+            ],
+            "fullName": "C21 H2 review fixes [confinement=path] 0. confinement mode in effect",
+            "status": "passed",
+            "title": "0. confinement mode in effect",
+            "duration": 10.978454000000056,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C21 H2 review fixes [confinement=path]"
+            ],
+            "fullName": "C21 H2 review fixes [confinement=path] 1a. lazy overflow diagnostics: swapped owner directory \u2192 refused and counted, nothing written outside",
+            "status": "passed",
+            "title": "1a. lazy overflow diagnostics: swapped owner directory \u2192 refused and counted, nothing written outside",
+            "duration": 589.720914,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C21 H2 review fixes [confinement=path]"
+            ],
+            "fullName": "C21 H2 review fixes [confinement=path] 1b. lazy overflow diagnostics: swapped spool root (ancestor) \u2192 refused and counted, nothing written outside",
+            "status": "passed",
+            "title": "1b. lazy overflow diagnostics: swapped spool root (ancestor) \u2192 refused and counted, nothing written outside",
+            "duration": 766.407886,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C21 H2 review fixes [confinement=path]"
+            ],
+            "fullName": "C21 H2 review fixes [confinement=path] 1c. constructor diagnostics: parent swapped between check and open \u2192 spawn refused, child killed, nothing outside",
+            "status": "passed",
+            "title": "1c. constructor diagnostics: parent swapped between check and open \u2192 spawn refused, child killed, nothing outside",
+            "duration": 23.94883000000027,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C21 H2 review fixes [confinement=path]"
+            ],
+            "fullName": "C21 H2 review fixes [confinement=path] 1d. constructor diagnostics: owner directory already a symlink \u2192 refused before any write",
+            "status": "passed",
+            "title": "1d. constructor diagnostics: owner directory already a symlink \u2192 refused before any write",
+            "duration": 14.423585000000458,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C21 H2 review fixes [confinement=path]"
+            ],
+            "fullName": "C21 H2 review fixes [confinement=path] 2. a log replaced by a hard link to an outside file is refused: victim unchanged, chain/history not advanced",
+            "status": "passed",
+            "title": "2. a log replaced by a hard link to an outside file is refused: victim unchanged, chain/history not advanced",
+            "duration": 37.83914099999947,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C21 H2 review fixes [confinement=path]"
+            ],
+            "fullName": "C21 H2 review fixes [confinement=path] 3. replay and disk reads refuse symlinked or hard-linked log files (even with authentic content)",
+            "status": "passed",
+            "title": "3. replay and disk reads refuse symlinked or hard-linked log files (even with authentic content)",
+            "duration": 497.31985799999984,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C21 H2 review fixes [confinement=path]"
+            ],
+            "fullName": "C21 H2 review fixes [confinement=path] 4a. log directory swapped between validation and open \u2192 refused, victim unchanged, history not advanced",
+            "status": "passed",
+            "title": "4a. log directory swapped between validation and open \u2192 refused, victim unchanged, history not advanced",
+            "duration": 12.661285000000134,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C21 H2 review fixes [confinement=path]"
+            ],
+            "fullName": "C21 H2 review fixes [confinement=path] 4b. log name swapped between open and write \u2192 refused, neither file written, history not advanced",
+            "status": "passed",
+            "title": "4b. log name swapped between open and write \u2192 refused, neither file written, history not advanced",
+            "duration": 11.686889999999948,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C21 H2 review fixes [confinement=path]"
+            ],
+            "fullName": "C21 H2 review fixes [confinement=path] 4c. Kernel spool dir swapped between validation and create \u2192 refused, nothing outside, no leftovers, nothing registered",
+            "status": "passed",
+            "title": "4c. Kernel spool dir swapped between validation and create \u2192 refused, nothing outside, no leftovers, nothing registered",
+            "duration": 8.197055999999975,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C21 H2 review fixes [confinement=path]"
+            ],
+            "fullName": "C21 H2 review fixes [confinement=path] 4d. import: adapter area disappears or is swapped after the area check \u2192 rejection result, never an exception",
+            "status": "passed",
+            "title": "4d. import: adapter area disappears or is swapped after the area check \u2192 rejection result, never an exception",
+            "duration": 17.441444000000047,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C21 H2 review fixes [confinement=path]"
+            ],
+            "fullName": "C21 H2 review fixes [confinement=path] 4e. end to end: area vanishes mid-import \u2192 CORRUPTED evidence recorded, run completes, no handler exception",
+            "status": "passed",
+            "title": "4e. end to end: area vanishes mid-import \u2192 CORRUPTED evidence recorded, run completes, no handler exception",
+            "duration": 573.3320109999995,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C21 H2 review fixes [confinement=path]"
+            ],
+            "fullName": "C21 H2 review fixes [confinement=path] 4f. end to end: Kernel cannot spool an oversized payload safely \u2192 event kept, evidence CORRUPTED, nothing outside",
+            "status": "passed",
+            "title": "4f. end to end: Kernel cannot spool an oversized payload safely \u2192 event kept, evidence CORRUPTED, nothing outside",
+            "duration": 577.5054580000005,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670545696,
+        "endTime": 1791670552103.5054,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c21-h2-review-fixes.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C22 H2 second re-review fixes [confinement=auto]"
+            ],
+            "fullName": "C22 H2 second re-review fixes [confinement=auto] 1a. owner spool dir moved outside after the eager diagnostics create: later stderr/noise refused, no outside bytes, counted (end to end)",
+            "status": "passed",
+            "title": "1a. owner spool dir moved outside after the eager diagnostics create: later stderr/noise refused, no outside bytes, counted (end to end)",
+            "duration": 994.2356279999999,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C22 H2 second re-review fixes [confinement=auto]"
+            ],
+            "fullName": "C22 H2 second re-review fixes [confinement=auto] 1b. overflow file hard-linked outside after its first write: later rejected frames refused, alias unchanged, counted, never processed",
+            "status": "passed",
+            "title": "1b. overflow file hard-linked outside after its first write: later rejected frames refused, alias unchanged, counted, never processed",
+            "duration": 19.77578799999992,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C22 H2 second re-review fixes [confinement=auto]"
+            ],
+            "fullName": "C22 H2 second re-review fixes [confinement=auto] 1c. owner dir relocated outside after the first overflow write: later frames and stderr refused, relocated files unchanged",
+            "status": "passed",
+            "title": "1c. owner dir relocated outside after the first overflow write: later frames and stderr refused, relocated files unchanged",
+            "duration": 17.620209999999815,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C22 H2 second re-review fixes [confinement=auto]"
+            ],
+            "fullName": "C22 H2 second re-review fixes [confinement=auto] 1d. alias created in the final window before a diagnostics write: that write lands (limit), is detected, and nothing more is written",
+            "status": "passed",
+            "title": "1d. alias created in the final window before a diagnostics write: that write lands (limit), is detected, and nothing more is written",
+            "duration": 12.866563000000042,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C22 H2 second re-review fixes [confinement=auto]"
+            ],
+            "fullName": "C22 H2 second re-review fixes [confinement=auto] 2a. events log hard-linked in the final window: write detected after the fact, store sealed, head/history not advanced, nothing more written",
+            "status": "passed",
+            "title": "2a. events log hard-linked in the final window: write detected after the fact, store sealed, head/history not advanced, nothing more written",
+            "duration": 15.481761000000006,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C22 H2 second re-review fixes [confinement=auto]"
+            ],
+            "fullName": "C22 H2 second re-review fixes [confinement=auto] 2b. events log directory relocated outside in the final window: detected, sealed, nothing more written to the relocated log",
+            "status": "passed",
+            "title": "2b. events log directory relocated outside in the final window: detected, sealed, nothing more written to the relocated log",
+            "duration": 10.345335999999861,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C22 H2 second re-review fixes [confinement=auto]"
+            ],
+            "fullName": "C22 H2 second re-review fixes [confinement=auto] 2a. evidence log hard-linked in the final window: write detected after the fact, store sealed, head/history not advanced, nothing more written",
+            "status": "passed",
+            "title": "2a. evidence log hard-linked in the final window: write detected after the fact, store sealed, head/history not advanced, nothing more written",
+            "duration": 15.184034999999994,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C22 H2 second re-review fixes [confinement=auto]"
+            ],
+            "fullName": "C22 H2 second re-review fixes [confinement=auto] 2b. evidence log directory relocated outside in the final window: detected, sealed, nothing more written to the relocated log",
+            "status": "passed",
+            "title": "2b. evidence log directory relocated outside in the final window: detected, sealed, nothing more written to the relocated log",
+            "duration": 10.735912999999982,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C22 H2 second re-review fixes [confinement=auto]"
+            ],
+            "fullName": "C22 H2 second re-review fixes [confinement=auto] 2c. the Kernel fails closed without throwing into handlers/timers once the store is sealed",
+            "status": "passed",
+            "title": "2c. the Kernel fails closed without throwing into handlers/timers once the store is sealed",
+            "duration": 10.779569000000038,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C22 H2 second re-review fixes [confinement=path]"
+            ],
+            "fullName": "C22 H2 second re-review fixes [confinement=path] 1a. owner spool dir moved outside after the eager diagnostics create: later stderr/noise refused, no outside bytes, counted (end to end)",
+            "status": "passed",
+            "title": "1a. owner spool dir moved outside after the eager diagnostics create: later stderr/noise refused, no outside bytes, counted (end to end)",
+            "duration": 1337.004032,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C22 H2 second re-review fixes [confinement=path]"
+            ],
+            "fullName": "C22 H2 second re-review fixes [confinement=path] 1b. overflow file hard-linked outside after its first write: later rejected frames refused, alias unchanged, counted, never processed",
+            "status": "passed",
+            "title": "1b. overflow file hard-linked outside after its first write: later rejected frames refused, alias unchanged, counted, never processed",
+            "duration": 16.053274999999758,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C22 H2 second re-review fixes [confinement=path]"
+            ],
+            "fullName": "C22 H2 second re-review fixes [confinement=path] 1c. owner dir relocated outside after the first overflow write: later frames and stderr refused, relocated files unchanged",
+            "status": "passed",
+            "title": "1c. owner dir relocated outside after the first overflow write: later frames and stderr refused, relocated files unchanged",
+            "duration": 14.358334999999897,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C22 H2 second re-review fixes [confinement=path]"
+            ],
+            "fullName": "C22 H2 second re-review fixes [confinement=path] 1d. alias created in the final window before a diagnostics write: that write lands (limit), is detected, and nothing more is written",
+            "status": "passed",
+            "title": "1d. alias created in the final window before a diagnostics write: that write lands (limit), is detected, and nothing more is written",
+            "duration": 11.600977999999941,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C22 H2 second re-review fixes [confinement=path]"
+            ],
+            "fullName": "C22 H2 second re-review fixes [confinement=path] 2a. events log hard-linked in the final window: write detected after the fact, store sealed, head/history not advanced, nothing more written",
+            "status": "passed",
+            "title": "2a. events log hard-linked in the final window: write detected after the fact, store sealed, head/history not advanced, nothing more written",
+            "duration": 9.524987000000237,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C22 H2 second re-review fixes [confinement=path]"
+            ],
+            "fullName": "C22 H2 second re-review fixes [confinement=path] 2b. events log directory relocated outside in the final window: detected, sealed, nothing more written to the relocated log",
+            "status": "passed",
+            "title": "2b. events log directory relocated outside in the final window: detected, sealed, nothing more written to the relocated log",
+            "duration": 9.69519500000024,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C22 H2 second re-review fixes [confinement=path]"
+            ],
+            "fullName": "C22 H2 second re-review fixes [confinement=path] 2a. evidence log hard-linked in the final window: write detected after the fact, store sealed, head/history not advanced, nothing more written",
+            "status": "passed",
+            "title": "2a. evidence log hard-linked in the final window: write detected after the fact, store sealed, head/history not advanced, nothing more written",
+            "duration": 10.927416999999878,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C22 H2 second re-review fixes [confinement=path]"
+            ],
+            "fullName": "C22 H2 second re-review fixes [confinement=path] 2b. evidence log directory relocated outside in the final window: detected, sealed, nothing more written to the relocated log",
+            "status": "passed",
+            "title": "2b. evidence log directory relocated outside in the final window: detected, sealed, nothing more written to the relocated log",
+            "duration": 10.479005000000143,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C22 H2 second re-review fixes [confinement=path]"
+            ],
+            "fullName": "C22 H2 second re-review fixes [confinement=path] 2c. the Kernel fails closed without throwing into handlers/timers once the store is sealed",
+            "status": "passed",
+            "title": "2c. the Kernel fails closed without throwing into handlers/timers once the store is sealed",
+            "duration": 9.49348000000009,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670564279,
+        "endTime": 1791670566816.4934,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c22-h2-second-review-fixes.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C23 H2 durable commit semantics (Option A)"
+            ],
+            "fullName": "C23 H2 durable commit semantics (Option A) 1. events: full write then fsync error \u2192 not committed, sealed, no fork; replay quarantines it (host anchors / seal marker)",
+            "status": "passed",
+            "title": "1. events: full write then fsync error \u2192 not committed, sealed, no fork; replay quarantines it (host anchors / seal marker)",
+            "duration": 143.42175999999995,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C23 H2 durable commit semantics (Option A)"
+            ],
+            "fullName": "C23 H2 durable commit semantics (Option A) 1. events: partial write then I/O error \u2192 not committed, sealed, no fork; replay quarantines it (host anchors / seal marker)",
+            "status": "passed",
+            "title": "1. events: partial write then I/O error \u2192 not committed, sealed, no fork; replay quarantines it (host anchors / seal marker)",
+            "duration": 95.72528799999998,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C23 H2 durable commit semantics (Option A)"
+            ],
+            "fullName": "C23 H2 durable commit semantics (Option A) 1. evidence: full write then fsync error \u2192 not committed, sealed, no fork; replay quarantines it (host anchors / seal marker)",
+            "status": "passed",
+            "title": "1. evidence: full write then fsync error \u2192 not committed, sealed, no fork; replay quarantines it (host anchors / seal marker)",
+            "duration": 125.85979099999997,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C23 H2 durable commit semantics (Option A)"
+            ],
+            "fullName": "C23 H2 durable commit semantics (Option A) 1. evidence: partial write then I/O error \u2192 not committed, sealed, no fork; replay quarantines it (host anchors / seal marker)",
+            "status": "passed",
+            "title": "1. evidence: partial write then I/O error \u2192 not committed, sealed, no fork; replay quarantines it (host anchors / seal marker)",
+            "duration": 102.94725400000004,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C23 H2 durable commit semantics (Option A)"
+            ],
+            "fullName": "C23 H2 durable commit semantics (Option A) 2. Codex fork scenario: write+fsync error, later append attempt, restart \u2014 no acknowledged record is ever unreplayable",
+            "status": "passed",
+            "title": "2. Codex fork scenario: write+fsync error, later append attempt, restart \u2014 no acknowledged record is ever unreplayable",
+            "duration": 53.515053999999964,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C23 H2 durable commit semantics (Option A)"
+            ],
+            "fullName": "C23 H2 durable commit semantics (Option A) 3. real Kernel snapshot path: an integrity-refused VALIDATED FILE_SNAPSHOT never becomes VALIDATED after restart",
+            "status": "passed",
+            "title": "3. real Kernel snapshot path: an integrity-refused VALIDATED FILE_SNAPSHOT never becomes VALIDATED after restart",
+            "duration": 933.357393,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C23 H2 durable commit semantics (Option A)"
+            ],
+            "fullName": "C23 H2 durable commit semantics (Option A) 4. artifact registration: an uncertain registration write never makes the artifact authoritative (live, replay, recovery)",
+            "status": "passed",
+            "title": "4. artifact registration: an uncertain registration write never makes the artifact authoritative (live, replay, recovery)",
+            "duration": 2048.507775,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C23 H2 durable commit semantics (Option A)"
+            ],
+            "fullName": "C23 H2 durable commit semantics (Option A) 5. limitation: without host anchors AND with the seal marker deleted, a complete signed tail record regains authority",
+            "status": "passed",
+            "title": "5. limitation: without host anchors AND with the seal marker deleted, a complete signed tail record regains authority",
+            "duration": 40.81562399999984,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C23 H2 durable commit semantics (Option A)"
+            ],
+            "fullName": "C23 H2 durable commit semantics (Option A) 6. a torn fragment is always quarantined, even without any boundary, so later appends stay replayable",
+            "status": "passed",
+            "title": "6. a torn fragment is always quarantined, even without any boundary, so later appends stay replayable",
+            "duration": 37.4346300000002,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C23 H2 durable commit semantics (Option A)"
+            ],
+            "fullName": "C23 H2 durable commit semantics (Option A) 7. limitation: validation observes current state only \u2014 a transient alias around the write is NOT detected",
+            "status": "passed",
+            "title": "7. limitation: validation observes current state only \u2014 a transient alias around the write is NOT detected",
+            "duration": 9.031081000000086,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670552685,
+        "endTime": 1791670556276.031,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c23-h2-durable-commit-semantics.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C24 H2 anchor mismatch, publication and recovery"
+            ],
+            "fullName": "C24 H2 anchor mismatch, publication and recovery B1a. events log shorter than the host anchor \u2192 fail closed, no authority, no writes, no head replacement",
+            "status": "passed",
+            "title": "B1a. events log shorter than the host anchor \u2192 fail closed, no authority, no writes, no head replacement",
+            "duration": 525.2548810000001,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C24 H2 anchor mismatch, publication and recovery"
+            ],
+            "fullName": "C24 H2 anchor mismatch, publication and recovery B1b. events: count-matched host anchor with a different MAC \u2192 fail closed",
+            "status": "passed",
+            "title": "B1b. events: count-matched host anchor with a different MAC \u2192 fail closed",
+            "duration": 502.9221400000001,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C24 H2 anchor mismatch, publication and recovery"
+            ],
+            "fullName": "C24 H2 anchor mismatch, publication and recovery B1c. events: valid-MAC records behind a wrong host anchor are not promoted",
+            "status": "passed",
+            "title": "B1c. events: valid-MAC records behind a wrong host anchor are not promoted",
+            "duration": 515.9616939999999,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C24 H2 anchor mismatch, publication and recovery"
+            ],
+            "fullName": "C24 H2 anchor mismatch, publication and recovery B1a. evidence log shorter than the host anchor \u2192 fail closed, no authority, no writes, no head replacement",
+            "status": "passed",
+            "title": "B1a. evidence log shorter than the host anchor \u2192 fail closed, no authority, no writes, no head replacement",
+            "duration": 751.4803819999997,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C24 H2 anchor mismatch, publication and recovery"
+            ],
+            "fullName": "C24 H2 anchor mismatch, publication and recovery B1b. evidence: count-matched host anchor with a different MAC \u2192 fail closed",
+            "status": "passed",
+            "title": "B1b. evidence: count-matched host anchor with a different MAC \u2192 fail closed",
+            "duration": 623.3983039999998,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C24 H2 anchor mismatch, publication and recovery"
+            ],
+            "fullName": "C24 H2 anchor mismatch, publication and recovery B1c. evidence: valid-MAC records behind a wrong host anchor are not promoted",
+            "status": "passed",
+            "title": "B1c. evidence: valid-MAC records behind a wrong host anchor are not promoted",
+            "duration": 614.3840370000003,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C24 H2 anchor mismatch, publication and recovery"
+            ],
+            "fullName": "C24 H2 anchor mismatch, publication and recovery B1d. the marker boundary unreachable (log rolled back below it) also fails closed",
+            "status": "passed",
+            "title": "B1d. the marker boundary unreachable (log rolled back below it) also fails closed",
+            "duration": 66.11303899999984,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C24 H2 anchor mismatch, publication and recovery"
+            ],
+            "fullName": "C24 H2 anchor mismatch, publication and recovery B1e. only an explicit host decision (accept_disk_rollback) adopts the disk chain, records it, and publishes the new boundary",
+            "status": "passed",
+            "title": "B1e. only an explicit host decision (accept_disk_rollback) adopts the disk chain, records it, and publishes the new boundary",
+            "duration": 1580.0234850000006,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C24 H2 anchor mismatch, publication and recovery"
+            ],
+            "fullName": "C24 H2 anchor mismatch, publication and recovery B2a. events: onCommit throws (host did not save) \u2192 not committed, sealed, no live/head/disk divergence; old boundary quarantines it; sequence coherent",
+            "status": "passed",
+            "title": "B2a. events: onCommit throws (host did not save) \u2192 not committed, sealed, no live/head/disk divergence; old boundary quarantines it; sequence coherent",
+            "duration": 39.8199680000007,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C24 H2 anchor mismatch, publication and recovery"
+            ],
+            "fullName": "C24 H2 anchor mismatch, publication and recovery B2b. events: host saved the boundary but failed to confirm \u2192 live: not committed, sealed; restart: the host's boundary decides (committed)",
+            "status": "passed",
+            "title": "B2b. events: host saved the boundary but failed to confirm \u2192 live: not committed, sealed; restart: the host's boundary decides (committed)",
+            "duration": 53.273160000000644,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C24 H2 anchor mismatch, publication and recovery"
+            ],
+            "fullName": "C24 H2 anchor mismatch, publication and recovery B2a. evidence: onCommit throws (host did not save) \u2192 not committed, sealed, no live/head/disk divergence; old boundary quarantines it; sequence coherent",
+            "status": "passed",
+            "title": "B2a. evidence: onCommit throws (host did not save) \u2192 not committed, sealed, no live/head/disk divergence; old boundary quarantines it; sequence coherent",
+            "duration": 78.46493199999986,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C24 H2 anchor mismatch, publication and recovery"
+            ],
+            "fullName": "C24 H2 anchor mismatch, publication and recovery B2b. evidence: host saved the boundary but failed to confirm \u2192 live: not committed, sealed; restart: the host's boundary decides (committed)",
+            "status": "passed",
+            "title": "B2b. evidence: host saved the boundary but failed to confirm \u2192 live: not committed, sealed; restart: the host's boundary decides (committed)",
+            "duration": 37.96035099999972,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C24 H2 anchor mismatch, publication and recovery"
+            ],
+            "fullName": "C24 H2 anchor mismatch, publication and recovery B3a. events log hard-linked during recovery \u2192 recovery_failed, seal kept, aliased inode not truncated; retry after removal succeeds",
+            "status": "passed",
+            "title": "B3a. events log hard-linked during recovery \u2192 recovery_failed, seal kept, aliased inode not truncated; retry after removal succeeds",
+            "duration": 153.4178069999998,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C24 H2 anchor mismatch, publication and recovery"
+            ],
+            "fullName": "C24 H2 anchor mismatch, publication and recovery B3a. evidence log hard-linked during recovery \u2192 recovery_failed, seal kept, aliased inode not truncated; retry after removal succeeds",
+            "status": "passed",
+            "title": "B3a. evidence log hard-linked during recovery \u2192 recovery_failed, seal kept, aliased inode not truncated; retry after removal succeeds",
+            "duration": 116.98726299999998,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C24 H2 anchor mismatch, publication and recovery"
+            ],
+            "fullName": "C24 H2 anchor mismatch, publication and recovery B3b. log relocated during recovery \u2192 recovery_failed, seal kept, relocated log untouched",
+            "status": "passed",
+            "title": "B3b. log relocated during recovery \u2192 recovery_failed, seal kept, relocated log untouched",
+            "duration": 74.89011599999958,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C24 H2 anchor mismatch, publication and recovery"
+            ],
+            "fullName": "C24 H2 anchor mismatch, publication and recovery B3c. unsafe quarantine destination \u2192 recovery_failed, nothing written outside, logs not truncated, seal kept",
+            "status": "passed",
+            "title": "B3c. unsafe quarantine destination \u2192 recovery_failed, nothing written outside, logs not truncated, seal kept",
+            "duration": 52.04633599999943,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C24 H2 anchor mismatch, publication and recovery"
+            ],
+            "fullName": "C24 H2 anchor mismatch, publication and recovery B3d. truncation failure \u2192 recovery_failed, seal and exact tail kept; retry without the fault succeeds",
+            "status": "passed",
+            "title": "B3d. truncation failure \u2192 recovery_failed, seal and exact tail kept; retry without the fault succeeds",
+            "duration": 120.33410299999923,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C24 H2 anchor mismatch, publication and recovery"
+            ],
+            "fullName": "C24 H2 anchor mismatch, publication and recovery B3e. both logs must be safe before the seal clears: second log aliased after the first was truncated \u2192 seal kept",
+            "status": "passed",
+            "title": "B3e. both logs must be safe before the seal clears: second log aliased after the first was truncated \u2192 seal kept",
+            "duration": 157.3298079999995,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670501547,
+        "endTime": 1791670507612.3298,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c24-h2-anchor-publication-recovery.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C25 H2 zero-count anchors"
+            ],
+            "fullName": "C25 H2 zero-count anchors Z1. wrong zero-count events anchor over valid disk records \u2192 anchor mismatch, fail closed",
+            "status": "passed",
+            "title": "Z1. wrong zero-count events anchor over valid disk records \u2192 anchor mismatch, fail closed",
+            "duration": 1009.2467310000001,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C25 H2 zero-count anchors"
+            ],
+            "fullName": "C25 H2 zero-count anchors Z1. wrong zero-count evidence anchor over valid disk records \u2192 anchor mismatch, fail closed",
+            "status": "passed",
+            "title": "Z1. wrong zero-count evidence anchor over valid disk records \u2192 anchor mismatch, fail closed",
+            "duration": 824.7107120000001,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C25 H2 zero-count anchors"
+            ],
+            "fullName": "C25 H2 zero-count anchors Z2. wrong zero-count anchors on BOTH logs \u2192 fail closed; explicit rollback decision is the only way to accept disk",
+            "status": "passed",
+            "title": "Z2. wrong zero-count anchors on BOTH logs \u2192 fail closed; explicit rollback decision is the only way to accept disk",
+            "duration": 1125.363037,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C25 H2 zero-count anchors"
+            ],
+            "fullName": "C25 H2 zero-count anchors Z3. a CORRECT zero-count anchor keeps its meaning: empty log opens cleanly; disk records beyond it are an uncommitted tail",
+            "status": "passed",
+            "title": "Z3. a CORRECT zero-count anchor keeps its meaning: empty log opens cleanly; disk records beyond it are an uncommitted tail",
+            "duration": 26.078488000000107,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C25 H2 committed-prefix verification during recovery"
+            ],
+            "fullName": "C25 H2 committed-prefix verification during recovery P1. same-size corruption of committed events bytes before recovery \u2192 recovery refused, seal/marker kept, blocked; host decision required",
+            "status": "passed",
+            "title": "P1. same-size corruption of committed events bytes before recovery \u2192 recovery refused, seal/marker kept, blocked; host decision required",
+            "duration": 99.41991199999984,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C25 H2 committed-prefix verification during recovery"
+            ],
+            "fullName": "C25 H2 committed-prefix verification during recovery P1. same-size corruption of committed events bytes at recover:before-truncate \u2192 recovery refused, seal/marker kept, blocked; host decision required",
+            "status": "passed",
+            "title": "P1. same-size corruption of committed events bytes at recover:before-truncate \u2192 recovery refused, seal/marker kept, blocked; host decision required",
+            "duration": 180.95759099999987,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C25 H2 committed-prefix verification during recovery"
+            ],
+            "fullName": "C25 H2 committed-prefix verification during recovery P1. same-size corruption of committed events bytes at recover:before-clear \u2192 recovery refused, seal/marker kept, blocked; host decision required",
+            "status": "passed",
+            "title": "P1. same-size corruption of committed events bytes at recover:before-clear \u2192 recovery refused, seal/marker kept, blocked; host decision required",
+            "duration": 252.1555040000003,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C25 H2 committed-prefix verification during recovery"
+            ],
+            "fullName": "C25 H2 committed-prefix verification during recovery P1. same-size corruption of committed evidence bytes before recovery \u2192 recovery refused, seal/marker kept, blocked; host decision required",
+            "status": "passed",
+            "title": "P1. same-size corruption of committed evidence bytes before recovery \u2192 recovery refused, seal/marker kept, blocked; host decision required",
+            "duration": 152.61296399999992,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C25 H2 committed-prefix verification during recovery"
+            ],
+            "fullName": "C25 H2 committed-prefix verification during recovery P1. same-size corruption of committed evidence bytes at recover:before-truncate \u2192 recovery refused, seal/marker kept, blocked; host decision required",
+            "status": "passed",
+            "title": "P1. same-size corruption of committed evidence bytes at recover:before-truncate \u2192 recovery refused, seal/marker kept, blocked; host decision required",
+            "duration": 223.59184599999935,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C25 H2 committed-prefix verification during recovery"
+            ],
+            "fullName": "C25 H2 committed-prefix verification during recovery P1. same-size corruption of committed evidence bytes at recover:before-clear \u2192 recovery refused, seal/marker kept, blocked; host decision required",
+            "status": "passed",
+            "title": "P1. same-size corruption of committed evidence bytes at recover:before-clear \u2192 recovery refused, seal/marker kept, blocked; host decision required",
+            "duration": 194.64895799999977,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C25 H2 committed-prefix verification during recovery"
+            ],
+            "fullName": "C25 H2 committed-prefix verification during recovery P2. control: uncorrupted committed prefix \u2192 recovery succeeds and clears seal and marker",
+            "status": "passed",
+            "title": "P2. control: uncorrupted committed prefix \u2192 recovery succeeds and clears seal and marker",
+            "duration": 182.55543500000022,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670569133,
+        "endTime": 1791670573408.5554,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c25-h2-zero-anchor-prefix-recovery.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 limits"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 limits 0. explicit limits exist: frame cap, diagnostic stream cap, diagnostic detail cap",
+            "status": "passed",
+            "title": "0. explicit limits exist: frame cap, diagnostic stream cap, diagnostic detail cap",
+            "duration": 2.51562100000001,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 transport (fake child)"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 transport (fake child) 1. an oversized DVL1 frame is rejected BEFORE JSON.parse and the transport fails closed",
+            "status": "passed",
+            "title": "1. an oversized DVL1 frame is rejected BEFORE JSON.parse and the transport fails closed",
+            "duration": 26.73516699999982,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 transport (fake child)"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 transport (fake child) 2. a valid frame exactly AT the limit (and below) is accepted",
+            "status": "passed",
+            "title": "2. a valid frame exactly AT the limit (and below) is accepted",
+            "duration": 34.70995000000016,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 transport (fake child)"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 transport (fake child) 3. a malformed DVL1 frame is rejected (no state), fails closed; later valid frames are not processed",
+            "status": "passed",
+            "title": "3. a malformed DVL1 frame is rejected (no state), fails closed; later valid frames are not processed",
+            "duration": 16.50301599999966,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 transport (fake child)"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 transport (fake child) 4. a partial / truncated frame at EOF (no terminating newline) is never parsed into a frame",
+            "status": "passed",
+            "title": "4. a partial / truncated frame at EOF (no terminating newline) is never parsed into a frame",
+            "duration": 10.7118389999996,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 transport (fake child)"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 transport (fake child) 5. rejected input produces bounded, escaped diagnostics only",
+            "status": "passed",
+            "title": "5. rejected input produces bounded, escaped diagnostics only",
+            "duration": 11.482766000000083,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 transport (fake child)"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 transport (fake child) 6. huge stderr noise is bounded on disk; excess is counted and dropped; draining continues",
+            "status": "passed",
+            "title": "6. huge stderr noise is bounded on disk; excess is counted and dropped; draining continues",
+            "duration": 38.25434299999961,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 transport (fake child)"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 transport (fake child) 7. huge stdout noise is bounded on disk; an over-long NON-frame line is discarded, not fatal",
+            "status": "passed",
+            "title": "7. huge stdout noise is bounded on disk; an over-long NON-frame line is discarded, not fatal",
+            "duration": 20263.476858,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 transport (fake child)"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 transport (fake child) 8. many small frames cannot grow memory: the queue is bounded and seals (fail closed)",
+            "status": "passed",
+            "title": "8. many small frames cannot grow memory: the queue is bounded and seals (fail closed)",
+            "duration": 342.16486799999984,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 Kernel (real adapter)"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 Kernel (real adapter) 9. oversized frame (2 MiB): no Kernel state change from the input; the instance is halted (fail closed); diagnostics bounded",
+            "status": "passed",
+            "title": "9. oversized frame (2 MiB): no Kernel state change from the input; the instance is halted (fail closed); diagnostics bounded",
+            "duration": 650.2800439999992,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 Kernel (real adapter)"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 Kernel (real adapter) 9. malformed frame: no Kernel state change from the input; the instance is halted (fail closed); diagnostics bounded",
+            "status": "passed",
+            "title": "9. malformed frame: no Kernel state change from the input; the instance is halted (fail closed); diagnostics bounded",
+            "duration": 619.219465000002,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 Kernel (real adapter)"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 Kernel (real adapter) 10. partial frame at EOF from the real adapter: never applied (no Evidence for the action)",
+            "status": "passed",
+            "title": "10. partial frame at EOF from the real adapter: never applied (no Evidence for the action)",
+            "duration": 555.214433000001,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 Kernel (real adapter)"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 Kernel (real adapter) 11. valid traffic still works: a 100 KiB inline payload (below the frame cap) and H1/H2 scenarios finish",
+            "status": "passed",
+            "title": "11. valid traffic still works: a 100 KiB inline payload (below the frame cap) and H1/H2 scenarios finish",
+            "duration": 4805.749184,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 review fixes"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 review fixes 12. an OPEN oversized DVL1 line is rejected the moment it crosses the cap \u2014 no newline/EOF needed; reported once",
+            "status": "passed",
+            "title": "12. an OPEN oversized DVL1 line is rejected the moment it crosses the cap \u2014 no newline/EOF needed; reported once",
+            "duration": 46.404333999998926,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 review fixes"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 review fixes 13. Kernel: a completion queued behind a gated frame never becomes Evidence once an open oversized line crosses the cap",
+            "status": "passed",
+            "title": "13. Kernel: a completion queued behind a gated frame never becomes Evidence once an open oversized line crosses the cap",
+            "duration": 519.414127,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 review fixes"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 review fixes 14. Kernel: an oversized open line from a STALE instance is recorded, never halts the current instance",
+            "status": "passed",
+            "title": "14. Kernel: an oversized open line from a STALE instance is recorded, never halts the current instance",
+            "duration": 1258.6201029999975,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 review fixes"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 review fixes 15. after the seal, refused DVL1 lines are stored as bounded escaped records \u2014 never raw, never parsed",
+            "status": "passed",
+            "title": "15. after the seal, refused DVL1 lines are stored as bounded escaped records \u2014 never raw, never parsed",
+            "duration": 11.901064000001497,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 review fixes"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 review fixes 16. every diagnostic stream stops at EXACTLY the cap (marker included): crossing by one byte, many small writes, queue overflow",
+            "status": "passed",
+            "title": "16. every diagnostic stream stops at EXACTLY the cap (marker included): crossing by one byte, many small writes, queue overflow",
+            "duration": 21546.105569999996,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 review fixes"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 review fixes 17. the overflow preview owns at most its 256 bytes; no full-size concatenation of an over-cap line",
+            "status": "passed",
+            "title": "17. the overflow preview owns at most its 256 bytes; no full-size concatenation of an over-cap line",
+            "duration": 84.17871000000014,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 review fixes"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 review fixes 18. the FIRST refused batch uses the same budgeted collection: exact cap, whole escaped records, exact accounting; later batches too",
+            "status": "passed",
+            "title": "18. the FIRST refused batch uses the same budgeted collection: exact cap, whole escaped records, exact accounting; later batches too",
+            "duration": 5937.864960999999,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 review fixes"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 review fixes 19. escaped previews never split an escape: \u2264 cap, always decodable, a prefix of the input, no raw control characters",
+            "status": "passed",
+            "title": "19. escaped previews never split an escape: \u2264 cap, always decodable, a prefix of the input, no raw control characters",
+            "duration": 206.18117200000415,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 review fixes"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 review fixes 20. hostile refused-frame previews truncated near the limit still decode; the C08 reader recovers adapterSequence order",
+            "status": "passed",
+            "title": "20. hostile refused-frame previews truncated near the limit still decode; the C08 reader recovers adapterSequence order",
+            "duration": 48.67168800000218,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 terminal diagnostic cap"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 terminal diagnostic cap 21. stdout noise: after the marker a later smaller line (that fits the arithmetic budget) is dropped and counted; marker stays last",
+            "status": "passed",
+            "title": "21. stdout noise: after the marker a later smaller line (that fits the arithmetic budget) is dropped and counted; marker stays last",
+            "duration": 622.2586579999988,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 terminal diagnostic cap"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 terminal diagnostic cap 22. refused DVL1 records, LATER batch: after the marker a later smaller refused record is dropped and counted; marker stays last",
+            "status": "passed",
+            "title": "22. refused DVL1 records, LATER batch: after the marker a later smaller refused record is dropped and counted; marker stays last",
+            "duration": 3881.2904800000033,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 terminal diagnostic cap"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 terminal diagnostic cap 23. refused DVL1 records, FIRST batch: trigger and a smaller record in the batch that creates the file; and trigger first, smaller record later",
+            "status": "passed",
+            "title": "23. refused DVL1 records, FIRST batch: trigger and a smaller record in the batch that creates the file; and trigger first, smaller record later",
+            "duration": 10523.494758999994,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 terminal diagnostic cap"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 terminal diagnostic cap 24. stderr: after the marker nothing is appended; every later byte is counted as dropped",
+            "status": "passed",
+            "title": "24. stderr: after the marker nothing is appended; every later byte is counted as dropped",
+            "duration": 78.69814700000279,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C26 H3 transport input bounding \u2014 terminal diagnostic cap"
+            ],
+            "fullName": "C26 H3 transport input bounding \u2014 terminal diagnostic cap 25. the terminal state also holds without arithmetic exhaustion: a capped stream with room left never writes payload or a second marker",
+            "status": "passed",
+            "title": "25. the terminal state also holds without arithmetic exhaustion: a capped stream with room left never writes payload or a second marker",
+            "duration": 13.41916800000763,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670454978,
+        "endTime": 1791670527138.4192,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c26-h3-transport-input-bounding.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C27 H4 Kernel crash replay \u2014 'synthetic project'"
+            ],
+            "fullName": "C27 H4 Kernel crash replay \u2014 'synthetic project' 1. Kernel SIGKILLed mid-run: replay rebuilds the run as interrupted, never finished; the probe stays staged",
+            "status": "passed",
+            "title": "1. Kernel SIGKILLed mid-run: replay rebuilds the run as interrupted, never finished; the probe stays staged",
+            "duration": 2113.6440749999997,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C27 H4 Kernel crash replay \u2014 'synthetic project'"
+            ],
+            "fullName": "C27 H4 Kernel crash replay \u2014 'synthetic project' 2. after restart: interruption recorded once, the old binding is fenced, recovery only via retryRun",
+            "status": "passed",
+            "title": "2. after restart: interruption recorded once, the old binding is fenced, recovery only via retryRun",
+            "duration": 3198.660207,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C27 H4 Kernel crash replay \u2014 'synthetic project'"
+            ],
+            "fullName": "C27 H4 Kernel crash replay \u2014 'synthetic project' 3. crash after the adapter's run.finished was committed but before the Kernel's verdict: not a completion",
+            "status": "passed",
+            "title": "3. crash after the adapter's run.finished was committed but before the Kernel's verdict: not a completion",
+            "duration": 671.5308009999999,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C27 H4 Kernel crash replay \u2014 'synthetic project'"
+            ],
+            "fullName": "C27 H4 Kernel crash replay \u2014 'synthetic project' 4. crash window after durable action.started: replay marks the effect unknown and retry is held",
+            "status": "passed",
+            "title": "4. crash window after durable action.started: replay marks the effect unknown and retry is held",
+            "duration": 1503.4715930000002,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C27 H4 Kernel crash replay \u2014 'synthetic project'"
+            ],
+            "fullName": "C27 H4 Kernel crash replay \u2014 'synthetic project' 5. reconciliation is durable: restart replays the resolved outcome and retry is allowed",
+            "status": "passed",
+            "title": "5. reconciliation is durable: restart replays the resolved outcome and retry is allowed",
+            "duration": 2721.7119270000003,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C27 H4 Kernel crash replay \u2014 'synthetic project'"
+            ],
+            "fullName": "C27 H4 Kernel crash replay \u2014 'synthetic project' 6. physical SIGKILL after durable action.started: restart records UNKNOWN and retry stays held",
+            "status": "passed",
+            "title": "6. physical SIGKILL after durable action.started: restart records UNKNOWN and retry stays held",
+            "duration": 1944.7141439999996,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C27 H4 Kernel crash replay \u2014 'synthetic project'"
+            ],
+            "fullName": "C27 H4 Kernel crash replay \u2014 'synthetic project' 7. oversized action.started survives spooling: replay restores UNKNOWN and retry stays held",
+            "status": "passed",
+            "title": "7. oversized action.started survives spooling: replay restores UNKNOWN and retry stays held",
+            "duration": 2120.9973790000004,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C27 H4 Kernel crash replay \u2014 'khedma.tn'"
+            ],
+            "fullName": "C27 H4 Kernel crash replay \u2014 'khedma.tn' 1. Kernel SIGKILLed mid-run: replay rebuilds the run as interrupted, never finished; the probe stays staged",
+            "status": "passed",
+            "title": "1. Kernel SIGKILLed mid-run: replay rebuilds the run as interrupted, never finished; the probe stays staged",
+            "duration": 1649.0074839999997,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C27 H4 Kernel crash replay \u2014 'khedma.tn'"
+            ],
+            "fullName": "C27 H4 Kernel crash replay \u2014 'khedma.tn' 2. after restart: interruption recorded once, the old binding is fenced, recovery only via retryRun",
+            "status": "passed",
+            "title": "2. after restart: interruption recorded once, the old binding is fenced, recovery only via retryRun",
+            "duration": 2732.884109999999,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C27 H4 Kernel crash replay \u2014 'khedma.tn'"
+            ],
+            "fullName": "C27 H4 Kernel crash replay \u2014 'khedma.tn' 3. crash after the adapter's run.finished was committed but before the Kernel's verdict: not a completion",
+            "status": "passed",
+            "title": "3. crash after the adapter's run.finished was committed but before the Kernel's verdict: not a completion",
+            "duration": 825.4490259999984,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C27 H4 Kernel crash replay \u2014 'khedma.tn'"
+            ],
+            "fullName": "C27 H4 Kernel crash replay \u2014 'khedma.tn' 4. crash window after durable action.started: replay marks the effect unknown and retry is held",
+            "status": "passed",
+            "title": "4. crash window after durable action.started: replay marks the effect unknown and retry is held",
+            "duration": 1147.1215540000012,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C27 H4 Kernel crash replay \u2014 'khedma.tn'"
+            ],
+            "fullName": "C27 H4 Kernel crash replay \u2014 'khedma.tn' 5. reconciliation is durable: restart replays the resolved outcome and retry is allowed",
+            "status": "passed",
+            "title": "5. reconciliation is durable: restart replays the resolved outcome and retry is allowed",
+            "duration": 2011.508758,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C27 H4 Kernel crash replay \u2014 'khedma.tn'"
+            ],
+            "fullName": "C27 H4 Kernel crash replay \u2014 'khedma.tn' 6. physical SIGKILL after durable action.started: restart records UNKNOWN and retry stays held",
+            "status": "passed",
+            "title": "6. physical SIGKILL after durable action.started: restart records UNKNOWN and retry stays held",
+            "duration": 2441.7773129999987,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C27 H4 Kernel crash replay \u2014 'khedma.tn'"
+            ],
+            "fullName": "C27 H4 Kernel crash replay \u2014 'khedma.tn' 7. oversized action.started survives spooling: replay restores UNKNOWN and retry stays held",
+            "status": "passed",
+            "title": "7. oversized action.started survives spooling: replay restores UNKNOWN and retry stays held",
+            "duration": 2383.8067459999984,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670454981,
+        "endTime": 1791670482450.8066,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c27-h4-kernel-crash-replay.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C28 H4 single-Kernel root ownership"
+            ],
+            "fullName": "C28 H4 single-Kernel root ownership 1. a started Kernel owns its root; shutdown releases it to a fresh Kernel only",
+            "status": "passed",
+            "title": "1. a started Kernel owns its root; shutdown releases it to a fresh Kernel only",
+            "duration": 1504.060781,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C28 H4 single-Kernel root ownership"
+            ],
+            "fullName": "C28 H4 single-Kernel root ownership 2. a second Kernel is refused while the first is alive, and writes nothing",
+            "status": "passed",
+            "title": "2. a second Kernel is refused while the first is alive, and writes nothing",
+            "duration": 1222.16887,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C28 H4 single-Kernel root ownership"
+            ],
+            "fullName": "C28 H4 single-Kernel root ownership 3. a paused (SIGSTOP) owner still blocks takeover",
+            "status": "passed",
+            "title": "3. a paused (SIGSTOP) owner still blocks takeover",
+            "duration": 1273.5899,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C28 H4 single-Kernel root ownership"
+            ],
+            "fullName": "C28 H4 single-Kernel root ownership 4. after the owner is SIGKILLed a fresh Kernel takes over; the owner's live adapter child holds no lock",
+            "status": "passed",
+            "title": "4. after the owner is SIGKILLed a fresh Kernel takes over; the owner's live adapter child holds no lock",
+            "duration": 2487.1518609999994,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C28 H4 single-Kernel root ownership"
+            ],
+            "fullName": "C28 H4 single-Kernel root ownership 5. a non-owner Kernel cannot reconcile an UNKNOWN action or write Kernel Truth",
+            "status": "passed",
+            "title": "5. a non-owner Kernel cannot reconcile an UNKNOWN action or write Kernel Truth",
+            "duration": 1006.075347,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670594134,
+        "endTime": 1791670601627.0754,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c28-h4-root-ownership.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C29 B3 surviving recovery executor"
+            ],
+            "fullName": "C29 B3 surviving recovery executor kills the detached survivor and its late-writing descendant before a reconciled retry",
+            "status": "passed",
+            "title": "kills the detached survivor and its late-writing descendant before a reconciled retry",
+            "duration": 2789.084215,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C29 B3 surviving recovery executor"
+            ],
+            "fullName": "C29 B3 surviving recovery executor kill failure preserves HOLD even after reconciliation; the old writer continues, with no retry mutation",
+            "status": "passed",
+            "title": "kill failure preserves HOLD even after reconciliation; the old writer continues, with no retry mutation",
+            "duration": 3195.6490510000003,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C29 B3 surviving recovery executor"
+            ],
+            "fullName": "C29 B3 surviving recovery executor a dead leader with surviving writer is held when its group incarnation cannot be proven",
+            "status": "passed",
+            "title": "a dead leader with surviving writer is held when its group incarnation cannot be proven",
+            "duration": 2206.968437999999,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C29 B3 surviving recovery executor"
+            ],
+            "fullName": "C29 B3 surviving recovery executor a late same-size write restarts the quiescence window before recovery is released",
+            "status": "passed",
+            "title": "a late same-size write restarts the quiescence window before recovery is released",
+            "duration": 1768.2649280000005,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C29 platform/OS failure boundaries"
+            ],
+            "fullName": "C29 platform/OS failure boundaries linux waits for group exit after kill returns",
+            "status": "passed",
+            "title": "linux waits for group exit after kill returns",
+            "duration": 51.26871000000028,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C29 platform/OS failure boundaries"
+            ],
+            "fullName": "C29 platform/OS failure boundaries darwin waits for group exit after kill returns",
+            "status": "passed",
+            "title": "darwin waits for group exit after kill returns",
+            "duration": 50.724505000000136,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C29 platform/OS failure boundaries"
+            ],
+            "fullName": "C29 platform/OS failure boundaries a successful signal with a still-live group times out instead of permitting replay",
+            "status": "passed",
+            "title": "a successful signal with a still-live group times out instead of permitting replay",
+            "duration": 26.600922999999966,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C29 platform/OS failure boundaries"
+            ],
+            "fullName": "C29 platform/OS failure boundaries Windows does not treat taskkill/leader exit as a proven process-tree fence",
+            "status": "passed",
+            "title": "Windows does not treat taskkill/leader exit as a proven process-tree fence",
+            "duration": 0.5190860000002431,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C29 platform/OS failure boundaries"
+            ],
+            "fullName": "C29 platform/OS failure boundaries unsupported recovery enters Kernel HOLD despite durable CONFIRMED_NOT_DONE",
+            "status": "passed",
+            "title": "unsupported recovery enters Kernel HOLD despite durable CONFIRMED_NOT_DONE",
+            "duration": 1827.1055830000005,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C29 platform/OS failure boundaries"
+            ],
+            "fullName": "C29 platform/OS failure boundaries PID reuse and a legacy live group with no incarnation are held without signalling",
+            "status": "passed",
+            "title": "PID reuse and a legacy live group with no incarnation are held without signalling",
+            "duration": 1.2618119999988266,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C29 platform/OS failure boundaries"
+            ],
+            "fullName": "C29 platform/OS failure boundaries an inaccessible process table preserves uncertainty",
+            "status": "passed",
+            "title": "an inaccessible process table preserves uncertainty",
+            "duration": 0.6257559999994555,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670567413,
+        "endTime": 1791670579333.6257,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c29-h4-recovery-process-fence.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C30 B4 durable-before-effect"
+            ],
+            "fullName": "C30 B4 durable-before-effect 1. physical crash before PREPARED: no authority and no external effect existed",
+            "status": "passed",
+            "title": "1. physical crash before PREPARED: no authority and no external effect existed",
+            "duration": 2447.404285,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C30 B4 durable-before-effect"
+            ],
+            "fullName": "C30 B4 durable-before-effect 2. physical crash at prepared before effect: replay is UNKNOWN until trusted NOT_DONE inspection",
+            "status": "passed",
+            "title": "2. physical crash at prepared before effect: replay is UNKNOWN until trusted NOT_DONE inspection",
+            "duration": 1945.7842539999997,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C30 B4 durable-before-effect"
+            ],
+            "fullName": "C30 B4 durable-before-effect 2. physical crash at authorized before effect: replay is UNKNOWN until trusted NOT_DONE inspection",
+            "status": "passed",
+            "title": "2. physical crash at authorized before effect: replay is UNKNOWN until trusted NOT_DONE inspection",
+            "duration": 2112.529332,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C30 B4 durable-before-effect"
+            ],
+            "fullName": "C30 B4 durable-before-effect 2. physical crash at started before effect: replay is UNKNOWN until trusted NOT_DONE inspection",
+            "status": "passed",
+            "title": "2. physical crash at started before effect: replay is UNKNOWN until trusted NOT_DONE inspection",
+            "duration": 2757.7432959999996,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C30 B4 durable-before-effect"
+            ],
+            "fullName": "C30 B4 durable-before-effect 3. physical crash after external effect but before outcome: UNKNOWN; inspection resolves DONE without repeating the effect",
+            "status": "passed",
+            "title": "3. physical crash after external effect but before outcome: UNKNOWN; inspection resolves DONE without repeating the effect",
+            "duration": 2922.6168879999987,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C30 B4 durable-before-effect"
+            ],
+            "fullName": "C30 B4 durable-before-effect 4. physical crash after durable outcome: confirmed replay reuses the semantic effect on attempt 2",
+            "status": "passed",
+            "title": "4. physical crash after durable outcome: confirmed replay reuses the semantic effect on attempt 2",
+            "duration": 2589.928952,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C30 B4 durable-before-effect"
+            ],
+            "fullName": "C30 B4 durable-before-effect 5. surviving old executor: even NOT_DONE cannot bypass B3 kill failure",
+            "status": "passed",
+            "title": "5. surviving old executor: even NOT_DONE cannot bypass B3 kill failure",
+            "duration": 2035.491849,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C30 B4 durable-before-effect"
+            ],
+            "fullName": "C30 B4 durable-before-effect fsync failure at kernel.action_prepared never calls the effect executor",
+            "status": "passed",
+            "title": "fsync failure at kernel.action_prepared never calls the effect executor",
+            "duration": 667.9935360000018,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C30 B4 durable-before-effect"
+            ],
+            "fullName": "C30 B4 durable-before-effect fsync failure at kernel.action_execution_authorized never calls the effect executor",
+            "status": "passed",
+            "title": "fsync failure at kernel.action_execution_authorized never calls the effect executor",
+            "duration": 786.4812999999995,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C30 B4 durable-before-effect"
+            ],
+            "fullName": "C30 B4 durable-before-effect fsync failure at kernel.action_execution_started never calls the effect executor",
+            "status": "passed",
+            "title": "fsync failure at kernel.action_execution_started never calls the effect executor",
+            "duration": 881.4590029999999,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C30 B4 durable-before-effect"
+            ],
+            "fullName": "C30 B4 durable-before-effect outcome fsync failure preserves UNKNOWN through explicit tail recovery; the external effect is not repeated",
+            "status": "passed",
+            "title": "outcome fsync failure preserves UNKNOWN through explicit tail recovery; the external effect is not repeated",
+            "duration": 1587.9044070000018,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C30 B4 durable-before-effect"
+            ],
+            "fullName": "C30 B4 durable-before-effect failed host commit publication at PREPARED grants no effect authority",
+            "status": "passed",
+            "title": "failed host commit publication at PREPARED grants no effect authority",
+            "duration": 1067.4797440000002,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C30 B4 durable-before-effect"
+            ],
+            "fullName": "C30 B4 durable-before-effect uninspectable external state remains UNKNOWN and blocks retry",
+            "status": "passed",
+            "title": "uninspectable external state remains UNKNOWN and blocks retry",
+            "duration": 2132.5344239999977,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C30 B4 durable-before-effect"
+            ],
+            "fullName": "C30 B4 durable-before-effect shutdown retains root ownership while a Kernel-owned executor can still apply an effect",
+            "status": "passed",
+            "title": "shutdown retains root ownership while a Kernel-owned executor can still apply an effect",
+            "duration": 917.2088490000024,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C30 B4 durable-before-effect"
+            ],
+            "fullName": "C30 B4 durable-before-effect duplicate request (same-id) cannot cause a second execution",
+            "status": "passed",
+            "title": "duplicate request (same-id) cannot cause a second execution",
+            "duration": 867.0678550000011,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C30 B4 durable-before-effect"
+            ],
+            "fullName": "C30 B4 durable-before-effect duplicate request (new-id) cannot cause a second execution",
+            "status": "passed",
+            "title": "duplicate request (new-id) cannot cause a second execution",
+            "duration": 913.6893830000008,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C30 B4 durable-before-effect"
+            ],
+            "fullName": "C30 B4 durable-before-effect a provider FINISHED claim cannot close a prepared action after the trusted executor's outcome was lost",
+            "status": "passed",
+            "title": "a provider FINISHED claim cannot close a prepared action after the trusted executor's outcome was lost",
+            "duration": 1540.8931010000015,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C30 B4 durable-before-effect"
+            ],
+            "fullName": "C30 B4 durable-before-effect a host operation identity with conflicting semantics cannot reuse an outcome or authorize a new effect",
+            "status": "passed",
+            "title": "a host operation identity with conflicting semantics cannot reuse an outcome or authorize a new effect",
+            "duration": 1915.3890710000014,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C30 B4 durable-before-effect"
+            ],
+            "fullName": "C30 B4 durable-before-effect provider-native execution mode is refused before dispatch, so there is no second execution lane",
+            "status": "passed",
+            "title": "provider-native execution mode is refused before dispatch, so there is no second execution lane",
+            "duration": 726.1281229999986,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C30 B4 durable-before-effect"
+            ],
+            "fullName": "C30 B4 durable-before-effect an intent selecting provider-native ownership receives no Kernel grant or effect",
+            "status": "passed",
+            "title": "an intent selecting provider-native ownership receives no Kernel grant or effect",
+            "duration": 752.242330000001,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C30 B4 durable-before-effect"
+            ],
+            "fullName": "C30 B4 durable-before-effect a prepared run cannot fall back to an unmediated adapter after restart",
+            "status": "passed",
+            "title": "a prepared run cannot fall back to an unmediated adapter after restart",
+            "duration": 1827.1131569999961,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C30 B4 durable-before-effect"
+            ],
+            "fullName": "C30 B4 durable-before-effect OS confinement prevents the reproduced direct effect before durable PREPARED and on retry",
+            "status": "passed",
+            "title": "OS confinement prevents the reproduced direct effect before durable PREPARED and on retry",
+            "duration": 1890.710858999999,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [],
+            "fullName": "B4 refuses effects when durable fsync/host authority is absent",
+            "status": "passed",
+            "title": "B4 refuses effects when durable fsync/host authority is absent",
+            "duration": 1.5621470000041882,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670521575,
+        "endTime": 1791670556865.5623,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c30-h4-b4-durable-before-effect.test.ts"
+      },
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [
+              "C31 enforced provider confinement (actual Seatbelt)"
+            ],
+            "fullName": "C31 enforced provider confinement (actual Seatbelt) denies filesystem escape before PREPARED and changes no disposable external state",
+            "status": "passed",
+            "title": "denies filesystem escape before PREPARED and changes no disposable external state",
+            "duration": 938.8883159999998,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C31 enforced provider confinement (actual Seatbelt)"
+            ],
+            "fullName": "C31 enforced provider confinement (actual Seatbelt) denies network escape before PREPARED and changes no disposable external state",
+            "status": "passed",
+            "title": "denies network escape before PREPARED and changes no disposable external state",
+            "duration": 508.8014360000002,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C31 enforced provider confinement (actual Seatbelt)"
+            ],
+            "fullName": "C31 enforced provider confinement (actual Seatbelt) denies database escape before PREPARED and changes no disposable external state",
+            "status": "passed",
+            "title": "denies database escape before PREPARED and changes no disposable external state",
+            "duration": 575.8782000000001,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C31 enforced provider confinement (actual Seatbelt)"
+            ],
+            "fullName": "C31 enforced provider confinement (actual Seatbelt) denies api escape before PREPARED and changes no disposable external state",
+            "status": "passed",
+            "title": "denies api escape before PREPARED and changes no disposable external state",
+            "duration": 494.87497299999995,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C31 enforced provider confinement (actual Seatbelt)"
+            ],
+            "fullName": "C31 enforced provider confinement (actual Seatbelt) denies credentials escape before PREPARED and changes no disposable external state",
+            "status": "passed",
+            "title": "denies credentials escape before PREPARED and changes no disposable external state",
+            "duration": 583.835916,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C31 enforced provider confinement (actual Seatbelt)"
+            ],
+            "fullName": "C31 enforced provider confinement (actual Seatbelt) denies shell escape before PREPARED and changes no disposable external state",
+            "status": "passed",
+            "title": "denies shell escape before PREPARED and changes no disposable external state",
+            "duration": 465.2846639999998,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C31 enforced provider confinement (actual Seatbelt)"
+            ],
+            "fullName": "C31 enforced provider confinement (actual Seatbelt) denies subprocess escape before PREPARED and changes no disposable external state",
+            "status": "passed",
+            "title": "denies subprocess escape before PREPARED and changes no disposable external state",
+            "duration": 509.6930080000002,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C31 enforced provider confinement (actual Seatbelt)"
+            ],
+            "fullName": "C31 enforced provider confinement (actual Seatbelt) denies relax escape before PREPARED and changes no disposable external state",
+            "status": "passed",
+            "title": "denies relax escape before PREPARED and changes no disposable external state",
+            "duration": 546.1860720000004,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C31 enforced provider confinement (actual Seatbelt)"
+            ],
+            "fullName": "C31 enforced provider confinement (actual Seatbelt) denies a native effect proposal's direct POST while executing exactly one durable broker effect",
+            "status": "passed",
+            "title": "denies a native effect proposal's direct POST while executing exactly one durable broker effect",
+            "duration": 617.6316139999999,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C31 enforced provider confinement (actual Seatbelt)"
+            ],
+            "fullName": "C31 enforced provider confinement (actual Seatbelt) counterevidence: the remaining legacy native launch can mutate twice across Kernel reconstruction with zero durable actions",
+            "status": "passed",
+            "title": "counterevidence: the remaining legacy native launch can mutate twice across Kernel reconstruction with zero durable actions",
+            "duration": 1159.5196860000005,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C31 enforced provider confinement (actual Seatbelt)"
+            ],
+            "fullName": "C31 enforced provider confinement (actual Seatbelt) a confined dvl_tools provider without a durable broker is held before dispatch",
+            "status": "passed",
+            "title": "a confined dvl_tools provider without a durable broker is held before dispatch",
+            "duration": 296.26798899999994,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [
+              "C31 enforced provider confinement (actual Seatbelt)"
+            ],
+            "fullName": "C31 enforced provider confinement (actual Seatbelt) missing enforced confinement fails before provider spawn or run dispatch",
+            "status": "passed",
+            "title": "missing enforced confinement fails before provider spawn or run dispatch",
+            "duration": 57.581936999999925,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [],
+            "fullName": "no verified linux confinement backend: launch is refused, never silently unconfined",
+            "status": "passed",
+            "title": "no verified linux confinement backend: launch is refused, never silently unconfined",
+            "duration": 1.0200409999997646,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [],
+            "fullName": "no verified win32 confinement backend: launch is refused, never silently unconfined",
+            "status": "passed",
+            "title": "no verified win32 confinement backend: launch is refused, never silently unconfined",
+            "duration": 0.6592370000007577,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [],
+            "fullName": "rejects credential-bearing environment overrides instead of trusting provider declarations",
+            "status": "passed",
+            "title": "rejects credential-bearing environment overrides instead of trusting provider declarations",
+            "duration": 1.4888810000002195,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791670586170,
+        "endTime": 1791670592928.4888,
+        "status": "passed",
+        "message": "",
+        "name": "/Users/user/Desktop/dvl-spike-phase-1/dvl-spike/src/conformance/c31-h4-provider-confinement.test.ts"
+      }
+    ]
+  }
+}

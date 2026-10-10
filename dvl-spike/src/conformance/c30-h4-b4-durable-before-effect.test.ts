@@ -26,6 +26,7 @@ const fixture = () => ({ root: tempRoot("c30-project"), ledger: path.join(tempRo
 const entries = (ledger: string) => fs.existsSync(ledger) ? fs.readFileSync(ledger, "utf8").split("\n").filter(Boolean) : [];
 const mediated = (f: ReturnType<typeof fixture>, extra: Partial<KernelOptions> = {}) => track(kernelOn(f.root, {
   adapterCommand: command, fsync: true, spikeEffectExecutor: new ExternalLedgerExecutor(f.ledger), ...extra,
+  providerConfinement: { codeReadPaths: [path.join(here, "../../package.json"), here, path.join(here, "../kernel/types.ts"), path.dirname(path.dirname(path.dirname(createRequire(import.meta.url).resolve("tsx"))))], publicEnv: extra.adapterEnv },
 }));
 async function until(predicate: () => boolean) {
   const deadline = Date.now() + 10_000;
@@ -50,7 +51,7 @@ async function crashAt(boundary: SpikeActionBoundary | "unmediated") {
     if (msg.ready) { ready = msg; groups.push(msg.execution.pid); }
   });
   host.stdin.write(JSON.stringify({ ...f, keyHex: keyFor(f.root).toString("hex"), command, boundary,
-    unmediated: boundary === "unmediated", adapterEnv: boundary === "unmediated" ? { DVL_B4_UNMEDIATED_LEDGER: f.ledger } : {},
+    unmediated: boundary === "unmediated", adapterEnv: boundary === "unmediated" ? { DVL_PUBLIC_B4_UNMEDIATED_LEDGER: f.ledger } : {},
   }) + "\n");
   try { await until(() => !!ready || host.exitCode !== null); }
   finally { host.kill("SIGKILL"); await exited; lines.close(); }
@@ -59,7 +60,7 @@ async function crashAt(boundary: SpikeActionBoundary | "unmediated") {
   return { ...f, heads, ...ready };
 }
 
-describe.skipIf(process.platform === "win32")("C30 B4 durable-before-effect", () => {
+describe.skipIf(process.platform !== "darwin")("C30 B4 durable-before-effect", () => {
   it("1. physical crash before PREPARED: no authority and no external effect existed", async () => {
     const f = await crashAt("before_prepared");
     expect(entries(f.ledger)).toHaveLength(0);
@@ -177,6 +178,7 @@ describe.skipIf(process.platform === "win32")("C30 B4 durable-before-effect", ()
     const r = mediated(f, { expectedHeads: f.heads });
     r.start(); await r.describe();
     expect(await r.inspectSpikeActionOutcome(f.run.runId, "act_ledger")).toBe("UNKNOWN");
+    expect(r.recoveryStatus).toMatchObject({ status: "HOLD_RECOVERY_ACTION_UNKNOWN", retryAllowed: false });
     await expect(r.retryRun(f.run.runId, task)).rejects.toThrow("unresolved action outcome");
     expect(r.store.ofType("kernel.action_outcome_reconciled")).toHaveLength(0);
   });
@@ -208,7 +210,7 @@ describe.skipIf(process.platform === "win32")("C30 B4 durable-before-effect", ()
 
   it.each(["same-id", "new-id"])("duplicate request (%s) cannot cause a second execution", async (duplicate) => {
     const f = fixture();
-    const k = mediated(f, { adapterEnv: { DVL_B4_DUPLICATE: duplicate } });
+    const k = mediated(f, { adapterEnv: { DVL_PUBLIC_B4_DUPLICATE: duplicate } });
     k.start(); await k.describe(); const id = await k.startRun(task);
     expect(await k.waitForRunEnd(id.runId)).toBe("finished");
     expect(entries(f.ledger)).toHaveLength(1);
@@ -217,7 +219,7 @@ describe.skipIf(process.platform === "win32")("C30 B4 durable-before-effect", ()
 
   it("a provider FINISHED claim cannot close a prepared action after the trusted executor's outcome was lost", async () => {
     const f = fixture();
-    const k = mediated(f, { adapterEnv: { DVL_B4_FORGE_FINISH: "1" }, spikeActionBoundary: async (point) => {
+    const k = mediated(f, { adapterEnv: { DVL_PUBLIC_B4_FORGE_FINISH: "1" }, spikeActionBoundary: async (point) => {
       if (point === "effect_returned") throw new Error("lost trusted executor outcome");
     } });
     k.start(); await k.describe(); const id = await k.startRun(task);
@@ -234,7 +236,7 @@ describe.skipIf(process.platform === "win32")("C30 B4 durable-before-effect", ()
     const f = fixture();
     class SingletonLedger extends ExternalLedgerExecutor { operationIdentity() { return "one-host-owned-operation"; } }
     const k = mediated(f, { spikeEffectExecutor: new SingletonLedger(f.ledger),
-      adapterEnv: { DVL_B4_DUPLICATE: "new-id", DVL_B4_CHANGE_DUPLICATE: "1" } });
+      adapterEnv: { DVL_PUBLIC_B4_DUPLICATE: "new-id", DVL_PUBLIC_B4_CHANGE_DUPLICATE: "1" } });
     k.start(); await k.describe(); const id = await k.startRun(task);
     await waitForEvent(k, (e) => e.type === "kernel.transport_issue" && JSON.stringify(e.payload).includes("different action semantics"));
     expect(entries(f.ledger)).toHaveLength(1);
@@ -249,7 +251,7 @@ describe.skipIf(process.platform === "win32")("C30 B4 durable-before-effect", ()
 
   it("provider-native execution mode is refused before dispatch, so there is no second execution lane", async () => {
     const f = fixture();
-    const k = mediated(f, { adapterEnv: { DVL_B4_NATIVE_MODE: "1" } });
+    const k = mediated(f, { adapterEnv: { DVL_PUBLIC_B4_NATIVE_MODE: "1" } });
     k.start(); await k.describe();
     await expect(k.startRun(task)).rejects.toThrow("provider-native execution denied");
     expect(entries(f.ledger)).toHaveLength(0);
@@ -258,7 +260,7 @@ describe.skipIf(process.platform === "win32")("C30 B4 durable-before-effect", ()
 
   it("an intent selecting provider-native ownership receives no Kernel grant or effect", async () => {
     const f = fixture();
-    const k = mediated(f, { adapterEnv: { DVL_B4_REQUEST_NATIVE: "1" } });
+    const k = mediated(f, { adapterEnv: { DVL_PUBLIC_B4_REQUEST_NATIVE: "1" } });
     k.start(); await k.describe(); await k.startRun(task);
     await waitForEvent(k, (e) => e.type === "kernel.transport_issue" && JSON.stringify(e.payload).includes("provider-native execution denied"));
     expect(entries(f.ledger)).toHaveLength(0);
@@ -274,17 +276,17 @@ describe.skipIf(process.platform === "win32")("C30 B4 durable-before-effect", ()
     expect(r.store.ofType("kernel.attempt_created")).toHaveLength(0);
   });
 
-  it("negative control: an unrestricted lying provider can still mutate outside DVL before PREPARED — H4 remains open", async () => {
+  it("OS confinement prevents the reproduced direct effect before durable PREPARED and on retry", async () => {
     const f = await crashAt("unmediated");
-    expect(entries(f.ledger)).toEqual(["unmediated-effect"]);
-    const r = mediated(f, { expectedHeads: f.heads, adapterEnv: { DVL_B4_UNMEDIATED_LEDGER: f.ledger } });
+    expect(entries(f.ledger)).toHaveLength(0);
+    const r = mediated(f, { expectedHeads: f.heads, adapterEnv: { DVL_PUBLIC_B4_UNMEDIATED_LEDGER: f.ledger } });
     expect(r.store.ofType("kernel.action_prepared")).toHaveLength(0);
     expect(r.store.ofType("action.requested")).toHaveLength(0);
     r.start(); await r.describe();
     expect((await r.retryRun(f.run.runId, task)).attempt).toBe(2);
-    await until(() => entries(f.ledger).length >= 2);
-    expect(entries(f.ledger).slice(0, 2)).toEqual(["unmediated-effect", "unmediated-effect"]);
-    // This is counterevidence, not a passing assertion of the universal invariant.
+    expect(await r.waitForRunEnd(f.run.runId)).toBe("finished");
+    expect(entries(f.ledger)).toHaveLength(1);
+    expect(JSON.parse(entries(f.ledger)[0]!).entry).toBe("external-effect");
   });
 });
 
