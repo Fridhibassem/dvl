@@ -38,7 +38,7 @@ describe("C16 atomic retry dispatch (blocker 4)", () => {
   it("retry over a closed transport: attempt 2 is failed_to_start, recorded, and attempt 3 is legal", async () => {
     const k = makeKernel("c16-closed");
     kernels.push(k);
-    const a = await runScenario(k, "crash");
+    const a = await runScenario(k, "worker-start-crash");
     await k.waitClosed(5_000);
     // No restart: the transport is closed, but capabilities from the dead instance remain.
     await expect(k.retryRun(a.id.runId, task("happy"))).rejects.toThrow(/transport closed|not started|dispatch/);
@@ -58,7 +58,7 @@ describe("C16 atomic retry dispatch (blocker 4)", () => {
     const env: Record<string, string> = {};
     const k = makeKernel("c16-timeout", { adapterEnv: env, requestTimeoutMs: REQUEST_TIMEOUT_MS });
     kernels.push(k);
-    const a = await runScenario(k, "crash");
+    const a = await runScenario(k, "worker-start-crash");
     await k.waitClosed(5_000);
     env.DVL_MOCK_ACK_DELAY_MS = String(ACK_DELAY_MS);
     k.restartAdapter();

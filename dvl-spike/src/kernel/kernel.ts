@@ -113,9 +113,27 @@ type RunStatus = "starting" | "running" | "finished" | "failed" | "halted" | "fa
 
 /** Action lifecycle — blocker 2. `finished`/`aborted` are terminal. */
 type ActionState = "requested" | "started" | "finished" | "aborted";
+
+/**
+ * H4 — action lifecycle and effect certainty are separate.
+ *
+ * NOT_STARTED: no effect is known to have occurred — initially because execution never began,
+ *              or after Kernel-authorized reconciliation confirms that no effect occurred.
+ * CONFIRMED: a durable action.finished observation closed the lifecycle, or Kernel-authorized
+ *            reconciliation confirms that the effect occurred.
+ * UNKNOWN: execution started, but DVL does not have durable truth proving whether the effect occurred.
+ *
+ * CONFIRMED is NOT verification that an external side effect succeeded; verification/evidence
+ * remains a separate concern.
+ */
+type ActionEffectCertainty = "NOT_STARTED" | "CONFIRMED" | "UNKNOWN";
+
 interface ActionRecord {
   state: ActionState;
   actorId: string;
+  effectCertainty: ActionEffectCertainty;
+  /** H4 — true only after durable Kernel Truth recorded the unresolved outcome. */
+  outcomeUnknownRecorded: boolean;
 }
 
 /**
@@ -146,6 +164,8 @@ const ACTION_FSM: Record<string, { from: (ActionState | "none")[]; to: ActionSta
 };
 /** Events that are acts OF an actor (vs run-level/informational events). */
 const ACTOR_SCOPED = (type: string) => type.startsWith("actor.") || type.startsWith("action.") || type === "workspace.hint" || type === "approval.requested";
+
+export type ActionOutcomeResolution = "CONFIRMED_DONE" | "CONFIRMED_NOT_DONE";
 
 export interface RetryOptions {
   /**
@@ -302,26 +322,118 @@ export class Kernel {
    * committed history, using Kernel-origin records only: an adapter-origin run.finished in the
    * log is a claim, never a completion. An attempt with no terminal kernel.run_<status> record
    * was live when the previous Kernel stopped: it becomes `interrupted` — terminal, never
-   * success, eligible for retryRun(). Read-only here (a replaying Kernel may only be a reader);
-   * start() records kernel.run_interrupted once the Kernel takes ownership of the root.
+   * success. retryRun() is allowed only when no action outcome remains UNKNOWN. Read-only here
+   * (a replaying Kernel may only be a reader); start() records Kernel-owned recovery truth once
+   * the Kernel takes ownership of the root.
    */
   private rebuildRunsFromReplay(): void {
     for (const e of this.store.all()) {
-      if (e.origin !== "kernel" || !e.runId) continue;
+      if (!e.runId) continue;
+
       const p = (e.payload ?? {}) as Record<string, unknown>;
       const run = this.runs.get(e.runId);
-      if (e.type === "kernel.run_created") {
-        const { adapterInstanceId, txWorkspace, ...identity } = p as unknown as RunIdentity & { adapterInstanceId: string; txWorkspace: string };
-        this.runs.set(e.runId, { identity, adapterInstanceId, status: "starting", txWorkspace: path.join(this.opts.root, String(txWorkspace)), actors: new ActorTracker(), actions: new Map(), endWaiters: [] });
-      } else if (run && e.type === "kernel.attempt_created") {
-        run.identity = { ...run.identity, attempt: Number(p.attempt), workspaceId: String(p.workspaceId) };
-        run.adapterInstanceId = String(p.adapterInstanceId);
-        run.txWorkspace = path.join(this.opts.root, String(p.txWorkspace));
-        run.status = "starting";
-      } else if (run && e.attempt === run.identity.attempt && TERMINAL_RECORDS.has(e.type)) {
-        if (!isTerminal(run.status)) run.status = TERMINAL_RECORDS.get(e.type)!;
+
+      // H4 — Kernel-owned run / attempt reconstruction.
+      if (e.origin === "kernel") {
+        if (e.type === "kernel.run_created") {
+          const { adapterInstanceId, txWorkspace, ...identity } =
+            p as unknown as RunIdentity & { adapterInstanceId: string; txWorkspace: string };
+
+          this.runs.set(e.runId, {
+            identity,
+            adapterInstanceId,
+            status: "starting",
+            txWorkspace: path.join(this.opts.root, String(txWorkspace)),
+            actors: new ActorTracker(),
+            actions: new Map(),
+            endWaiters: [],
+          });
+        } else if (run && e.type === "kernel.attempt_created") {
+          run.identity = {
+            ...run.identity,
+            attempt: Number(p.attempt),
+            workspaceId: String(p.workspaceId),
+          };
+          run.adapterInstanceId = String(p.adapterInstanceId);
+          run.txWorkspace = path.join(this.opts.root, String(p.txWorkspace));
+          run.status = "starting";
+
+          // Each Kernel-created attempt owns a fresh action lifecycle.
+          run.actions = new Map();
+        } else if (run && e.attempt === run.identity.attempt && e.type === "kernel.action_outcome_unknown") {
+          const actionId = p.actionId;
+          if (typeof actionId === "string" && actionId.length > 0) {
+            const existing = run.actions.get(actionId);
+            if (existing) {
+              existing.effectCertainty = "UNKNOWN";
+              existing.outcomeUnknownRecorded = true;
+            }
+          }
+        } else if (run && e.attempt === run.identity.attempt && e.type === "kernel.action_outcome_reconciled") {
+          const actionId = p.actionId;
+          const resolution = p.resolution;
+          if (
+            typeof actionId === "string" &&
+            actionId.length > 0 &&
+            (resolution === "CONFIRMED_DONE" || resolution === "CONFIRMED_NOT_DONE")
+          ) {
+            const existing = run.actions.get(actionId);
+            if (existing) {
+              existing.effectCertainty = resolution === "CONFIRMED_DONE" ? "CONFIRMED" : "NOT_STARTED";
+            }
+          }
+        } else if (run && e.attempt === run.identity.attempt && TERMINAL_RECORDS.has(e.type)) {
+          if (!isTerminal(run.status)) run.status = TERMINAL_RECORDS.get(e.type)!;
+        }
+
+        continue;
+      }
+
+      // H4 — rebuild only action lifecycle observations that previously passed admission
+      // and were durably persisted. They remain untrusted observations; replaying them here
+      // does not promote provider output to Kernel Truth.
+      if (
+        e.origin === "adapter" &&
+        e.trust === "untrusted_observation" &&
+        run &&
+        e.attempt === run.identity.attempt
+      ) {
+        if (
+          e.type === "action.requested" ||
+          e.type === "action.started" ||
+          e.type === "action.updated" ||
+          e.type === "action.finished"
+        ) {
+          const actionId = p.actionId;
+          const actorId = e.actorId;
+
+          if (typeof actionId !== "string" || actionId.length === 0 || !actorId) continue;
+
+          const state: ActionState =
+            e.type === "action.requested"
+              ? "requested"
+              : e.type === "action.finished"
+                ? "finished"
+                : "started";
+
+          const effectCertainty: ActionEffectCertainty =
+            e.type === "action.requested"
+              ? "NOT_STARTED"
+              : e.type === "action.finished"
+                ? "CONFIRMED"
+                : "UNKNOWN";
+
+          const previous = run.actions.get(actionId);
+          run.actions.set(actionId, {
+            state,
+            actorId,
+            effectCertainty,
+            outcomeUnknownRecorded: previous?.outcomeUnknownRecorded ?? false,
+          });
+        }
       }
     }
+
     for (const run of this.runs.values()) {
       if (isTerminal(run.status)) continue;
       run.status = "interrupted";
@@ -349,9 +461,37 @@ export class Kernel {
     this.acquireRoot();
     for (const run of this.runs.values()) {
       if (!run.interruptPending) continue;
-      run.interruptPending = false;
       const { runId, attempt } = run.identity;
-      this.kernelEvent("kernel.run_interrupted", { runId, attempt, adapterInstanceId: run.adapterInstanceId, reason: "Kernel restarted: the attempt has no terminal record" }, runId, attempt);
+
+      // H4 — UNKNOWN truth is written BEFORE the terminal interruption record. If any write
+      // is refused, the attempt remains replay-detectable as non-terminal on the next restart.
+      for (const [actionId, action] of run.actions) {
+        if (action.effectCertainty !== "UNKNOWN" || action.outcomeUnknownRecorded) continue;
+        const recorded = this.kernelEvent(
+          "kernel.action_outcome_unknown",
+          {
+            runId,
+            attempt,
+            actionId,
+            actorId: action.actorId,
+            adapterInstanceId: run.adapterInstanceId,
+            reason: "Kernel restarted after durable action.started without durable action.finished",
+          },
+          runId,
+          attempt,
+        );
+        if (!recorded) throw new Error(`failed to durably record UNKNOWN outcome for ${runId}/${attempt}/${actionId}`);
+        action.outcomeUnknownRecorded = true;
+      }
+
+      const interrupted = this.kernelEvent(
+        "kernel.run_interrupted",
+        { runId, attempt, adapterInstanceId: run.adapterInstanceId, reason: "Kernel restarted: the attempt has no terminal record" },
+        runId,
+        attempt,
+      );
+      if (!interrupted) throw new Error(`failed to durably record interruption for ${runId}/${attempt}`);
+      run.interruptPending = false;
     }
     this.spawnAdapter();
   }
@@ -529,12 +669,62 @@ export class Kernel {
    * dispatches it atomically (blocker 4). The terminal attempt stays terminal history.
    * Every precondition — including checkpoint safety — is checked before anything changes.
    */
+  /**
+   * H4 — explicit host/Kernel-authorized reconciliation of an UNKNOWN external effect.
+   * Adapter/provider frames cannot call this path and cannot emit Kernel Truth.
+   * The in-memory barrier is cleared only after the reconciliation record is durable.
+   */
+  reconcileActionOutcome(runId: string, actionId: string, resolution: ActionOutcomeResolution): void {
+    this.assertDurable();
+    const run = this.runs.get(runId);
+    if (!run) throw new Error(`unknown run ${runId}`);
+    if (!isTerminal(run.status)) {
+      throw new Error(`run ${runId} attempt ${run.identity.attempt} is not terminal (status=${run.status})`);
+    }
+
+    const action = run.actions.get(actionId);
+    if (!action) throw new Error(`unknown action ${actionId} for run ${runId}`);
+    if (action.effectCertainty !== "UNKNOWN") {
+      throw new Error(`action ${actionId} outcome is already resolved (${action.effectCertainty})`);
+    }
+
+    const recorded = this.kernelEvent(
+      "kernel.action_outcome_reconciled",
+      {
+        runId,
+        attempt: run.identity.attempt,
+        actionId,
+        actorId: action.actorId,
+        adapterInstanceId: run.adapterInstanceId,
+        resolution,
+      },
+      runId,
+      run.identity.attempt,
+    );
+    if (!recorded) {
+      throw new Error(`failed to durably reconcile outcome for ${runId}/${run.identity.attempt}/${actionId}`);
+    }
+
+    action.effectCertainty = resolution === "CONFIRMED_DONE" ? "CONFIRMED" : "NOT_STARTED";
+  }
+
   async retryRun(runId: string, task: RunTask, opts: RetryOptions = {}): Promise<RunIdentity> {
     this.assertDurable();
     if (!this.capabilities) throw new Error("describe() must succeed before run.start");
     const run = this.runs.get(runId);
     if (!run) throw new Error(`unknown run ${runId}`);
     if (!isTerminal(run.status)) throw new Error(`run ${runId} attempt ${run.identity.attempt} is not terminal (status=${run.status})`);
+
+    const unknownActions = [...run.actions.entries()]
+      .filter(([, action]) => action.effectCertainty === "UNKNOWN")
+      .map(([actionId]) => actionId);
+
+    if (unknownActions.length > 0) {
+      throw new Error(
+        `run ${runId} attempt ${run.identity.attempt} has unresolved action outcome(s): ${unknownActions.join(", ")}; reconciliation required before retry`,
+      );
+    }
+
     const checkpoint = opts.resumeFromEvidenceId ? this.loadCheckpoint(runId, opts.resumeFromEvidenceId) : null;
 
     const previous = { attempt: run.identity.attempt, status: run.status, adapterInstanceId: run.adapterInstanceId, workspaceId: run.identity.workspaceId, txWorkspace: run.txWorkspace };
@@ -1092,13 +1282,29 @@ export class Kernel {
         }
         break;
       case "action.requested":
+        run.actions.set(String(payload.actionId), {
+          state: "requested",
+          actorId,
+          effectCertainty: "NOT_STARTED",
+          outcomeUnknownRecorded: false,
+        });
+        break;
       case "action.started":
       case "action.updated":
-        // Transition already admitted by the FSM gate; only record the resulting state.
-        run.actions.set(String(payload.actionId), { state: ACTION_FSM[ev.type]!.to, actorId });
+        run.actions.set(String(payload.actionId), {
+          state: "started",
+          actorId,
+          effectCertainty: "UNKNOWN",
+          outcomeUnknownRecorded: false,
+        });
         break;
       case "action.finished":
-        run.actions.set(String(payload.actionId), { state: "finished", actorId });
+        run.actions.set(String(payload.actionId), {
+          state: "finished",
+          actorId,
+          effectCertainty: "CONFIRMED",
+          outcomeUnknownRecorded: false,
+        });
         this.maybeCreateEvidence(run, ev, payload);
         break;
       case "workspace.hint":

@@ -125,7 +125,7 @@ describe("C10 run/attempt binding fence (blocker A)", () => {
     const env: Record<string, string> = {};
     const k = makeKernel("c10-retry", { adapterEnv: env });
     kernels.push(k);
-    const a = await runScenario(k, "crash");
+    const a = await runScenario(k, "worker-start-crash");
     await k.waitClosed(5_000);
     const aidA = k.currentAdapterInstanceId!;
     k.restartAdapter();
@@ -155,7 +155,7 @@ describe("C10 run/attempt binding fence (blocker A)", () => {
     const env: Record<string, string> = {};
     const k = makeKernel("c10-retry-old-attempt", { adapterEnv: env });
     kernels.push(k);
-    const a = await runScenario(k, "crash");
+    const a = await runScenario(k, "worker-start-crash");
     await k.waitClosed(5_000);
     env.DVL_MOCK_EMIT_ATTEMPT = "1";
     k.restartAdapter();

@@ -39,8 +39,24 @@ async function main(cfg: { root: string; keyHex: string; scenario: string }): Pr
   const spawned = k.store.ofType("kernel.adapter_spawned").at(-1)!.payload as { pid: number };
   out({ run, adapterPid: spawned.pid });
   for (;;) {
-    const done = k.store.all().some((e) => e.type === "action.finished" && e.runId === run.runId && (e.payload as { actionId?: string }).actionId === "act_h4_probe");
-    if (done) break;
+    const events = k.store.all();
+    const ready =
+      cfg.scenario === "h4-action-started-hold"
+        ? events.some(
+            (e) =>
+              e.origin === "adapter" &&
+              e.type === "action.started" &&
+              e.runId === run.runId &&
+              (e.payload as { actionId?: string }).actionId === "act_h4_probe",
+          )
+        : events.some(
+            (e) =>
+              e.type === "action.finished" &&
+              e.runId === run.runId &&
+              (e.payload as { actionId?: string }).actionId === "act_h4_probe",
+          );
+
+    if (ready) break;
     await new Promise((r) => setTimeout(r, 10));
   }
   await k.settle();

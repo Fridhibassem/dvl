@@ -7,7 +7,7 @@
  *   - an attempt without a terminal Kernel record is `interrupted` (terminal, never success);
  *   - an adapter run.finished that reached the log is a claim, not a completion;
  *   - the staged change stays in the attempt workspace; the project tree is byte-identical;
- *   - the run continues only through retryRun(); recovery records are written exactly once.
+ *   - recovery records are written exactly once; retryRun() is allowed only when no action outcome is unresolved.
  *
  * Targets: a synthetic project (always) and a REAL project, khedma.tn, when a checkout is
  * available (DVL_H4_TARGET, default: a sibling `khedma.tn` checkout of this repository).
@@ -269,4 +269,208 @@ describe.each(targets)("C27 H4 Kernel crash replay — $name", (target) => {
     expect(r.runStatus(id.runId)).toBe("interrupted");
     expect(projectTree(root)).toEqual(tree);
   });
+  it("4. crash window after durable action.started: replay marks the effect unknown and retry is held", async () => {
+    const { root, tree } = prepare(target, "c27-action-unknown");
+    const commits: CommitHeads[] = [];
+    const k = track(kernelOn(root, { onCommit: (h) => commits.push(h) }));
+
+    // Produce a normal completed action first, then cut the durable history at the exact
+    // boundary immediately after action.started — the durable state a Kernel crash at that
+    // instant would leave behind.
+    const { id, status } = await runScenario(k, "h4-target-probe-finish");
+    expect(status).toBe("finished");
+    await k.shutdown();
+
+    const all = k.store.all();
+    const started = all.findIndex(
+      (e) =>
+        e.origin === "adapter" &&
+        e.type === "action.started" &&
+        e.runId === id.runId &&
+        (e.payload as { actionId?: string } | undefined)?.actionId === "act_h4_probe",
+    );
+    const finished = all.findIndex(
+      (e) =>
+        e.origin === "adapter" &&
+        e.type === "action.finished" &&
+        e.runId === id.runId &&
+        (e.payload as { actionId?: string } | undefined)?.actionId === "act_h4_probe",
+    );
+
+    expect(started).toBeGreaterThanOrEqual(0);
+    expect(finished).toBeGreaterThan(started);
+
+    const cut = commits.filter((h) => h.events.count === started + 1).at(-1)!;
+    expect(cut).toBeDefined();
+
+    for (const [file, n] of [[k.store.eventsPath, cut.events.count], [k.store.evidencePath, cut.evidence.count]] as const) {
+      const lines = fs.readFileSync(file, "utf8").split("\n").filter(Boolean);
+      fs.writeFileSync(file, lines.slice(0, n).map((l) => l + "\n").join(""));
+    }
+
+    const r = track(kernelOn(root, { expectedHeads: cut }));
+    expect(r.store.integrity.events).toMatchObject({ ok: true, truncated: false });
+    expect(r.runStatus(id.runId)).toBe("interrupted");
+
+    const history = r.store.all().filter((e) => e.runId === id.runId);
+    expect(history.some((e) => e.type === "action.started")).toBe(true);
+    expect(history.some((e) => e.type === "action.finished")).toBe(false);
+
+    r.start();
+    await r.describe();
+
+    const attemptsBefore = r.store.ofType("kernel.attempt_created").filter((e) => e.runId === id.runId).length;
+    const archivesBefore = r.store.ofType("kernel.workspace_archived").filter((e) => e.runId === id.runId).length;
+
+    await expect(r.retryRun(id.runId, probeTask("h4-target-probe-finish"))).rejects.toThrow(
+      /unresolved action outcome.*act_h4_probe.*reconciliation required before retry/i,
+    );
+
+    // HOLD is fail-closed before any retry mutation.
+    expect(r.store.ofType("kernel.attempt_created").filter((e) => e.runId === id.runId)).toHaveLength(attemptsBefore);
+    expect(r.store.ofType("kernel.workspace_archived").filter((e) => e.runId === id.runId)).toHaveLength(archivesBefore);
+    expect(r.runStatus(id.runId)).toBe("interrupted");
+    expect(projectTree(root)).toEqual(tree);
+  });
+
+  it("5. reconciliation is durable: restart replays the resolved outcome and retry is allowed", async () => {
+    const { root, tree } = prepare(target, "c27-reconcile");
+    const commits: CommitHeads[] = [];
+    const k = track(kernelOn(root, { onCommit: (h) => commits.push(h) }));
+
+    // Build a valid history, then cut it immediately after action.started to model
+    // the crash ambiguity window.
+    const { id, status } = await runScenario(k, "h4-target-probe-finish");
+    expect(status).toBe("finished");
+    await k.shutdown();
+
+    const all = k.store.all();
+    const started = all.findIndex(
+      (e) =>
+        e.origin === "adapter" &&
+        e.type === "action.started" &&
+        e.runId === id.runId &&
+        (e.payload as { actionId?: string } | undefined)?.actionId === "act_h4_probe",
+    );
+    expect(started).toBeGreaterThanOrEqual(0);
+
+    const cut = commits.filter((h) => h.events.count === started + 1).at(-1)!;
+    expect(cut).toBeDefined();
+
+    for (const [file, n] of [[k.store.eventsPath, cut.events.count], [k.store.evidencePath, cut.evidence.count]] as const) {
+      const lines = fs.readFileSync(file, "utf8").split("\n").filter(Boolean);
+      fs.writeFileSync(file, lines.slice(0, n).map((l) => l + "\n").join(""));
+    }
+
+    // First recovery owns the root, records UNKNOWN + interruption, then a trusted host
+    // reconciliation confirms the external effect did NOT occur.
+    const r = track(kernelOn(root, { expectedHeads: cut }));
+    expect(r.runStatus(id.runId)).toBe("interrupted");
+    r.start();
+    await r.describe();
+
+    expect(r.store.ofType("kernel.action_outcome_unknown").filter((e) => e.runId === id.runId)).toHaveLength(1);
+
+    r.reconcileActionOutcome(id.runId, "act_h4_probe", "CONFIRMED_NOT_DONE");
+
+    const reconciled = r.store.ofType("kernel.action_outcome_reconciled").filter((e) => e.runId === id.runId);
+    expect(reconciled).toHaveLength(1);
+    expect(reconciled[0]!.payload).toMatchObject({
+      runId: id.runId,
+      attempt: 1,
+      actionId: "act_h4_probe",
+      resolution: "CONFIRMED_NOT_DONE",
+    });
+
+    await r.shutdown();
+
+    // A fresh Kernel must recover the reconciliation from durable Kernel Truth alone.
+    const r2 = track(kernelOn(root, { expectedHeads: anchorsFor(root) }));
+    expect(r2.runStatus(id.runId)).toBe("interrupted");
+    r2.start();
+    await r2.describe();
+
+    // Recovery truth is not duplicated on replay.
+    expect(r2.store.ofType("kernel.action_outcome_unknown").filter((e) => e.runId === id.runId)).toHaveLength(1);
+    expect(r2.store.ofType("kernel.action_outcome_reconciled").filter((e) => e.runId === id.runId)).toHaveLength(1);
+
+    // The durable reconciliation cleared the UNKNOWN barrier, so retry is now legal.
+    const retry = await r2.retryRun(id.runId, probeTask("h4-target-probe-finish"));
+    expect(retry.attempt).toBe(2);
+    expect(await r2.waitForRunEnd(id.runId)).toBe("finished");
+    expect(projectTree(root)).toEqual(tree);
+  });
+
+  it("6. physical SIGKILL after durable action.started: restart records UNKNOWN and retry stays held", async () => {
+    const before = target.sourceState?.();
+    const { root, tree } = prepare(target, "c27-physical-action-unknown");
+
+    // Real process boundary: h4-kernel-host waits until this action.started is durably committed,
+    // then the parent test sends SIGKILL to the Kernel host. The scenario is still sleeping and
+    // has emitted no action.finished.
+    const { run, heads } = await crashKernelMidRun(root, "h4-action-started-hold");
+
+    const r = track(kernelOn(root, { expectedHeads: heads }));
+    expect(r.store.integrity.events).toMatchObject({ ok: true, rejected: [], truncated: false });
+    expect(r.store.recovery).toBeNull();
+    expect(r.runStatus(run.runId)).toBe("interrupted");
+
+    const crashedHistory = r.store.all().filter((e) => e.runId === run.runId);
+    expect(
+      crashedHistory.some(
+        (e) =>
+          e.origin === "adapter" &&
+          e.type === "action.started" &&
+          (e.payload as { actionId?: string } | undefined)?.actionId === "act_h4_probe",
+      ),
+    ).toBe(true);
+    expect(
+      crashedHistory.some(
+        (e) =>
+          e.origin === "adapter" &&
+          e.type === "action.finished" &&
+          (e.payload as { actionId?: string } | undefined)?.actionId === "act_h4_probe",
+      ),
+    ).toBe(false);
+
+    // Replay is read-only until ownership is taken.
+    expect(r.store.ofType("kernel.action_outcome_unknown").filter((e) => e.runId === run.runId)).toHaveLength(0);
+    expect(interruptedRecords(r, run.runId)).toHaveLength(0);
+
+    r.start();
+    await r.describe();
+
+    const unknown = r.store.ofType("kernel.action_outcome_unknown").filter((e) => e.runId === run.runId);
+    expect(unknown).toHaveLength(1);
+    expect(unknown[0]).toMatchObject({
+      origin: "kernel",
+      trust: "kernel_truth",
+      runId: run.runId,
+      attempt: 1,
+    });
+    expect(unknown[0]!.payload).toMatchObject({
+      runId: run.runId,
+      attempt: 1,
+      actionId: "act_h4_probe",
+    });
+    expect(interruptedRecords(r, run.runId)).toHaveLength(1);
+
+    const attemptsBefore = r.store.ofType("kernel.attempt_created").filter((e) => e.runId === run.runId).length;
+    const archivesBefore = r.store.ofType("kernel.workspace_archived").filter((e) => e.runId === run.runId).length;
+
+    await expect(r.retryRun(run.runId, probeTask("h4-target-probe-finish"))).rejects.toThrow(
+      /unresolved action outcome.*act_h4_probe.*reconciliation required before retry/i,
+    );
+
+    // Fail closed: no retry dispatch/archive occurs before explicit reconciliation.
+    expect(r.store.ofType("kernel.attempt_created").filter((e) => e.runId === run.runId)).toHaveLength(attemptsBefore);
+    expect(r.store.ofType("kernel.workspace_archived").filter((e) => e.runId === run.runId)).toHaveLength(archivesBefore);
+    expect(r.runStatus(run.runId)).toBe("interrupted");
+
+    // This exact-window scenario intentionally performs no file write before the crash.
+    expect(fs.existsSync(path.join(r.txWorkspaceOf(run.runId), PROBE))).toBe(false);
+    expect(projectTree(root)).toEqual(tree);
+    if (before !== undefined) expect(target.sourceState!()).toBe(before);
+  });
+
 });
