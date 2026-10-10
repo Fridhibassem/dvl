@@ -35,13 +35,13 @@ afterEach(async () => {
 });
 
 /** A live owner Kernel in its own process, mid-run (h4-kernel-host). */
-async function liveOwner(root: string) {
+async function liveOwner(root: string, scenario = "h4-target-probe") {
   const tsx = pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href;
   const host = spawn(process.execPath, ["--import", tsx, path.join(here, "h4-kernel-host.ts")], { stdio: ["pipe", "pipe", "pipe"] });
   hosts.push(host);
   let stderr = "";
   host.stderr.on("data", (d) => (stderr += d));
-  host.stdin.write(JSON.stringify({ root, keyHex: keyFor(root).toString("hex"), scenario: "h4-target-probe" }) + "\n");
+  host.stdin.write(JSON.stringify({ root, keyHex: keyFor(root).toString("hex"), scenario }) + "\n");
   const state = { heads: undefined as CommitHeads | undefined, run: undefined as RunIdentity | undefined, adapterPid: 0 };
   const lines = readline.createInterface({ input: host.stdout });
   await new Promise<void>((resolve, reject) => {
@@ -130,7 +130,10 @@ describe("C28 H4 single-Kernel root ownership", () => {
     owner.host.kill("SIGKILL");
     await owner.exited;
     expect(() => process.kill(adapter, 0)).not.toThrow(); // still alive
-    onTestFinished(() => void process.kill(-adapter, "SIGKILL"));
+    onTestFinished(() => {
+      try { process.kill(-adapter, "SIGKILL"); }
+      catch (e) { if ((e as NodeJS.ErrnoException).code !== "ESRCH") throw e; }
+    });
     const runId = owner.state.run!.runId;
     const k = track(kernelOn(root, { expectedHeads: owner.state.heads }));
     k.start();
@@ -138,4 +141,25 @@ describe("C28 H4 single-Kernel root ownership", () => {
     expect(k.runStatus(runId)).toBe("interrupted");
     expect(k.store.ofType("kernel.run_interrupted").filter((e) => e.runId === runId)).toHaveLength(1);
   });
+
+  it("5. a non-owner Kernel cannot reconcile an UNKNOWN action or write Kernel Truth", async () => {
+    const root = tempRoot("c28-reconcile-owner");
+    const owner = await liveOwner(root, "h4-action-started-hold");
+
+    const runId = owner.state.run!.runId;
+    const before = logBytes(root);
+
+    const reader = track(kernelOn(root, { expectedHeads: owner.state.heads }));
+    expect(reader.runStatus(runId)).toBe("interrupted");
+
+    expect(
+      lockCode(() => reader.reconcileActionOutcome(runId, "act_h4_probe", "CONFIRMED_NOT_DONE")),
+    ).toBe("root_locked");
+
+    expect(reader.ownsRoot).toBe(false);
+    expect(reader.store.ofType("kernel.action_outcome_reconciled").filter((e) => e.runId === runId)).toHaveLength(0);
+    expect(logBytes(root)).toEqual(before);
+  });
+
+
 });

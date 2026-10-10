@@ -17,6 +17,8 @@ import type { FsProbe } from "./confined-fs.js";
 import { EventStore, SpoolIntegrityError, newId, sha256, type ChainHead, type ChainReport, type EventStoreOptions } from "./event-store.js";
 import { NdjsonTransport, type TransportIssue } from "./ndjson-transport.js";
 import { RootLock, RootLockError } from "./root-lock.js";
+import { recoveryProcessOps, stopRecoveredExecution, type RecoveryExecution, type RecoveryProcessOps } from "./recovery-process.js";
+import { freezeAction, normalizeSpikeIntent, spikeSemanticSignature, type PreparedSpikeAction, type SpikeActionBoundary, type SpikeEffectExecutor } from "./spike-action-protocol.js";
 import {
   CONTRACT_VERSION,
   FORBIDDEN_ADAPTER_EVENTS,
@@ -87,6 +89,12 @@ export interface KernelOptions {
   confinement?: "auto" | "path";
   /** H2 — test-only probe at filesystem check/use points (deterministic race injection). */
   fsProbe?: FsProbe;
+  /** Host-only recovery seam for deterministic OS failures in conformance tests. */
+  recoveryProcessOps?: RecoveryProcessOps;
+  recoveryTimeoutMs?: number;
+  /** B4 experiment: host-owned effect capability. Provider-native effects have no fallback. */
+  spikeEffectExecutor?: SpikeEffectExecutor;
+  spikeActionBoundary?: (boundary: SpikeActionBoundary, action: Readonly<PreparedSpikeAction>) => Promise<void>;
 }
 
 export interface QueueLimits {
@@ -113,9 +121,28 @@ type RunStatus = "starting" | "running" | "finished" | "failed" | "halted" | "fa
 
 /** Action lifecycle — blocker 2. `finished`/`aborted` are terminal. */
 type ActionState = "requested" | "started" | "finished" | "aborted";
+
+/**
+ * H4 — action lifecycle and effect certainty are separate.
+ *
+ * NOT_STARTED: no effect is known to have occurred — initially because execution never began,
+ *              or after Kernel-authorized reconciliation confirms that no effect occurred.
+ * CONFIRMED: a durable action.finished observation closed the lifecycle, or Kernel-authorized
+ *            reconciliation confirms that the effect occurred.
+ * UNKNOWN: execution started, but DVL does not have durable truth proving whether the effect occurred.
+ *
+ * CONFIRMED is NOT verification that an external side effect succeeded; verification/evidence
+ * remains a separate concern.
+ */
+type ActionEffectCertainty = "NOT_STARTED" | "CONFIRMED" | "UNKNOWN";
+
 interface ActionRecord {
   state: ActionState;
   actorId: string;
+  effectCertainty: ActionEffectCertainty;
+  /** H4 — true only after durable Kernel Truth recorded the unresolved outcome. */
+  outcomeUnknownRecorded: boolean;
+  prepared?: PreparedSpikeAction;
 }
 
 /**
@@ -146,6 +173,9 @@ const ACTION_FSM: Record<string, { from: (ActionState | "none")[]; to: ActionSta
 };
 /** Events that are acts OF an actor (vs run-level/informational events). */
 const ACTOR_SCOPED = (type: string) => type.startsWith("actor.") || type.startsWith("action.") || type === "workspace.hint" || type === "approval.requested";
+
+export type ActionOutcomeResolution = "CONFIRMED_DONE" | "CONFIRMED_NOT_DONE";
+export type RecoveryProcessStatus = "READY" | "RECOVERY_PENDING" | "HOLD_RECOVERY_PROCESS_STILL_ALIVE";
 
 export interface RetryOptions {
   /**
@@ -280,8 +310,17 @@ export class Kernel {
   readonly projectId: string;
   /** H4 — exclusive ownership of the root; taken before this Kernel writes anything as owner. */
   private rootLock: RootLock | null = null;
+  private readonly recoveredExecutions = new Map<string, RecoveryExecution>();
+  private recoveryWork: Promise<void> | null = null;
+  private recoveryState: RecoveryProcessStatus = "READY";
+  private recoveryReason: string | null = null;
+  private readonly confirmedSpikeEffects = new Map<string, PreparedSpikeAction>();
+  private readonly executingSpikeActions = new Set<string>();
+  private readonly spikeActionDrains = new Map<string, Promise<void>>();
+  private spikeEffectsRevoked = false;
 
   constructor(private readonly opts: KernelOptions) {
+    if (opts.spikeEffectExecutor && (!opts.fsync || !opts.integrityKey || !opts.onCommit)) throw new Error("B4 effects require fsync, a host integrity key, and host commit publication");
     this.store = new EventStore({ root: opts.root, fsync: opts.fsync, integrityKey: opts.integrityKey, expectedHead: opts.expectedHead, expectedHeads: opts.expectedHeads, hostDecision: opts.hostDecision, onCommit: opts.onCommit, onIncident: opts.onIncident, ioFaults: opts.ioFaults, confinement: opts.confinement, fsProbe: opts.fsProbe });
     const { events, evidence } = this.store.integrity;
     if (!events.ok || !evidence.ok) {
@@ -295,6 +334,26 @@ export class Kernel {
     this.queueLimits = { maxQueuedFrames: MAX_QUEUED_FRAMES, maxQueuedBytes: MAX_QUEUED_BYTES, ...opts.queueLimits };
     this.projectId = "proj_spike";
     this.rebuildRunsFromReplay();
+    // A terminal/reconciled attempt can still have a live executor after Kernel death.
+    const owners = new Set([...this.runs.values()].map((run) => run.adapterInstanceId));
+    const fenced = new Set(this.store.ofType("kernel.recovery_process_fenced")
+      .filter((e) => e.origin === "kernel" && e.trust === "kernel_truth")
+      .map((e) => (e.payload as { adapterInstanceId: string }).adapterInstanceId));
+    for (const e of this.store.ofType("kernel.adapter_spawned")) {
+      if (e.origin !== "kernel" || e.trust !== "kernel_truth") continue;
+      const execution = e.payload as RecoveryExecution;
+      // A proved-dead incarnation cannot reappear. Its numeric pgid may now be unrelated.
+      if (fenced.has(execution.adapterInstanceId)) continue;
+      this.recoveredExecutions.set(execution.adapterInstanceId, execution);
+    }
+    for (const owner of owners) {
+      if (!fenced.has(owner) && !this.recoveredExecutions.has(owner)) this.recoveredExecutions.set(owner, { adapterInstanceId: owner });
+    }
+    if (this.recoveredExecutions.size) {
+      const platform = (this.opts.recoveryProcessOps ?? recoveryProcessOps).platform;
+      this.recoveryState = platform === "linux" || platform === "darwin" ? "RECOVERY_PENDING" : "HOLD_RECOVERY_PROCESS_STILL_ALIVE";
+      if (this.recoveryState !== "RECOVERY_PENDING") this.recoveryReason = `process-group recovery unsupported on ${platform}; no verified executor fence`;
+    }
   }
 
   /**
@@ -302,26 +361,134 @@ export class Kernel {
    * committed history, using Kernel-origin records only: an adapter-origin run.finished in the
    * log is a claim, never a completion. An attempt with no terminal kernel.run_<status> record
    * was live when the previous Kernel stopped: it becomes `interrupted` — terminal, never
-   * success, eligible for retryRun(). Read-only here (a replaying Kernel may only be a reader);
-   * start() records kernel.run_interrupted once the Kernel takes ownership of the root.
+   * success. retryRun() is allowed only when no action outcome remains UNKNOWN. Read-only here
+   * (a replaying Kernel may only be a reader); start() records Kernel-owned recovery truth once
+   * the Kernel takes ownership of the root.
    */
   private rebuildRunsFromReplay(): void {
     for (const e of this.store.all()) {
-      if (e.origin !== "kernel" || !e.runId) continue;
+      if (!e.runId) continue;
+
       const p = (e.payload ?? {}) as Record<string, unknown>;
       const run = this.runs.get(e.runId);
-      if (e.type === "kernel.run_created") {
-        const { adapterInstanceId, txWorkspace, ...identity } = p as unknown as RunIdentity & { adapterInstanceId: string; txWorkspace: string };
-        this.runs.set(e.runId, { identity, adapterInstanceId, status: "starting", txWorkspace: path.join(this.opts.root, String(txWorkspace)), actors: new ActorTracker(), actions: new Map(), endWaiters: [] });
-      } else if (run && e.type === "kernel.attempt_created") {
-        run.identity = { ...run.identity, attempt: Number(p.attempt), workspaceId: String(p.workspaceId) };
-        run.adapterInstanceId = String(p.adapterInstanceId);
-        run.txWorkspace = path.join(this.opts.root, String(p.txWorkspace));
-        run.status = "starting";
-      } else if (run && e.attempt === run.identity.attempt && TERMINAL_RECORDS.has(e.type)) {
-        if (!isTerminal(run.status)) run.status = TERMINAL_RECORDS.get(e.type)!;
+
+      // H4 — Kernel-owned run / attempt reconstruction.
+      if (e.origin === "kernel") {
+        if (e.type === "kernel.run_created") {
+          const { adapterInstanceId, txWorkspace, ...identity } =
+            p as unknown as RunIdentity & { adapterInstanceId: string; txWorkspace: string };
+
+          this.runs.set(e.runId, {
+            identity,
+            adapterInstanceId,
+            status: "starting",
+            txWorkspace: path.join(this.opts.root, String(txWorkspace)),
+            actors: new ActorTracker(),
+            actions: new Map(),
+            endWaiters: [],
+          });
+        } else if (run && e.type === "kernel.attempt_created") {
+          run.identity = {
+            ...run.identity,
+            attempt: Number(p.attempt),
+            workspaceId: String(p.workspaceId),
+          };
+          run.adapterInstanceId = String(p.adapterInstanceId);
+          run.txWorkspace = path.join(this.opts.root, String(p.txWorkspace));
+          run.status = "starting";
+
+          // Each Kernel-created attempt owns a fresh action lifecycle.
+          run.actions = new Map();
+        } else if (run && e.attempt === run.identity.attempt && e.type === "kernel.action_prepared") {
+          const action = freezeAction(p as unknown as PreparedSpikeAction);
+          run.actions.set(action.actionId, { state: "requested", actorId: action.actorId, effectCertainty: "UNKNOWN", outcomeUnknownRecorded: false, prepared: action });
+        } else if (run && e.attempt === run.identity.attempt && e.type === "kernel.action_execution_started") {
+          const action = run.actions.get(String(p.actionId));
+          if (action?.prepared) action.state = "started";
+        } else if (run && e.attempt === run.identity.attempt && e.type === "kernel.action_outcome_confirmed") {
+          const action = run.actions.get(String(p.actionId));
+          if (action?.prepared) {
+            action.state = "finished";
+            action.effectCertainty = "CONFIRMED";
+            this.confirmedSpikeEffects.set(`${e.runId}:${action.prepared.effectOperationId}`, action.prepared);
+          }
+        } else if (run && e.attempt === run.identity.attempt && e.type === "kernel.action_outcome_unknown") {
+          const actionId = p.actionId;
+          if (typeof actionId === "string" && actionId.length > 0) {
+            const existing = run.actions.get(actionId);
+            if (existing) {
+              existing.effectCertainty = "UNKNOWN";
+              existing.outcomeUnknownRecorded = true;
+            }
+          }
+        } else if (run && e.attempt === run.identity.attempt && e.type === "kernel.action_outcome_reconciled") {
+          const actionId = p.actionId;
+          const resolution = p.resolution;
+          if (
+            typeof actionId === "string" &&
+            actionId.length > 0 &&
+            (resolution === "CONFIRMED_DONE" || resolution === "CONFIRMED_NOT_DONE")
+          ) {
+            const existing = run.actions.get(actionId);
+            if (existing) {
+              existing.effectCertainty = resolution === "CONFIRMED_DONE" ? "CONFIRMED" : "NOT_STARTED";
+              if (existing.prepared && resolution === "CONFIRMED_DONE") this.confirmedSpikeEffects.set(`${e.runId}:${existing.prepared.effectOperationId}`, existing.prepared);
+            }
+          }
+        } else if (run && e.attempt === run.identity.attempt && TERMINAL_RECORDS.has(e.type)) {
+          if (!isTerminal(run.status)) run.status = TERMINAL_RECORDS.get(e.type)!;
+        }
+
+        continue;
+      }
+
+      // H4 — rebuild only action lifecycle observations that previously passed admission
+      // and were durably persisted. They remain untrusted observations; replaying them here
+      // does not promote provider output to Kernel Truth.
+      if (
+        e.origin === "adapter" &&
+        e.trust === "untrusted_observation" &&
+        run &&
+        e.attempt === run.identity.attempt
+      ) {
+        if (
+          e.type === "action.requested" ||
+          e.type === "action.started" ||
+          e.type === "action.updated" ||
+          e.type === "action.finished"
+        ) {
+          const actionId = e.actionId ?? p.actionId;
+          const actorId = e.actorId;
+
+          if (typeof actionId !== "string" || actionId.length === 0 || !actorId) continue;
+
+          const state: ActionState =
+            e.type === "action.requested"
+              ? "requested"
+              : e.type === "action.finished"
+                ? "finished"
+                : "started";
+
+          const effectCertainty: ActionEffectCertainty =
+            e.type === "action.requested"
+              ? "NOT_STARTED"
+              : e.type === "action.finished"
+                ? "CONFIRMED"
+                : "UNKNOWN";
+
+          const previous = run.actions.get(actionId);
+          // Provider lifecycle observations cannot resolve a Kernel-prepared effect.
+          if (previous?.prepared) continue;
+          run.actions.set(actionId, {
+            state,
+            actorId,
+            effectCertainty,
+            outcomeUnknownRecorded: previous?.outcomeUnknownRecorded ?? false,
+          });
+        }
       }
     }
+
     for (const run of this.runs.values()) {
       if (isTerminal(run.status)) continue;
       run.status = "interrupted";
@@ -349,11 +516,132 @@ export class Kernel {
     this.acquireRoot();
     for (const run of this.runs.values()) {
       if (!run.interruptPending) continue;
-      run.interruptPending = false;
       const { runId, attempt } = run.identity;
-      this.kernelEvent("kernel.run_interrupted", { runId, attempt, adapterInstanceId: run.adapterInstanceId, reason: "Kernel restarted: the attempt has no terminal record" }, runId, attempt);
+
+      // H4 — UNKNOWN truth is written BEFORE the terminal interruption record. If any write
+      // is refused, the attempt remains replay-detectable as non-terminal on the next restart.
+      for (const [actionId, action] of run.actions) {
+        if (action.effectCertainty !== "UNKNOWN" || action.outcomeUnknownRecorded) continue;
+        const recorded = this.kernelEvent(
+          "kernel.action_outcome_unknown",
+          {
+            runId,
+            attempt,
+            actionId,
+            actorId: action.actorId,
+            adapterInstanceId: run.adapterInstanceId,
+            reason: "Kernel restarted after durable action.started without durable action.finished",
+          },
+          runId,
+          attempt,
+        );
+        if (!recorded) throw new Error(`failed to durably record UNKNOWN outcome for ${runId}/${attempt}/${actionId}`);
+        action.outcomeUnknownRecorded = true;
+      }
+
+      const interrupted = this.kernelEvent(
+        "kernel.run_interrupted",
+        { runId, attempt, adapterInstanceId: run.adapterInstanceId, reason: "Kernel restarted: the attempt has no terminal record" },
+        runId,
+        attempt,
+      );
+      if (!interrupted) throw new Error(`failed to durably record interruption for ${runId}/${attempt}`);
+      run.interruptPending = false;
     }
+    this.beginExecutionRecovery();
     this.spawnAdapter();
+  }
+
+  /** Process authority is independent of action outcome reconciliation. */
+  get recoveryStatus(): { status: RecoveryProcessStatus; retryAllowed: boolean; reason: string | null } {
+    return { status: this.recoveryState, retryAllowed: this.recoveryState === "READY", reason: this.recoveryReason };
+  }
+
+  async waitForRecovery(): Promise<void> {
+    if (!this.recoveryWork && this.recoveryState !== "READY") {
+      throw new Error(`${this.recoveryState}: ${this.recoveryReason ?? "start() must take ownership before executor recovery"}; retryAllowed=false`);
+    }
+    await this.recoveryWork;
+    if (this.recoveryState !== "READY") throw new Error(`${this.recoveryState}: ${this.recoveryReason}; retryAllowed=false`);
+    this.assertDurable();
+  }
+
+  private beginExecutionRecovery(): void {
+    if (this.recoveryWork || !this.recoveredExecutions.size) return;
+    const ops = this.opts.recoveryProcessOps ?? recoveryProcessOps;
+    // Revoke before signalling: queued observations and reconciliation cannot restore authority.
+    for (const [owner] of this.recoveredExecutions) {
+      this.terminatedInstances.add(owner);
+      const assignments = [...this.runs.values()].filter((r) => r.adapterInstanceId === owner);
+      for (const run of assignments) {
+        run.actors.abortUnresolved();
+        for (const action of run.actions.values()) {
+          if (action.state === "requested" || action.state === "started") action.state = "aborted";
+        }
+      }
+      if (!this.kernelEvent("kernel.adapter_authority_revoked", {
+        adapterInstanceId: owner,
+        assignments: assignments.map((r) => ({ runId: r.identity.runId, attempt: r.identity.attempt, actionIds: [...r.actions.keys()] })),
+        reason: "Kernel recovery revoked stale assignment and action authority",
+      })) {
+        this.holdExecutionRecovery("unable to durably revoke stale executor authority");
+        return;
+      }
+    }
+    this.recoveryWork = (async () => {
+      try {
+        for (const execution of this.recoveredExecutions.values()) {
+          await stopRecoveredExecution(execution, ops, this.opts.recoveryTimeoutMs ?? 3_000);
+        }
+        // Stable bytes alone do not fence a writer. Sample only AFTER process proof.
+        const quiet = Math.max(1, this.opts.quiescenceMs ?? QUIESCENCE_MS);
+        const deadline = Date.now() + (this.opts.recoveryTimeoutMs ?? 3_000) + quiet;
+        for (;;) {
+          const before = this.recoveryWorkspaceFingerprint();
+          await sleep(quiet);
+          const after = this.recoveryWorkspaceFingerprint();
+          if (before === after) break;
+          if (Date.now() >= deadline) throw new Error("transaction workspace did not become quiescent");
+        }
+        for (const execution of this.recoveredExecutions.values()) {
+          const group = execution.processGroupId ?? execution.pid;
+          if (!group || ops.canMutate(group)) throw new Error("executor group can still mutate after quiescence");
+          if (!this.kernelEvent("kernel.recovery_process_fenced", {
+            adapterInstanceId: execution.adapterInstanceId, pid: execution.pid, processGroupId: group,
+            reason: "no executable group members; transaction workspace quiescent; stale authority revoked",
+            quiescenceMs: quiet,
+          })) throw new Error("unable to durably record executor recovery proof");
+        }
+        this.recoveryState = "READY";
+        this.recoveryReason = null;
+      } catch (e) {
+        this.holdExecutionRecovery((e as Error).message);
+      }
+    })();
+  }
+
+  private holdExecutionRecovery(reason: string): void {
+    this.recoveryState = "HOLD_RECOVERY_PROCESS_STILL_ALIVE";
+    this.recoveryReason = reason;
+    this.kernelEvent("kernel.recovery_process_hold", { status: this.recoveryState, retryAllowed: false, reason });
+  }
+
+  private recoveryWorkspaceFingerprint(): string {
+    // Include superseded attempts: a stale executor can still hold their paths open.
+    const dirs = new Set<string>();
+    for (const e of this.store.all()) {
+      if (e.origin !== "kernel" || (e.type !== "kernel.run_created" && e.type !== "kernel.attempt_created")) continue;
+      const rel = (e.payload as { txWorkspace?: string }).txWorkspace;
+      if (rel) dirs.add(path.join(this.opts.root, rel));
+    }
+    return JSON.stringify([...dirs].map((dir) => {
+      if (!fs.lstatSync(dir).isDirectory()) throw new Error(`recovery workspace missing: ${dir}`);
+      return [dir, listFiles(dir).map((rel) => {
+        const abs = path.join(dir, rel);
+        if (!fs.lstatSync(abs).isFile()) throw new Error(`unverifiable recovery workspace path: ${rel}`);
+        return [rel, sha256(fs.readFileSync(abs))];
+      })];
+    }));
   }
 
   /**
@@ -405,6 +693,9 @@ export class Kernel {
     this.kernelEvent("kernel.adapter_spawned", {
       adapterInstanceId,
       pid: child.pid,
+      processGroupId: process.platform === "win32" ? null : child.pid,
+      platform: process.platform,
+      processBirth: child.pid ? recoveryProcessOps.birth(child.pid) : null,
       argv: this.opts.adapterCommand,
       kernelSpool: path.relative(this.opts.root, spools.kernelDir),
       adapterSpool: path.relative(this.opts.root, spools.adapterDir),
@@ -501,6 +792,7 @@ export class Kernel {
 
   /** §11 — DVL issues identity; the provider receives a task, never ownership. */
   async startRun(task: RunTask, attempt = 1): Promise<RunIdentity> {
+    if (this.recoveryState !== "READY") await this.waitForRecovery();
     this.assertDurable();
     if (!this.capabilities) throw new Error("describe() must succeed before run.start");
     const runId = newId("run");
@@ -529,12 +821,86 @@ export class Kernel {
    * dispatches it atomically (blocker 4). The terminal attempt stays terminal history.
    * Every precondition — including checkpoint safety — is checked before anything changes.
    */
-  async retryRun(runId: string, task: RunTask, opts: RetryOptions = {}): Promise<RunIdentity> {
+  /**
+   * H4 — explicit host/Kernel-authorized reconciliation of an UNKNOWN external effect.
+   * Adapter/provider frames cannot call this path and cannot emit Kernel Truth.
+   * The in-memory barrier is cleared only after the reconciliation record is durable.
+   */
+  reconcileActionOutcome(runId: string, actionId: string, resolution: ActionOutcomeResolution): void {
+    if (resolution !== "CONFIRMED_DONE" && resolution !== "CONFIRMED_NOT_DONE") throw new Error("invalid action outcome resolution");
     this.assertDurable();
+    this.acquireRoot();
+    const run = this.runs.get(runId);
+    if (!run) throw new Error(`unknown run ${runId}`);
+    if ([...this.executingSpikeActions].some((key) => key.startsWith(`${runId}:`))) throw new Error("effect executor is still active; reconciliation cannot revoke an in-flight effect");
+    if (!isTerminal(run.status)) {
+      throw new Error(`run ${runId} attempt ${run.identity.attempt} is not terminal (status=${run.status})`);
+    }
+
+    const action = run.actions.get(actionId);
+    if (!action) throw new Error(`unknown action ${actionId} for run ${runId}`);
+    if (action.effectCertainty !== "UNKNOWN") {
+      throw new Error(`action ${actionId} outcome is already resolved (${action.effectCertainty})`);
+    }
+
+    const recorded = this.kernelEvent(
+      "kernel.action_outcome_reconciled",
+      {
+        runId,
+        attempt: run.identity.attempt,
+        actionId,
+        actorId: action.actorId,
+        adapterInstanceId: run.adapterInstanceId,
+        resolution,
+      },
+      runId,
+      run.identity.attempt,
+    );
+    if (!recorded) {
+      throw new Error(`failed to durably reconcile outcome for ${runId}/${run.identity.attempt}/${actionId}`);
+    }
+
+    action.effectCertainty = resolution === "CONFIRMED_DONE" ? "CONFIRMED" : "NOT_STARTED";
+    if (action.prepared && resolution === "CONFIRMED_DONE") this.confirmedSpikeEffects.set(`${runId}:${action.prepared.effectOperationId}`, action.prepared);
+  }
+
+  /** Explicit trusted inspection after process fencing; UNKNOWN is never a retry decision. */
+  async inspectSpikeActionOutcome(runId: string, actionId: string): Promise<ActionOutcomeResolution | "UNKNOWN"> {
+    await this.waitForRecovery();
+    this.acquireRoot();
+    const run = this.runs.get(runId);
+    const action = run?.actions.get(actionId);
+    if (!run || !isTerminal(run.status) || !action?.prepared || !this.opts.spikeEffectExecutor) throw new Error("no terminal prepared action to inspect");
+    if (action.effectCertainty !== "UNKNOWN") throw new Error("action outcome already resolved");
+    if ([...this.executingSpikeActions].some((key) => key.startsWith(`${runId}:`))) throw new Error("effect executor is still active");
+    const resolution = await this.opts.spikeEffectExecutor.inspect(action.prepared);
+    // Re-check ownership and current uncertainty after asynchronous inspection.
+    this.assertDurable();
+    if (!this.ownsRoot) throw new Error("inspection lost Kernel ownership");
+    if (resolution !== "UNKNOWN") this.reconcileActionOutcome(runId, actionId, resolution);
+    return resolution;
+  }
+
+  async retryRun(runId: string, task: RunTask, opts: RetryOptions = {}): Promise<RunIdentity> {
+    if (this.recoveryState !== "READY") await this.waitForRecovery();
+    this.assertDurable();
+    this.acquireRoot();
     if (!this.capabilities) throw new Error("describe() must succeed before run.start");
     const run = this.runs.get(runId);
     if (!run) throw new Error(`unknown run ${runId}`);
+    if (!this.opts.spikeEffectExecutor && this.store.ofType("kernel.action_prepared").some((e) => e.runId === runId && e.origin === "kernel")) throw new Error("B4 run requires its mediated executor; provider-native fallback denied");
     if (!isTerminal(run.status)) throw new Error(`run ${runId} attempt ${run.identity.attempt} is not terminal (status=${run.status})`);
+
+    const unknownActions = [...run.actions.entries()]
+      .filter(([, action]) => action.effectCertainty === "UNKNOWN")
+      .map(([actionId]) => actionId);
+
+    if (unknownActions.length > 0) {
+      throw new Error(
+        `run ${runId} attempt ${run.identity.attempt} has unresolved action outcome(s): ${unknownActions.join(", ")}; reconciliation required before retry`,
+      );
+    }
+
     const checkpoint = opts.resumeFromEvidenceId ? this.loadCheckpoint(runId, opts.resumeFromEvidenceId) : null;
 
     const previous = { attempt: run.identity.attempt, status: run.status, adapterInstanceId: run.adapterInstanceId, workspaceId: run.identity.workspaceId, txWorkspace: run.txWorkspace };
@@ -675,6 +1041,9 @@ export class Kernel {
   }
 
   private async sendRunStart(identity: RunIdentity, task: RunTask, txWorkspace: string, decisions: Record<string, string>): Promise<void> {
+    if (this.opts.spikeEffectExecutor && this.capabilities?.commandExecutionMode !== "dvl_tools") {
+      throw new Error("B4 mediated execution requires dvl_tools; provider-native execution denied");
+    }
     await this.request("run.start", {
       ...identity,
       role: task.role,
@@ -689,6 +1058,7 @@ export class Kernel {
       validatedCheckpoint: null,
       budget: { maxDurationMs: this.limits.maxDurationMs },
       credentialsRef: null, // §51: never inline credentials
+      ...(this.opts.spikeEffectExecutor ? { spikeEffectProtocol: { version: "h4-b4/1", executionOwner: "kernel", nativeEffectsAllowed: false } } : {}),
       scenario: task.scenario,
     });
   }
@@ -753,12 +1123,26 @@ export class Kernel {
   }
 
   async shutdown(timeoutMs = 3_000): Promise<void> {
+    this.spikeEffectsRevoked = true;
     try {
       await this.stopAdapter(timeoutMs);
+      if (this.spikeActionDrains.size) {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try {
+          await Promise.race([Promise.all(this.spikeActionDrains.values()), new Promise((_, reject) => {
+            timer = setTimeout(() => reject(new Error("in-flight Kernel effect executor has not relinquished authority")), timeoutMs);
+          })]);
+        } catch (e) {
+          this.holdExecutionRecovery((e as Error).message);
+          throw e;
+        } finally { if (timer) clearTimeout(timer); }
+      }
     } finally {
       // Ownership ends only after the adapter was told to stop and, if needed, SIGKILLed.
-      this.rootLock?.release();
-      this.rootLock = null;
+      await this.recoveryWork;
+      // An async host executor may still apply its effect. Retain the lock on timeout:
+      // another Kernel must not inspect NOT_DONE and dispatch while this owner can mutate.
+      if (!this.spikeActionDrains.size) { this.rootLock?.release(); this.rootLock = null; }
     }
   }
 
@@ -997,6 +1381,14 @@ export class Kernel {
     if (!run) this.kernelEvent("kernel.protocol_violation", { kind: "unknown_run", runId, type }, runId, attempt);
 
     // 6) Persist BEFORE acting on it.
+    const actionId =
+      type === "action.requested" ||
+      type === "action.started" ||
+      type === "action.updated" ||
+      type === "action.finished"
+        ? (frame.payload as { actionId?: string } | undefined)?.actionId
+        : undefined;
+
     const stored = this.store.append({
       origin: "adapter",
       trust: known ? "untrusted_observation" : "protocol_violation",
@@ -1007,12 +1399,89 @@ export class Kernel {
       adapterSequence,
       actorId,
       actorSequence,
+      actionId,
       causalParentEventId: frame.causalParentEventId as string | undefined,
       payload: capPayload(this, aid, frame.payload, type, runId),
     });
     if (!known || !run) return;
 
     this.applyEvent(run, stored, (frame.payload ?? {}) as Record<string, unknown>);
+    if (type === "action.requested" && this.opts.spikeEffectExecutor) {
+      await this.executeSpikeAction(run, actorId, String(stored.actionId), (frame.payload as { spikeActionIntent?: unknown })?.spikeActionIntent);
+    }
+  }
+
+  private async executeSpikeAction(run: RunState, actorId: string, requestedActionId: string, raw: unknown): Promise<void> {
+    const intent = normalizeSpikeIntent(raw);
+    if (intent.actionId !== requestedActionId) throw new Error("prepared intent actionId differs from the admitted request");
+    const observed = run.actions.get(intent.actionId);
+    if (!observed || observed.actorId !== actorId || observed.state !== "requested" || observed.prepared) throw new Error("prepared action does not match the admitted request");
+    this.opts.spikeEffectExecutor!.validate(intent);
+    const { runId, attempt, workerId } = run.identity;
+    const effectOperationId = this.opts.spikeEffectExecutor!.operationIdentity(intent, runId);
+    if (typeof effectOperationId !== "string" || !effectOperationId || effectOperationId.length > 512) throw new Error("invalid host effect operation identity");
+    const action = freezeAction({ ...intent, runId, attempt, actorId, adapterInstanceId: run.adapterInstanceId,
+      assignmentId: sha256(JSON.stringify([runId, attempt, workerId, run.adapterInstanceId])),
+      authorityId: newId("effect_authority"), semanticSignature: spikeSemanticSignature(intent), effectOperationId });
+    const key = `${runId}:${attempt}:${intent.actionId}`;
+    const signatureKey = `${runId}:${action.effectOperationId}`;
+    if (this.executingSpikeActions.has(key)) throw new Error("action capability already consumed");
+    if ([...run.actions.values()].some((other) => other.prepared?.effectOperationId === action.effectOperationId && other.effectCertainty === "UNKNOWN")) throw new Error("effect operation is already unresolved");
+    this.executingSpikeActions.add(key);
+    let drained!: () => void;
+    this.spikeActionDrains.set(key, new Promise<void>((resolve) => { drained = resolve; }));
+    const checkAuthority = () => {
+      this.assertDurable();
+      if (this.spikeEffectsRevoked || !this.ownsRoot || run.identity.attempt !== attempt || run.status !== "running" || run.adapterInstanceId !== this.adapterInstanceId || this.terminatedInstances.has(run.adapterInstanceId)) throw new Error("effect assignment authority revoked");
+    };
+    const commit = (type: string, payload: unknown) => {
+      if (!this.kernelEvent(type, payload, runId, attempt)) throw new Error(`unable to durably commit ${type}`);
+    };
+    const boundary = (point: SpikeActionBoundary) => this.opts.spikeActionBoundary?.(point, action);
+    try {
+      checkAuthority();
+      await boundary("before_prepared");
+      checkAuthority();
+      commit("kernel.action_prepared", action);
+      observed.prepared = action;
+      observed.effectCertainty = "UNKNOWN"; // PREPARED itself creates the replay barrier.
+      await boundary("prepared");
+      checkAuthority();
+      const prior = this.confirmedSpikeEffects.get(signatureKey);
+      if (prior) {
+        if (prior.semanticSignature !== action.semanticSignature) throw new Error("confirmed operation identity has different action semantics; explicit resolution required");
+        // Reuse only durable Kernel outcome/explicit reconciliation, never provider claims.
+        commit("kernel.action_outcome_confirmed", { actionId: intent.actionId, authorityId: action.authorityId,
+          semanticSignature: action.semanticSignature, reusedAuthorityId: prior.authorityId, executed: false });
+      } else {
+        commit("kernel.action_execution_authorized", { actionId: intent.actionId, authorityId: action.authorityId,
+          assignmentId: action.assignmentId, semanticSignature: action.semanticSignature, executionOwner: "kernel", providerNativeAllowed: false });
+        await boundary("authorized");
+        checkAuthority();
+        commit("kernel.action_execution_started", { actionId: intent.actionId, authorityId: action.authorityId });
+        observed.state = "started";
+        await boundary("started");
+        checkAuthority();
+        // The sole effect invocation. No execution capability is sent to the provider.
+        const receipt = await this.opts.spikeEffectExecutor!.execute(action);
+        await boundary("effect_returned");
+        this.assertDurable();
+        if (!this.ownsRoot) throw new Error("effect outcome lost Kernel ownership");
+        if (!receipt || typeof receipt.receiptId !== "string" || !receipt.receiptId) throw new Error("executor did not provide a trusted effect receipt");
+        commit("kernel.action_outcome_confirmed", { actionId: intent.actionId, authorityId: action.authorityId,
+          semanticSignature: action.semanticSignature, receiptId: receipt.receiptId, executed: true });
+      }
+      observed.state = "finished";
+      observed.effectCertainty = "CONFIRMED";
+      this.confirmedSpikeEffects.set(signatureKey, action);
+      await boundary("outcome_committed");
+      // Existing command envelope; its payload is a spike-only result notification, not a grant.
+      if (this.ownsRoot && this.adapterInstanceId === action.adapterInstanceId && !this.terminatedInstances.has(action.adapterInstanceId)) {
+        await this.transport!.send({ type: "adapter.ping", requestId: newId("req"), payload: {
+          spikeActionOutcome: { runId, attempt, actionId: intent.actionId, authorityId: action.authorityId, outcome: "CONFIRMED_DONE", executionOwner: "kernel" },
+        } }, this.opts.requestTimeoutMs ?? 5000);
+      }
+    } finally { this.executingSpikeActions.delete(key); this.spikeActionDrains.delete(key); drained(); }
   }
 
   /**
@@ -1092,13 +1561,31 @@ export class Kernel {
         }
         break;
       case "action.requested":
+        run.actions.set(String(payload.actionId), {
+          state: "requested",
+          actorId,
+          effectCertainty: "NOT_STARTED",
+          outcomeUnknownRecorded: false,
+        });
+        break;
       case "action.started":
       case "action.updated":
-        // Transition already admitted by the FSM gate; only record the resulting state.
-        run.actions.set(String(payload.actionId), { state: ACTION_FSM[ev.type]!.to, actorId });
+        if (run.actions.get(String(payload.actionId))?.prepared) break;
+        run.actions.set(String(payload.actionId), {
+          state: "started",
+          actorId,
+          effectCertainty: "UNKNOWN",
+          outcomeUnknownRecorded: false,
+        });
         break;
       case "action.finished":
-        run.actions.set(String(payload.actionId), { state: "finished", actorId });
+        if (run.actions.get(String(payload.actionId))?.prepared) break;
+        run.actions.set(String(payload.actionId), {
+          state: "finished",
+          actorId,
+          effectCertainty: "CONFIRMED",
+          outcomeUnknownRecorded: false,
+        });
         this.maybeCreateEvidence(run, ev, payload);
         break;
       case "workspace.hint":

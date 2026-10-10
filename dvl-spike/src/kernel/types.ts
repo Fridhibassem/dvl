@@ -205,6 +205,7 @@ export interface StoredEvent {
   adapterSequence?: number;
   actorId?: string;
   actorSequence?: number;
+  actionId?: string;
   causalParentEventId?: string;
   payload?: unknown;
 }

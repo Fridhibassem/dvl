@@ -423,6 +423,20 @@ export const SCENARIOS: Record<string, Step[]> = {
     { op: "sleep", ms: 60_000 },
     ...finish(),
   ],
+  /** H4 — exact UNKNOWN window: durable action.started, then hold before any side effect closure. */
+  "h4-action-started-hold": [
+    ...start(),
+    { op: "emit", type: "action.started", actor: ROOT, payload: { actionId: "act_h4_probe", kind: "file_write", target: "tests/dvl-h4-probe.test.ts" } },
+    { op: "sleep", ms: 60_000 },
+  ],
+
+  /** H4/B1 regression — oversized action.started must retain durable structural action identity. */
+  "h4-action-started-hold-large-payload": [
+    ...start(),
+    { op: "emit", type: "action.started", actor: ROOT, payload: { actionId: "act_h4_big", kind: "command", command: "x".repeat(40_000) } },
+    { op: "sleep", ms: 60_000 },
+  ],
+
   /** H4 — the same harmless probe, run to completion (retry after recovery, in-process windows). */
   "h4-target-probe-finish": [
     ...start(),
