@@ -209,6 +209,12 @@ export interface StoredEvent {
   adapterSequence?: number;
   actorId?: string;
   actorSequence?: number;
+  /**
+   * B1 — Kernel-assigned action identity of an admitted action.* frame, taken from the frame at
+   * admission and stored in the envelope (inside the HMAC chain). Replay reads action identity
+   * from here, never from the payload, which may have been spooled away (>32KB).
+   */
+  actionId?: string;
   causalParentEventId?: string;
   payload?: unknown;
 }

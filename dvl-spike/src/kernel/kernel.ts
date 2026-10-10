@@ -455,7 +455,9 @@ export class Kernel {
           e.type === "action.updated" ||
           e.type === "action.finished"
         ) {
-          const actionId = p.actionId;
+          // B1 — identity from the Kernel-stamped envelope. Only records written before B1 (no
+          // envelope field) fall back to the payload.
+          const actionId = e.actionId ?? p.actionId;
           const actorId = e.actorId;
 
           if (typeof actionId !== "string" || actionId.length === 0 || !actorId) continue;
@@ -734,6 +736,8 @@ export class Kernel {
    */
   reconcileActionOutcome(runId: string, actionId: string, resolution: ActionOutcomeResolution, basis: "operator" | "inspection" = "operator"): void {
     this.assertDurable();
+    // B2 — recovery truth is written only by the Kernel that currently owns the root.
+    if (!this.ownsRoot) throw new RootLockError("reconciliation requires ownership of the root: start() this Kernel first", "root_locked");
     const run = this.runs.get(runId);
     if (!run) throw new Error(`unknown run ${runId}`);
     if (!isTerminal(run.status)) {
@@ -1455,6 +1459,7 @@ export class Kernel {
       adapterSequence,
       actorId,
       actorSequence,
+      actionId: run && ACTION_FSM[type] ? String((frame.payload as { actionId?: unknown } | undefined)?.actionId) : undefined,
       causalParentEventId: frame.causalParentEventId as string | undefined,
       payload: capPayload(this, aid, frame.payload, type, runId),
     });
