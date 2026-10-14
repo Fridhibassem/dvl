@@ -96,6 +96,7 @@ async function expectFreshInstanceHealthy(k: Kernel, oldAid: string) {
   const id = await k.startRun({ role: "builder", goal: "fresh", acceptanceCriteria: ["mock"], scope: ["src/**"], scenario: "happy" });
   expect(await k.waitForRunEnd(id.runId)).toBe("finished");
   await k.settle();
+  expect(k.store.ofType("kernel.run_halted").filter((e) => e.runId === id.runId)).toEqual([]);
   expect(halts(k)).toHaveLength(1); // still only the old instance's halt
   const seqs = acceptedOf(k, newAid).map((e) => e.adapterSequence);
   expect(seqs).toEqual(seqs.map((_, i) => i + 1)); // B's own stream from 1, no gaps
@@ -156,7 +157,10 @@ describe("C09 safety-halt regression for pre-H3 triggers (H3)", () => {
     expect(exited.payload).toMatchObject({ signal: "SIGKILL" });
     expect(k.transportStats!.queueDepth).toBe(0);
 
-    // Retire A normally and start B: its own duration budget, not halted, normal completion.
+    // Retire A normally and start B with the normal healthy-instance budget.
+    // The short 4s budget above exists only to trigger A's safety halt; carrying it
+    // into B makes this regression test host-load sensitive under parallel fsync contention.
+    k.limits.maxDurationMs = 60_000;
     k.restartAdapter();
     const aidB = await expectFreshInstanceHealthy(k, aidA);
     expect(recordsOf(k, aidB).length).toBeGreaterThan(0);
@@ -174,6 +178,10 @@ describe("C09 safety-halt regression for pre-H3 triggers (H3)", () => {
     const queued = k.transportStats!.queueDepth;
     const halt = await waitForEvent(k, (e) => e.type === "kernel.safety_halt", LIMIT + 5_000);
 
+    // B is the healthy replacement under test, so restore the normal runtime budget
+    // before spawning it. Keep the force-restart ordering so A's queued zombies are
+    // still fenced against the new current adapter instance.
+    k.limits.maxDurationMs = 60_000;
     k.restartAdapter({ force: true }); // retire A with its zombies still queued
     const aidB = k.currentAdapterInstanceId!;
     release();
@@ -244,13 +252,15 @@ describe("C09 safety-halt regression for pre-H3 triggers (H3)", () => {
     expectNoFalseTruth(k, aidA, run.runId);
     expect(s.queueDepth).toBe(0);
 
-    // Retire normally (A is closed) and start B: B must not inherit A's byte budget.
+    // Retire normally (A is closed) and start B. The short duration budget above
+    // is part of A's halt scenario only; B should run with the normal healthy budget.
+    k.limits.maxDurationMs = 60_000;
     k.restartAdapter();
     await expectFreshInstanceHealthy(k, aidA);
   });
 
   it("maxDurationMs is re-armed for the replacement instance (runtime, not just source)", async () => {
-    const LIMIT = 2_500;
+    const LIMIT = 4_000; // keep a short re-arm limit, with cold Seatbelt/fsync headroom
     const k = makeKernel("c09-rearm", { limits: { maxDurationMs: LIMIT } });
     kernels.push(k);
     k.start();

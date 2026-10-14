@@ -13,7 +13,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { Kernel } from "../kernel/kernel.js";
 import type { StoredEvent } from "../kernel/types.js";
-import { makeKernel, runScenario, violations } from "./harness.js";
+import { makeKernel, runScenario, violations, waitForEvent } from "./harness.js";
 
 let kernels: Kernel[] = [];
 afterEach(async () => {
@@ -53,7 +53,10 @@ describe("C10 run/attempt binding fence (blocker A)", () => {
     const mark = k.store.all().at(-1)!.kernelSequence;
     // Kernel asks B for a NEW run; B emits the full happy script under the OLD run id.
     const r2 = await k.startRun(task("happy"));
-    await new Promise((r) => setTimeout(r, 600));
+    await waitForEvent(
+      k,
+      (e) => e.origin === "adapter" && e.adapterInstanceId === aidB && e.runId === oldRun.runId && e.type === "run.finished",
+    );
     await k.settle();
 
     expect(k.runStatus(oldRun.runId)).toBe("failed"); // never revived
@@ -75,7 +78,10 @@ describe("C10 run/attempt binding fence (blocker A)", () => {
     k.start();
     await k.describe();
     const r = await k.startRun(task("happy")); // Kernel binds attempt 1
-    await new Promise((res) => setTimeout(res, 600));
+    await waitForEvent(
+      k,
+      (e) => e.origin === "adapter" && e.adapterInstanceId === k.currentAdapterInstanceId && e.runId === r.runId && e.type === "run.finished",
+    );
     await k.settle();
     expect(k.runStatus(r.runId)).toBe("starting");
     const evs = adapterEventsFor(k, k.currentAdapterInstanceId!, r.runId);
@@ -94,9 +100,12 @@ describe("C10 run/attempt binding fence (blocker A)", () => {
     await k.describe();
     const r = await k.startRun(task("post-terminal"));
     expect(await k.waitForRunEnd(r.runId)).toBe("finished");
-    await new Promise((res) => setTimeout(res, 400));
-    await k.settle();
     const finishedAt = k.store.ofType("kernel.run_finished")[0]!.kernelSequence;
+    await waitForEvent(
+      k,
+      (e) => e.origin === "adapter" && e.kernelSequence > finishedAt && e.runId === r.runId && e.type === "run.failed",
+    );
+    await k.settle();
 
     expect(k.runStatus(r.runId)).toBe("finished"); // not revived to running, not flipped to failed
     const after = k.store.all().filter((e) => e.origin === "adapter" && e.kernelSequence > finishedAt && e.adapterSequence !== undefined);
@@ -161,7 +170,10 @@ describe("C10 run/attempt binding fence (blocker A)", () => {
     k.restartAdapter();
     await k.describe();
     await k.retryRun(a.id.runId, task("happy"));
-    await new Promise((res) => setTimeout(res, 600));
+    await waitForEvent(
+      k,
+      (e) => e.origin === "adapter" && e.adapterInstanceId === k.currentAdapterInstanceId && e.runId === a.id.runId && e.type === "run.finished",
+    );
     await k.settle();
     expect(k.runStatus(a.id.runId)).toBe("starting"); // attempt 2 bound, nothing legitimate arrived
     const evs = adapterEventsFor(k, k.currentAdapterInstanceId!, a.id.runId);

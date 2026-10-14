@@ -210,15 +210,17 @@ describe("C07 adapter spool isolation (H2)", () => {
     const aidA = k.currentAdapterInstanceId!;
     hold = true;
     await k.startRun({ role: "builder", goal: "stale", acceptanceCriteria: ["mock"], scope: ["src/**"], scenario: "oversized-spooled" });
-    // Wait until A has spooled its artifact and all its frames sit in the queue.
-    let last = -1;
-    for (let since = Date.now(), end = Date.now() + 5_000; Date.now() < end; ) {
-      const n = k.transportStats!.framesReceived;
-      if (n !== last) [last, since] = [n, Date.now()];
-      else if (n > 2 && Date.now() - since > 200) break;
+    // Wait until A has finalized its adapter-spooled artifact and action.finished
+    // has actually reached transportA. For oversized-spooled, action.finished is
+    // the 6th received frame overall: adapter.described, command.ack, run.started,
+    // action.requested, action.started, action.finished.
+    for (const end = Date.now() + 5_000; Date.now() < end; ) {
+      const spooled = filesIn(aSpool(k, aidA)).some((f) => f.startsWith("art_mock_") && f.endsWith(".log"));
+      if (spooled && k.transportStats!.framesReceived >= 6) break;
       await new Promise((r) => setTimeout(r, 20));
     }
-    expect(filesIn(aSpool(k, aidA)).some((f) => f.startsWith("art_mock_"))).toBe(true);
+    expect(filesIn(aSpool(k, aidA)).some((f) => f.startsWith("art_mock_") && f.endsWith(".log"))).toBe(true);
+    expect(k.transportStats!.framesReceived).toBeGreaterThanOrEqual(6);
 
     k.restartAdapter({ force: true });
     const aidB = k.currentAdapterInstanceId!;
