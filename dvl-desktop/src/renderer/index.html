@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'"
+  />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DVL Code 😈</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      background: #111;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 230px 1fr;
+      height: 100vh;
+    }
+
+    aside {
+      border-right: 1px solid #292929;
+      background: #151515;
+      padding: 18px;
+      overflow: auto;
+    }
+
+    .brand {
+      font-weight: 700;
+      font-size: 18px;
+      margin-bottom: 18px;
+    }
+
+    .nav {
+      display: grid;
+      gap: 8px;
+    }
+
+    button {
+      border: 1px solid #353535;
+      background: #212121;
+      color: #fff;
+      border-radius: 8px;
+      padding: 9px 11px;
+      cursor: pointer;
+    }
+
+    .nav button {
+      text-align: left;
+      width: 100%;
+    }
+
+    .project-mini {
+      margin-top: 18px;
+      padding: 10px;
+      border: 1px solid #2d2d2d;
+      border-radius: 8px;
+      background: #181818;
+      font-size: 12px;
+      color: #aaa;
+      overflow-wrap: anywhere;
+    }
+
+    main {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 14px;
+      padding: 20px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .topbar h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .stage {
+      color: #999;
+      font-size: 13px;
+    }
+
+    .active-project {
+      border: 1px solid #2b2b2b;
+      border-radius: 10px;
+      padding: 12px;
+      background: #171717;
+    }
+
+    #projectPath {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      overflow-wrap: anywhere;
+    }
+
+    #projectId {
+      color: #777;
+      margin-top: 5px;
+      font-size: 12px;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 12px;
+      min-height: 0;
+    }
+
+    .panel {
+      min-height: 0;
+      border: 1px solid #2d2d2d;
+      border-radius: 12px;
+      background: #171717;
+      padding: 14px;
+      overflow: auto;
+    }
+
+    .panel h2 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    .placeholder {
+      color: #777;
+      font-size: 13px;
+    }
+
+    .recent-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .recent-item {
+      display: grid;
+      gap: 5px;
+      padding: 8px;
+      border: 1px solid #2c2c2c;
+      border-radius: 8px;
+      background: #1b1b1b;
+    }
+
+    .recent-name {
+      font-weight: 600;
+    }
+
+    .recent-path {
+      color: #888;
+      font-size: 11px;
+      overflow-wrap: anywhere;
+    }
+
+    .secret-line {
+      margin-top: 10px;
+      color: #999;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <div class="brand">DVL Code 😈</div>
+
+      <div class="nav">
+        <button id="openProject">Open Project</button>
+        <button id="saveSetting">Save Test Setting</button>
+        <button id="saveSecret">Store Test Secret</button>
+        <button id="deleteSecret">Delete Test Secret</button>
+      </div>
+
+      <div class="project-mini">
+        <div><strong>Recent Projects</strong></div>
+        <div id="recentProjects" class="recent-list"></div>
+        <div class="secret-line">
+          Secret: <span id="secretStatus">Checking...</span>
+        </div>
+      </div>
+    </aside>
+
+    <main>
+      <section class="topbar">
+        <div>
+          <h1>DVL Code 😈</h1>
+          <div class="stage">Desktop Foundation — B10 Workspace Panels</div>
+        </div>
+      </section>
+
+      <section class="active-project">
+        <div id="projectPath">No project selected</div>
+        <div id="projectId"></div>
+      </section>
+
+      <section class="workspace">
+        <section class="panel" id="chatPanel">
+          <h2>Chat</h2>
+          <div class="placeholder">
+            Static shell only. Real provider/chat loop comes later.
+          </div>
+        </section>
+
+        <section class="panel" id="filesPanel">
+          <h2>Files / Activity</h2>
+          <div class="placeholder">
+            Static shell only. Real filesystem/runtime activity comes in Phase C.
+          </div>
+        </section>
+
+        <section class="panel" id="terminalPanel">
+          <h2>Terminal</h2>
+          <div class="placeholder">
+            Static shell only. No command execution is wired yet.
+          </div>
+        </section>
+
+        <section class="panel" id="previewPanel">
+          <h2>Preview</h2>
+          <div class="placeholder">
+            Placeholder only. Dev-server and URL wiring comes in Phase C.
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script src="./renderer.js"></script>
+</body>
+</html>
