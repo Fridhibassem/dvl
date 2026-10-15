@@ -47,7 +47,7 @@ function legacyStateFilePath() {
 
 function isProjectDirectory(folderPath) {
   try {
-    return fs.statSync(folderPath).isDirectory();
+    return fs.statSync(folderPath).isDirectory() && fs.realpathSync(folderPath) === folderPath;
   } catch (_) {
     return false;
   }
@@ -70,6 +70,8 @@ function openDatabase() {
   fs.mkdirSync(path.dirname(target), { recursive: true });
 
   db = new DatabaseSync(target);
+  // Validate existing state before journal changes, schema migrations or legacy writes.
+  checkDatabaseIntegrity();
   db.exec('PRAGMA journal_mode = WAL;');
   db.exec('PRAGMA foreign_keys = ON;');
 
@@ -294,6 +296,7 @@ function listRecentProjects() {
 function touchProject(projectId) {
   const project = getProjectById(projectId);
   if (!project || !project.available) {
+    logEvent('warn', 'project.recent_unavailable', { projectId });
     return null;
   }
 
@@ -317,6 +320,11 @@ function touchProject(projectId) {
 
 
 function setSetting(name, value) {
+  if (typeof name !== 'string' || !name.trim() || value === undefined) {
+    throw new Error('Setting name and JSON value are required');
+  }
+  const serialized = JSON.stringify(value);
+  if (serialized === undefined) throw new Error('Setting value must be JSON serializable');
   const now = new Date().toISOString();
   db.prepare(`
     INSERT INTO settings(name, value, updated_at)
@@ -324,7 +332,7 @@ function setSetting(name, value) {
     ON CONFLICT(name) DO UPDATE SET
       value = excluded.value,
       updated_at = excluded.updated_at
-  `).run(name, JSON.stringify(value), now);
+  `).run(name, serialized, now);
 
   logEvent('info', 'settings.updated', { name });
   return { saved: true };
@@ -361,6 +369,10 @@ function setSecret(name, value) {
   }
 
   const encrypted = safeStorage.encryptString(value).toString('base64');
+  // Check the cipher round trip before replacing any previously stored secret.
+  if (safeStorage.decryptString(Buffer.from(encrypted, 'base64')) !== value) {
+    throw new Error('Secret encryption round trip failed');
+  }
   const now = new Date().toISOString();
 
   db.prepare(`
@@ -376,8 +388,18 @@ function setSecret(name, value) {
 }
 
 function hasSecret(name) {
-  const row = db.prepare('SELECT 1 AS present FROM secrets WHERE name = ?').get(name);
-  return { configured: Boolean(row && row.present) };
+  const row = db.prepare('SELECT encrypted_value FROM secrets WHERE name = ?').get(name);
+  if (!row) return { configured: false, decryptable: false };
+  try {
+    ensureEncryptionAvailable();
+    const plaintext = safeStorage.decryptString(Buffer.from(row.encrypted_value, 'base64'));
+    if (typeof plaintext !== 'string' || plaintext.length === 0) throw new Error('Empty secret');
+    logEvent('info', 'secret.decrypt_verified', { name });
+    return { configured: true, decryptable: true };
+  } catch (_) {
+    logEvent('warn', 'secret.decrypt_failed', { name });
+    return { configured: true, decryptable: false };
+  }
 }
 
 function deleteSecret(name) {
@@ -441,15 +463,30 @@ function createWindow() {
 }
 
 ipcMain.handle('dvl:get-last-project', async () => {
-  return getLastProject();
+  try {
+    return getLastProject();
+  } catch (_) {
+    logEvent('error', 'ipc.get_last_project_failed');
+    throw new Error('Could not load project state');
+  }
 });
 
 ipcMain.handle('dvl:list-recent-projects', async () => {
-  return listRecentProjects();
+  try {
+    return listRecentProjects();
+  } catch (_) {
+    logEvent('error', 'ipc.list_recent_projects_failed');
+    throw new Error('Could not load project state');
+  }
 });
 
 ipcMain.handle('dvl:open-recent-project', async (_event, projectId) => {
-  return touchProject(projectId);
+  try {
+    return touchProject(projectId);
+  } catch (_) {
+    logEvent('error', 'ipc.open_recent_project_failed');
+    throw new Error('Could not load project state');
+  }
 });
 
 ipcMain.handle('dvl:open-project', async () => {
@@ -526,7 +563,9 @@ if (!gotSingleInstanceLock) {
   app.on('second-instance', () => {
     logEvent('info', 'app.second_instance_blocked');
 
-    if (mainWindow) {
+    if (!mainWindow && app.isReady()) {
+      createWindow();
+    } else if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();
     }
@@ -540,7 +579,6 @@ if (!gotSingleInstanceLock) {
         platform: process.platform
       });
       openDatabase();
-      checkDatabaseIntegrity();
       createWindow();
 
       app.on('activate', () => {
