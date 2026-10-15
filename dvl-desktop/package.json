@@ -4,7 +4,8 @@
   "private": true,
   "main": "src/main/main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "test": "node tests/green-gate.cjs"
   },
   "devDependencies": {
     "electron": "44.7.2"

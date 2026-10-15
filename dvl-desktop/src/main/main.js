@@ -45,8 +45,20 @@ function legacyStateFilePath() {
   return path.join(app.getPath('userData'), 'desktop-state.json');
 }
 
+function isProjectDirectory(folderPath) {
+  try {
+    return fs.statSync(folderPath).isDirectory();
+  } catch (_) {
+    return false;
+  }
+}
+
 function canonicalProjectPath(folderPath) {
-  return fs.realpathSync(folderPath);
+  const canonicalPath = fs.realpathSync(folderPath);
+  if (!isProjectDirectory(canonicalPath)) {
+    throw new Error('Project path must be an accessible directory');
+  }
+  return canonicalPath;
 }
 
 function makeProjectId() {
@@ -239,7 +251,7 @@ function getProjectById(projectId) {
 
   return {
     ...row,
-    available: fs.existsSync(row.path)
+    available: isProjectDirectory(row.path)
   };
 }
 
@@ -275,7 +287,7 @@ function listRecentProjects() {
 
   return rows.map((row) => ({
     ...row,
-    available: fs.existsSync(row.path)
+    available: isProjectDirectory(row.path)
   }));
 }
 
@@ -521,19 +533,29 @@ if (!gotSingleInstanceLock) {
   });
 
   app.whenReady().then(() => {
-    initLogger();
-    logEvent('info', 'app.startup', {
-      version: app.getVersion(),
-      platform: process.platform
-    });
+    try {
+      initLogger();
+      logEvent('info', 'app.startup', {
+        version: app.getVersion(),
+        platform: process.platform
+      });
+      openDatabase();
+      checkDatabaseIntegrity();
+      createWindow();
 
-    openDatabase();
-    checkDatabaseIntegrity();
-    createWindow();
-
-    app.on('activate', () => {
-      if (BrowserWindow.getAllWindows().length === 0) createWindow();
-    });
+      app.on('activate', () => {
+        if (BrowserWindow.getAllWindows().length === 0) createWindow();
+      });
+    } catch (error) {
+      logEvent('error', 'app.startup_failed', { message: error.message });
+      closeDatabase();
+      dialog.showErrorBox(
+        'DVL startup failed',
+        'DVL could not initialize its local state. No project has been opened. ' +
+        'Do not delete your database. Check logs/dvl.log in the application data folder.'
+      );
+      app.quit();
+    }
   });
 }
 
