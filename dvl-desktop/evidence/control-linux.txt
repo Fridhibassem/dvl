@@ -1,0 +1,18 @@
+PASS Path grammar rejects escapes and accepts Unicode/spaces without normalization
+PASS Sensitive policy consistent for case and nested paths
+PASS No native binary means BOUNDARY_UNSUPPORTED with no fallback
+PASS Unknown request keys and caller root rejected before backend
+PASS Request IDs cannot be reused in one generation
+PASS A → B → A produces a fresh generation and fences old requests
+PASS Root replaced by directory invalidates generation
+PASS Native malformed protocol becomes RUNTIME_FAILED without stdout leakage
+PASS Cancellation waits for helper close and releases active slot
+PASS Hard timeout terminates helper with bounded error
+PASS Two running and eight queued; overload BUSY; switch fences every pending request
+PASS Invalid cursor cannot reach filesystem helper
+PASS No project writes or .dvl activation from service refusal paths
+PASS Production native binary enforces malformed-input/policy failures
+NATIVE SUPPORT PROBE: BOUNDARY_UNSUPPORTED
+PASS Runtime support is reported honestly and unsupported native reader fails closed
+PASS Close drains all tracked children/requests
+C1a CONTROL CHECKS PASSED: 16 (not OS-confinement qualification)

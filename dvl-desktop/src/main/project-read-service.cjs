@@ -6,6 +6,9 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawn } = require('node:child_process');
 const { TextDecoder } = require('node:util');
+const os = require('node:os');
+const { ReaderSession } = require('./reader-session.cjs');
+const { policy, rootAllowed, matchText } = require('./read-support.cjs');
 const decoder = new TextDecoder('utf-8', { fatal: true });
 const MAX_RESPONSE = 2 * 1024 * 1024;
 const fail = code => Object.assign(new Error(code), { code });
@@ -18,7 +21,7 @@ function identity(root) {
 }
 function denyName(name) {
   const n = name.toLowerCase();
-  return ['.git', '.dvl', '.ssh', '.gnupg', '.aws', '.azure', '.kube', '.env', '.npmrc', '.pypirc', '.netrc', 'credentials', 'credentials.json'].includes(n) || /^(\.env\.|id_rsa|id_ed25519)/.test(n) || /\.(pem|key|p12|pfx)$/.test(n);
+  return policy.deniedNames.includes(n) || policy.deniedPrefixes.some(x => n.startsWith(x)) || policy.deniedExtensions.some(x => n.endsWith(x));
 }
 function validPath(s, allowRoot) {
   if (typeof s !== 'string' || Buffer.byteLength(s) > 4096 || !Buffer.from(s).equals(Buffer.from(decoder.decode(Buffer.from(s))))) throw fail('INVALID_REQUEST');
@@ -40,6 +43,10 @@ class ProjectReadService {
     this.resolveProject = resolveProject;
     this.binary = options.binary || path.join(__dirname, '../../bin/project-reader');
     this.timeoutMs = options.timeoutMs || 5000;
+    this.killGraceMs = options.killGraceMs || 2000;
+    this.spawn = options.spawn || spawn; // trusted test seam, never a request option
+    this.userDataPath = path.resolve(options.userDataPath || path.join(os.homedir(), process.platform === 'darwin' ? 'Library/Application Support/dvl-desktop' : '.config/dvl-desktop'));
+    this.children = new Set(); this.abandoned = new Set();
     this.context = null; this.jobs = new Map(); this.cursors = new Map(); this.queue = []; this.active = 0; this.closed = false;
   }
   bind(projectId) {
@@ -48,7 +55,7 @@ class ProjectReadService {
     const project = this.resolveProject(projectId);
     if (!project || !project.available || project.projectId !== projectId) throw fail('PROJECT_UNAVAILABLE');
     let observed;
-    try { observed = identity(project.path); } catch { throw fail('PROJECT_UNAVAILABLE'); }
+    try { observed = identity(project.path); if (!rootAllowed(project.path, this.userDataPath)) throw fail('PROJECT_UNAVAILABLE'); } catch { throw fail('PROJECT_UNAVAILABLE'); }
     this.context = { projectId, contextGeneration: token(), root: project.path, observed, seen: new Set() };
     return { projectId, contextGeneration: this.context.contextGeneration };
   }
@@ -73,7 +80,7 @@ class ProjectReadService {
       ctx = this.context;
       if (!ctx || req.projectId !== ctx.projectId || req.contextGeneration !== ctx.contextGeneration) throw fail('STALE_CONTEXT');
       this.current(ctx); validPath(req.relativePath, operation !== 'readTextFile');
-      if (operation === 'searchText' && (typeof req.query !== 'string' || req.query.length === 0 || req.query.includes('\0') || Buffer.byteLength(req.query) > 256 || Buffer.from(req.query).toString() !== req.query)) throw fail('INVALID_REQUEST');
+      if (operation === 'searchText' && (typeof req.query !== 'string' || req.query.length === 0 || /[\0\n\r]/.test(req.query) || Buffer.byteLength(req.query) > 256 || Buffer.from(req.query).toString() !== req.query)) throw fail('INVALID_REQUEST');
       if (req.cursor !== undefined && !idValid(req.cursor)) throw fail('INVALID_REQUEST');
       if (ctx.seen.has(req.requestId)) throw fail('INVALID_REQUEST');
       // Bound request-id memory; rebind is explicit when a context is exhausted.
@@ -91,7 +98,7 @@ class ProjectReadService {
         const result = { ...response, ok: true, data };
         if (Buffer.byteLength(JSON.stringify(result)) > MAX_RESPONSE) throw fail('RESPONSE_TOO_LARGE');
         return result;
-      } finally { this.active--; this.drain(); }
+      } finally { if (job.session) await job.session.finish(); this.active--; this.drain(); }
     } catch (e) {
       return { ...response, ok: false, error: { code: job?.reason || e.code || 'RUNTIME_FAILED' } };
     } finally {
@@ -125,30 +132,13 @@ class ProjectReadService {
   async native(ctx, op, rel, offset, job) {
     this.current(ctx); this.checkJob(job);
     if (!fs.existsSync(this.binary)) throw fail('BOUNDARY_UNSUPPORTED');
-    return new Promise((resolve, reject) => {
-      const child = spawn(this.binary, [], { shell: false, stdio: ['pipe', 'pipe', 'pipe'], env: {} });
-      job.child = child; let chunks = [], size = 0, problem;
-      const stop = code => { problem ||= code; child.kill('SIGKILL'); };
-      const abort = () => stop(job.reason || 'CANCELLED');
-      job.controller.signal.addEventListener('abort', abort, { once: true });
-      const timer = setTimeout(() => stop('TIMEOUT'), Math.max(1, job.deadline - Date.now()));
-      child.stdout.on('data', b => { size += b.length; if (size > MAX_RESPONSE + 4096) stop('RESPONSE_TOO_LARGE'); else chunks.push(b); });
-      child.stderr.on('data', () => { /* Drain, never retain potentially sensitive diagnostics. */ });
-      child.stdin.on('error', () => {});
-      child.on('error', () => { problem = 'BOUNDARY_UNSUPPORTED'; });
-      child.on('close', (code, signal) => {
-        clearTimeout(timer); job.child = null; job.controller.signal.removeEventListener('abort', abort);
-        if (problem) return reject(fail(problem));
-        let out; try { out = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { return reject(fail('RUNTIME_FAILED')); }
-        if (signal || (code !== 0 && out.ok !== false)) return reject(fail('RUNTIME_FAILED'));
-        if (!out.ok) return reject(fail(out.error || 'RUNTIME_FAILED'));
-        this.checkJobSafe(job, reject, () => resolve(out));
-      });
-      child.stdin.end(`${op}\n${Buffer.from(ctx.root).toString('hex')}\n${Buffer.from(rel).toString('hex')}\n${offset} ${ctx.observed.dev} ${ctx.observed.ino}\n`);
-      if (job.controller.signal.aborted) abort();
-    });
+    if (!job.session) {
+      if (this.children.size >= 2) throw fail('BUSY');
+      job.session = new ReaderSession(this, ctx, job);
+    }
+    const result = await job.session.call(op, rel, offset);
+    this.current(ctx); this.checkJob(job); return result;
   }
-  checkJobSafe(job, reject, next) { try { this.checkJob(job); next(); } catch (e) { reject(e); } }
   async read(ctx, rel, job) {
     const out = await this.native(ctx, 'read', rel, 0, job);
     const { bytes, text } = textBytes(out.hex);
@@ -175,25 +165,31 @@ class ProjectReadService {
       if (this.cursors.size >= 64) throw fail('BUSY');
       nextCursor = token(); this.cursors.set(nextCursor, { ctx, rel, offset: out.offset, stamp, expires: Date.now() + 60000, searchJob });
     }
-    return { entries, nextCursor, complete: !out.more && !out.limited, partialReason: out.limited ? 'ENTRY_LIMIT' : out.more ? 'PAGE_LIMIT' : null, skipped, boundaryMode: out.mode };
+    return { entries, nextCursor, complete: !out.more && !out.limited && !skipped && !out.skipped, partialReason: out.limited ? 'ENTRY_LIMIT' : out.more ? 'PAGE_LIMIT' : skipped || out.skipped ? 'ENTRIES_SKIPPED' : null, skipped: skipped + out.skipped, nativeSkipped: out.skipped, boundaryMode: out.mode };
   }
   async search(ctx, rel, query, job) {
     const directories = [{ rel, cursor: undefined }], matches = [], skipped = {};
-    let files = 0, bytes = 0, directoryPages = 0, partialReason = null;
+    let files = 0, bytes = 0, directoryPages = 0, partialReason = null, excludedDirectories = 0;
     const skip = code => { skipped[code] = (skipped[code] || 0) + 1; };
     try {
       while (directories.length) {
         this.checkJob(job);
         if (++directoryPages > 256) { partialReason = 'DIRECTORY_LIMIT'; break; }
-        const d = directories.shift(); const page = await this.list(ctx, d.rel, d.cursor, job, job);
+        const d = directories.shift(); let page;
+        try { validPath(d.rel, true); page = await this.list(ctx, d.rel, d.cursor, job, job); } catch (e) {
+          if (['PATH_DENIED', 'PERMISSION_DENIED', 'NOT_FOUND', 'FILE_CHANGED', 'DIRECTORY_CHANGED', 'BUSY', 'RUNTIME_FAILED'].includes(e.code)) { skip(e.code); continue; }
+          throw e;
+        }
+        if (page.nativeSkipped) skipped.NATIVE_ENTRIES_SKIPPED = (skipped.NATIVE_ENTRIES_SKIPPED || 0) + page.nativeSkipped;
+        if (page.skipped > (page.nativeSkipped || 0)) skipped.INVALID_NAMES = (skipped.INVALID_NAMES || 0) + page.skipped - (page.nativeSkipped || 0);
         if (page.nextCursor) directories.unshift({ rel: d.rel, cursor: page.nextCursor });
         if (page.partialReason === 'ENTRY_LIMIT') partialReason = 'ENTRY_LIMIT';
         for (const entry of page.entries) {
           if (entry.kind === 'directory') {
-            if (!['node_modules', 'vendor', 'dist', 'build', 'coverage'].includes(entry.name)) {
+            if (!policy.searchExclusions.includes(entry.name)) {
               if (directories.length >= 256) { partialReason = 'DIRECTORY_LIMIT'; break; }
               directories.push({ rel: entry.relativePath });
-            }
+            } else { excludedDirectories++; }
             continue;
           }
           if (files >= 2000 || bytes + Math.min(entry.size, 1048577) > 20 * 1024 * 1024) { partialReason = 'SCAN_LIMIT'; break; }
@@ -204,32 +200,23 @@ class ProjectReadService {
           }
           bytes += data.byteLength;
           if (bytes > 20 * 1024 * 1024) { partialReason = 'SCAN_LIMIT'; break; }
-          const lines = data.text.split('\n');
-          for (let i = 0; i < lines.length; i++) {
-            let start = 0, at;
-            while ((at = lines[i].indexOf(query, start)) >= 0) {
-              const column = Array.from(lines[i].slice(0, at)).length + 1;
-              const snippet = Array.from(lines[i].slice(Math.max(0, at - 40))).slice(0, 240).join('');
-              matches.push({ relativePath: entry.relativePath, line: i + 1, column, snippet });
-              start = at + query.length;
-              if (matches.length >= 200) { partialReason = 'MATCH_LIMIT'; break; }
-            }
-            if (partialReason === 'MATCH_LIMIT') break;
-          }
+          partialReason = await matchText(data.text, query, entry.relativePath, matches, () => this.checkJob(job));
           if (partialReason) break;
         }
         if (partialReason) break;
       }
     } catch (e) { if (e.code === 'TIMEOUT') partialReason = 'TIMEOUT'; else throw e; }
     if (!partialReason && Object.keys(skipped).length) partialReason = 'FILES_SKIPPED';
+    if (!partialReason && excludedDirectories) partialReason = 'DIRECTORIES_EXCLUDED';
     // Search-owned cursors never escape the operation. Reclaim remaining pages.
     for (const [key, value] of this.cursors) if (value.searchJob === job) this.cursors.delete(key);
-    return { matches, filesScanned: files, bytesScanned: bytes, skipped, complete: !partialReason, partialReason, observation: 'best-effort; not a project snapshot' };
+    return { matches, filesScanned: files, bytesScanned: bytes, skipped, excludedDirectories, complete: !partialReason, partialReason, observation: 'best-effort; not a project snapshot' };
   }
   async close() {
     this.closed = true; this.invalidate();
-    // Requests settle only after each helper emits close (including SIGKILL).
-    while (this.jobs.size) await new Promise(resolve => setTimeout(resolve, 5));
+    const deadline = Date.now() + this.killGraceMs + 100;
+    while (this.jobs.size && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 5));
+    return { pendingRequests: this.jobs.size, abandonedHelpers: this.abandoned.size, liveHelpers: this.children.size };
   }
 }
 module.exports = { ProjectReadService, validPath, denyName };

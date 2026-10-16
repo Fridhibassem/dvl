@@ -2,6 +2,7 @@ const { spawnSync } = require('node:child_process');
 const path = require('node:path');
 const fs = require('node:fs');
 const root = path.join(__dirname, '..');
+require('./generate-policy.cjs');
 if (!['darwin', 'linux'].includes(process.platform)) throw new Error('BOUNDARY_UNSUPPORTED');
 fs.mkdirSync(path.join(root, 'bin'), { recursive: true });
 const args = ['-std=c11', '-O2', '-Wall', '-Wextra', '-Werror', '-Wno-misleading-indentation', path.join(root, 'native/project-reader.c'), '-o', path.join(root, 'bin/project-reader')];

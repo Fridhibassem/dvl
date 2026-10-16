@@ -35,7 +35,7 @@ async function boundaryProbe() {
   if (process.platform === 'darwin') args.push('-Wno-deprecated-declarations', '-lsandbox');
   const build = spawnSync('cc', args, { encoding: 'utf8' }); assert.equal(build.status, 0, build.stderr);
   const moving = path.join(a, 'moving'), away = path.join(root, 'moved-outside');
-  fs.mkdirSync(moving); const external = path.join(root, 'external-sentinel.txt'); fs.writeFileSync(external, 'EXTERNAL_SENTINEL');
+  fs.mkdirSync(moving); fs.mkdirSync(a + '-evil'); const external = path.join(a + '-evil', 'external-sentinel.txt'); fs.writeFileSync(external, 'EXTERNAL_SENTINEL');
   const result = await new Promise((resolve, reject) => {
     const child = spawn(bin, [a, external, 'injected.txt'], { stdio: ['pipe', 'pipe', 'pipe'] });
     let output = '', done = false; const timeout = setTimeout(() => { child.kill('SIGKILL'); reject(new Error('probe timed out')); }, 5000);
@@ -49,7 +49,7 @@ async function boundaryProbe() {
   });
   console.log(result.trim());
   const resultObject = JSON.parse(result.trim().split('\n').at(-1));
-  assert.deepEqual(resultObject, { externalDenied: true, writeDenied: true, movedDenied: true });
+  assert.deepEqual(resultObject, { externalDenied: true, writeDenied: true, movedDenied: true, truncateDenied: true });
   assert.equal(fs.existsSync(path.join(a, 'write-must-not-exist')), false);
   fs.renameSync(away, moving); fs.rmSync(moving, { recursive: true });
 }

@@ -1,0 +1,14 @@
+AssertionError [ERR_ASSERTION]: {"requestId":"native_1","projectId":"A","contextGeneration":"faf96b22-8543-4430-a6e4-7f7a1dd8e144","ok":false,"error":{"code":"BOUNDARY_UNSUPPORTED"}}
+
+false !== true
+
+    at /workspace/scratch/88f17e3ae0ca/work_c1/dvl-desktop-C1a-repair-v2/tests/c1-native-repair.cjs:25:70
+    at async test (/workspace/scratch/88f17e3ae0ca/work_c1/dvl-desktop-C1a-repair-v2/tests/c1-native-repair.cjs:13:32)
+    at async main (/workspace/scratch/88f17e3ae0ca/work_c1/dvl-desktop-C1a-repair-v2/tests/c1-native-repair.cjs:24:3) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: 'strictEqual',
+  diff: 'simple'
+}

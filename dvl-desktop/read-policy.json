@@ -1,0 +1,9 @@
+{
+  "deniedNames": [".git", ".dvl", ".ssh", ".gnupg", ".aws", ".azure", ".kube", ".docker", ".config", ".env", ".npmrc", ".pypirc", ".netrc", "credentials", "credentials.json", ".git-credentials", ".pgpass", ".vault-token", "kubeconfig", ".htpasswd"],
+  "deniedPrefixes": [".env.", "id_rsa", "id_ed25519", "id_ecdsa", "id_dsa"],
+  "deniedExtensions": [".pem", ".key", ".p12", ".pfx", ".tfstate", ".keystore", ".jks"],
+  "rootExact": ["/", "/Users", "/home", "/private", "/Volumes", "/Library"],
+  "rootTrees": ["/etc", "/private/etc", "/System", "/usr", "/bin", "/sbin", "/dev", "/proc", "/sys"],
+  "homeTrees": ["Library", ".config", ".local/share", ".ssh", ".aws", ".docker"],
+  "searchExclusions": ["node_modules", "vendor", "dist", "build", "coverage"]
+}

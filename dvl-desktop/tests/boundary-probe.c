@@ -13,5 +13,6 @@ int main(int argc,char **argv) {
  int external=open(argv[2],O_RDONLY|O_NONBLOCK);int externalDenied=external<0&&(errno==EACCES||errno==EPERM);if(external>=0)close(external);
  int writefd=openat(rootfd,"write-must-not-exist",O_WRONLY|O_CREAT,0600);int writeDenied=writefd<0&&(errno==EACCES||errno==EPERM);if(writefd>=0)close(writefd);
  int moved=openat(held,argv[3],O_RDONLY|O_NOFOLLOW);int movedDenied=moved<0&&(errno==EACCES||errno==EPERM);if(moved>=0)close(moved);
- printf("{\"externalDenied\":%s,\"writeDenied\":%s,\"movedDenied\":%s}\n",externalDenied?"true":"false",writeDenied?"true":"false",movedDenied?"true":"false");return 0;
+ int truncResult=truncate(argv[2],0);int truncateDenied=truncResult<0&&(errno==EACCES||errno==EPERM);
+ printf("{\"externalDenied\":%s,\"writeDenied\":%s,\"movedDenied\":%s,\"truncateDenied\":%s}\n",externalDenied?"true":"false",writeDenied?"true":"false",movedDenied?"true":"false",truncateDenied?"true":"false");return 0;
 }
