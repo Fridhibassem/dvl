@@ -6,7 +6,11 @@
   "scripts": {
     "start": "electron .",
     "test": "node tests/green-gate.cjs",
-    "test:native-secret": "node tests/native-secret-check.cjs"
+    "test:native-secret": "node tests/native-secret-check.cjs",
+    "build:reader": "node scripts/build-reader.cjs",
+    "test:c1:unit": "node tests/c1-unit.cjs",
+    "test:c1:native": "node tests/c1-boundary.cjs",
+    "test:c1": "npm run build:reader && npm run test:c1:unit && npm run test:c1:native"
   },
   "devDependencies": {
     "electron": "44.7.2"

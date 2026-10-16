@@ -1,0 +1,13 @@
+{
+  "GREEN_GATE_B_REVIEW.md": "aa0b4af930b32186eaa5fcd38cf73048c468537480cf1ae293b6ee81b6eee4d1",
+  "GREEN_GATE_B_REVIEW_PRE_V3.md": "3ee2ca36f19c6d8715c237118988a700bfa2778e1212108f4c187d1c6142afe2",
+  "package-lock.json": "00a9f1a4e3eae31f105e62d200f32bae3fc6c91bc38f70cdaff6d30cace596ee",
+  "package.json": "2bafb8ad106243fa9d4f73f28b76e6f01d322449bd2c825752f2d326c993638f",
+  "src/main/main.js": "36bdacd06e5ba40c565abafa65517c5647daca13b4b45b799458ffc2a590beff",
+  "src/preload/preload.js": "c65349d8dcc2f5ae2fb571a0dfdea70684f3afe5f7504c0599c14fbf252919e4",
+  "src/renderer/index.html": "6b8c322059d427a6757b2862767431c327cf4da65c994b43dd2fc328c46d5bb3",
+  "src/renderer/renderer.js": "e0af7f8112b4056ab719d5eb6a2af1c375da1a9da5e02c1b40839d5d38d6ba78",
+  "tests/green-gate.cjs": "a1c599efc9859812486462c91102c0dbcc55583dd33e79c5e17c4f825e8f4d4c",
+  "tests/native-secret-check.cjs": "ea0d45ba4ea721d6d99993de8190fd03809e6a875d7ef09e89b7db96e3ee7780",
+  "tests/native-secret-child.cjs": "47d76c8eba52240821c146b34710420f3d9319cd21269a947e0683f8d92078d7"
+}

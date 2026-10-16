@@ -1,0 +1,10 @@
+const { spawnSync } = require('node:child_process');
+const path = require('node:path');
+const fs = require('node:fs');
+const root = path.join(__dirname, '..');
+if (!['darwin', 'linux'].includes(process.platform)) throw new Error('BOUNDARY_UNSUPPORTED');
+fs.mkdirSync(path.join(root, 'bin'), { recursive: true });
+const args = ['-std=c11', '-O2', '-Wall', '-Wextra', '-Werror', '-Wno-misleading-indentation', path.join(root, 'native/project-reader.c'), '-o', path.join(root, 'bin/project-reader')];
+if (process.platform === 'darwin') args.push('-Wno-deprecated-declarations', '-lsandbox');
+const result = spawnSync('cc', args, { stdio: 'inherit', shell: false, timeout: 30000 });
+if (result.error || result.status !== 0) { console.error('Native reader build failed; no fallback is enabled.'); process.exitCode = 1; }
