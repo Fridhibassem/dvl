@@ -122,11 +122,12 @@ static const char *valid(const char *rel) {
 static int confine(int rootfd,const char *root) {
 #ifdef __APPLE__
  (void)rootfd;
- /* Escape exact canonical root as a Seatbelt string, never interpolate code. */
- char quoted[32768];size_t n=0;
- for(const unsigned char *p=(const unsigned char*)root;*p;p++){if(*p<32||*p==127)return -1;if(*p=='"'||*p=='\\')quoted[n++]='\\';quoted[n++]=(char)*p;if(n>sizeof(quoted)-8)return -1;}quoted[n]=0;
- char profile[34000];snprintf(profile,sizeof profile,"(version 1)(deny default)(allow file-read* (subpath \"%s\"))",quoted);
- char *error=NULL;int r=sandbox_init(profile,0,&error);if(error)sandbox_free_error(error);if(r)return -1;mode="seatbelt";
+ /* Pass the canonical root as data, never interpolate SBPL source. */
+ for(const unsigned char *p=(const unsigned char*)root;*p;p++)if(*p<32||*p==127)return -1;
+ extern int sandbox_init_with_parameters(const char *,uint64_t,const char *const [],char **);
+ const char *parameters[]={"DVL_PROJECT_ROOT",root,NULL};
+ const char *profile="(version 1)(deny default)(allow file-read* (subpath (param \"DVL_PROJECT_ROOT\")))";
+ char *error=NULL;int r=sandbox_init_with_parameters(profile,0,parameters,&error);if(error)sandbox_free_error(error);if(r)return -1;mode="seatbelt";
 #elif defined(__linux__)
  (void)root;
  int abi=(int)syscall(SYS_landlock_create_ruleset,NULL,0,LANDLOCK_CREATE_RULESET_VERSION);if(abi<3)return -1;

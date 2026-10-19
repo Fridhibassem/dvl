@@ -1,0 +1,128 @@
+
+> dvl-desktop@0.6.0 test
+> node tests/green-gate.cjs
+
+PASS Schema and integrity before all schema/journal writes
+PASS Mock picker IPC cancellation leaves last project empty
+PASS Open-project IPC and same canonical path reuse ID
+PASS Canonical alias reuses ID
+PASS Settings IPC round trip and invalid inputs
+PASS Secrets IPC verifies persisted ciphertext with status only
+PASS Recent IPC selects older project and persists selection
+PASS Missing recent returns null and unavailable; restored folder keeps ID
+PASS BrowserWindow security flags
+PASS Second instance restores minimized window; closed window recreated
+PASS Before-quit checkpoints and closes database
+PASS Restart preserves project, setting and decryptable secret via IPC
+PASS Unreadable ciphertext returns boolean failure; row retained
+PASS Unavailable encryption and mismatched round trip reject without write
+PASS Delete-secret IPC removes row and reports status only
+PASS Regular-file replacement not restored or registered
+PASS Canonical path replaced by symlink cannot impersonate original project
+PASS Legacy import executes on boot and is idempotent across restart
+PASS Legacy regular-file path is rejected safely
+PASS Rejected single-instance lock never opens or changes database
+PASS Corrupt database handled, retained and never migrated
+PASS Project content unchanged; logs contain no test secret values
+PASS Failed round trip preserves existing ciphertext
+PASS Renderer handles unreadable secret, IPC failure and stale recent
+TOTAL CHECKS PASSED: 24
+
+> dvl-desktop@0.6.0 test:c1
+> npm run build:reader && npm run test:c1:unit && npm run test:c1:repair && npm run test:c1:native
+
+
+> dvl-desktop@0.6.0 build:reader
+> node scripts/build-reader.cjs
+
+
+> dvl-desktop@0.6.0 test:c1:unit
+> node tests/c1-unit.cjs
+
+PASS Path grammar rejects escapes and accepts Unicode/spaces without normalization
+PASS Sensitive policy consistent for case and nested paths
+PASS No native binary means BOUNDARY_UNSUPPORTED with no fallback
+PASS Unknown request keys and caller root rejected before backend
+PASS Request IDs cannot be reused in one generation
+PASS A → B → A produces a fresh generation and fences old requests
+PASS Root replaced by directory invalidates generation
+PASS Native malformed protocol becomes RUNTIME_FAILED without stdout leakage
+PASS Cancellation waits for helper close and releases active slot
+PASS Hard timeout terminates helper with bounded error
+PASS Two running and eight queued; overload BUSY; switch fences every pending request
+PASS Invalid cursor cannot reach filesystem helper
+PASS No project writes or .dvl activation from service refusal paths
+PASS Production native binary enforces malformed-input/policy failures
+NATIVE SUPPORT PROBE: NOT_FOUND
+PASS Runtime support is reported honestly and unsupported native reader fails closed
+PASS Close drains all tracked children/requests
+C1a CONTROL CHECKS PASSED: 16 (not OS-confinement qualification)
+
+> dvl-desktop@0.6.0 test:c1:repair
+> node tests/c1-repair.cjs
+
+PASS F7 single policy table denies every name/prefix/extension in JS AND production native entrypoint
+FD PROBE {"softBefore":1048575,"fd3Closed":true,"fd37Closed":true}
+PASS F3 close inherited descriptors including fd above lowered soft limit
+PASS F4 JS and native reject home/ancestors/system roots before sandbox
+PASS F4 custom userData root, ancestors and descendants rejected by host and native
+PASS F8 strict native protocol validates error/mode/kind/size/identity/offset/hex and unknown fields
+MATCH CPU MS 5.54
+MATCH CPU MS 22.47
+EVENT LOOP MAX MS 11.61
+PASS F2 one-MiB line, 200 start/end matches: bounded CPU and event-loop delay
+PASS F2 matching cooperatively observes cancellation during a long line
+PASS F9 snippets stay well-formed and Unicode columns remain correct
+PASS F5 excluded directories are counted and search reports partial
+PASS F5 newline/CR query rejected instead of reporting a false no-match
+PASS F5 invalid listing names and directory failures retain earlier matches and expose skip counts
+PASS F5 path-depth refusal preserves completed search evidence
+PASS F5 time budget returns explicit partial results rather than false completion
+PASS F6 helpers ignoring SIGKILL cannot wedge requests/shutdown or exceed global helper ceiling
+PASS F3 one root-bound process serves every list/read within a search (simulated protocol)
+PASS F8 malformed session response fails closed without raw error text
+C1a REPAIR CONTROL CHECKS PASSED: 16 (simulated protocol tests are not native security evidence)
+
+> dvl-desktop@0.6.0 test:c1:native
+> node tests/c1-boundary.cjs && node tests/c1-native-repair.cjs
+
+READY seatbelt
+{"externalDenied":true,"writeDenied":true,"movedDenied":true,"truncateDenied":true}
+PASS Mandatory OS boundary blocks direct outside read, write, and moved-directory injection
+PASS Real directory list hides denied targets, links and non-regular files
+PASS Read UTF-8 Unicode path, exact contents/hash and inert markup bytes
+PASS Traversal, empty, absolute, backslash, drive and NUL rejected
+PASS Denied targets blocked across read/list/search
+PASS Symlink parent, internal symlink, hard link and FIFO cannot disclose bytes
+PASS Binary, invalid encoding, oversized and missing files return bounded errors
+PASS Literal search correct 1-based Unicode column and explicit skipped files
+PASS Regex characters treated literally; empty/oversize query rejected
+PASS Unknown keys, caller-supplied root, duplicate IDs and bad project rejected
+PASS Cancellation and A → B → A fence pending and old-generation results
+PASS Root identity replacement invalidates capability
+PASS Pagination bounded to 200, cursor single-use, directory changes reject cursor
+PASS Result limit caps matches and labels partial
+PASS Unavailable backend fails closed, no path-only fallback
+PASS File inventory including .git/hidden/ignored bytes unchanged; .dvl absent
+PASS Close cancels pending requests and leaves no tracked helper
+C1a CHECKS PASSED: 17 platform: darwin x64
+REPAIRED NATIVE MODE seatbelt
+PASS Native sandbox operational; repaired service reads actual fixture bytes
+ALIAS RESOLUTION ".ſsh/config" true
+ALIAS RESOLUTION ".awſ/credentialſ" true
+ALIAS RESOLUTION "id_rſa" true
+ALIAS RESOLUTION ".ßh/config" true
+ALIAS RESOLUTION ".AWS/CREDENTIALS" true
+ALIAS RESOLUTION "srv.Key" true
+PASS F1 direct native AND service deny actual sensitive-name aliases before content disclosure
+PASS F1 exact stored Unicode spelling works; normalization aliases fail closed or are exact
+PASS Native helper independently rejects wrong root inode (bypasses host check)
+PASS Persistent native protocol cannot rebind root or introduce a new method
+PASS F11 root quoting/escaping: spaces, quotes, backslash and Arabic
+PASS Real child cancellation AFTER spawn returns no content and reaps child
+PASS Real child A → B switch AFTER spawn fences old response
+100 READS MS 2746.93
+PASS F3 100 sequential reads record target latency without leaking helpers
+500 FILE SEARCH MS 1047.56 HELPERS 1
+PASS F3 persistent sandbox: complete 500-file search in the unchanged 5-second budget
+C1a REPAIR NATIVE CHECKS PASSED: 10 darwin x64

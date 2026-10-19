@@ -12,7 +12,7 @@
   "evidence/native-original-linux.txt": "d7282b6d85b4e80a5a2eaf1b010e6674ee98a07332a5183abe8d0fc0f1f1cb26",
   "evidence/native-repair-linux.txt": "c44c03865f03c445208d2f4c9fba5305412301a6cd0c86772666c969c06f8c52",
   "evidence/repair-linux.txt": "02b3c30d65114a003d0c35797ef8ba02587f0ccb3afce3a3ae68b810d10f6085",
-  "native/project-reader.c": "0d9e913f0460910bb84c3be2d6521938ce1e67b3c4a203cd2d33d7f63b3ed97f",
+  "native/project-reader.c": "a9705e7d024616eae7b96529285ecdb7a5d36f428d8cc5129877658c8072a3f8",
   "native/read-policy.h": "07ffc0b67f60016e4983f9ca45c27fac05d392396cce1abaf97c1cdf0a055da6",
   "package-lock.json": "00a9f1a4e3eae31f105e62d200f32bae3fc6c91bc38f70cdaff6d30cace596ee",
   "package.json": "ae85232618d38c73e9bdb336201414061184d27d984c9fe60e41cd185222d1f8",
