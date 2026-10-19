@@ -1,3 +1,8 @@
+> **2026-10-20 V3 status annotation — C1B-UNICODE-01: F1/N-2 REOPENED.**
+> The historical scoped C1a PASS and its Mac evidence remain recorded in the independent review. New owner Mac evidence proves that V2 read eight stored sensitive-name aliases using U+FB01, U+FB05 and U+FB06. Reopen F1 privacy closure and N-2 treatment for independent reassessment; exact stored-entry binding alone does not enforce the sensitive-name policy. V3 is a repair candidate, not accepted/frozen. See `review-v3/C1B_UNICODE_01_REOPENED.md` and the full native diff. The original independent review is retained unmodified.
+>
+> Everything below is the historical C1a repair-v2 authoring status, not the current V3 verdict.
+
 # DVL Code 😈 — C1a repair v2
 
 Date: 2026-10-16

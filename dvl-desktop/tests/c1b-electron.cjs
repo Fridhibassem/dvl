@@ -24,7 +24,7 @@ function run(script, { embeddedNode = false, marker, args = [] } = {}) {
 (async () => {
   try {
     // Both native suites are coupled: repair-only is not confinement evidence.
-    for (const [script, marker] of [['c1-boundary.cjs', 'C1a CHECKS PASSED: 17'], ['c1-native-repair.cjs', 'C1a REPAIR NATIVE CHECKS PASSED: 10'], ['c1b-policy.cjs', 'C1b POLICY CHECKS PASSED: 3'], ['c1b-v2-native.cjs', 'C1B_V2_NATIVE_PASS 3']]) {
+    for (const [script, marker] of [['c1-boundary.cjs', 'C1a CHECKS PASSED: 17'], ['c1-native-repair.cjs', 'C1a REPAIR NATIVE CHECKS PASSED: 10'], ['c1b-policy.cjs', 'C1b POLICY CHECKS PASSED: 3'], ['c1b-v2-native.cjs', 'C1B_V2_NATIVE_PASS 3'], ['c1b-v3-native.cjs', 'C1B_V3_NATIVE_PASS 3']]) {
       await run(script, { embeddedNode: true, marker });
     }
     console.log('PASS Native suites in Electron embedded Node (not UI tests)');

@@ -1,14 +1,14 @@
 'use strict';
 (() => {
   const el = name => document.getElementById(name);
-  let selected = null, context = null, directory = '.', cursor = null;
+  let selected = null, context = null, directory = '.', cursor = null, directoryHidden = 0;
   let revision = 0, action = 0, contextFetch = 0;
   const pending = new Map();
   const status = text => { el('filesStatus').textContent = text; };
   function clear() {
     el('fileEntries').textContent = ''; el('fileText').textContent = '';
     el('fileTitle').textContent = ''; el('searchResults').textContent = '';
-    el('directoryName').textContent = '.'; cursor = null;
+    el('directoryName').textContent = '.'; cursor = null; directoryHidden = 0;
     el('filesMore').hidden = true;
   }
   function controls() {
@@ -44,11 +44,11 @@
   async function list(rel, next) {
     cancelPending(); const ticket = ++action;
     el('searchResults').textContent = ''; el('fileText').textContent = ''; el('fileTitle').textContent = '';
-    if (!next) { el('fileEntries').textContent = ''; cursor = null; el('filesMore').hidden = true; }
+    if (!next) { directoryHidden = 0; el('fileEntries').textContent = ''; cursor = null; el('filesMore').hidden = true; }
     status('Loading permitted entries…');
     const data = await request('listDirectory', { relativePath: rel, ...(next ? { cursor: next } : {}) }, ticket);
     if (!data) return;
-    directory = rel; cursor = data.nextCursor;
+    directory = rel; cursor = data.nextCursor; directoryHidden += data.hiddenByPolicy;
     el('directoryName').textContent = rel;
     for (const entry of data.entries) {
       const b = button((entry.kind === 'directory' ? '▸ ' : '') + entry.name,
@@ -56,8 +56,8 @@
       b.className = 'file-entry'; el('fileEntries').appendChild(b);
     }
     el('filesMore').hidden = !cursor; controls();
-    status(data.complete ? 'Complete over permitted entries on this page.' :
-      `Partial: ${data.partialReason}; skipped: ${data.skipped}.`);
+    status((data.complete ? 'Complete over permitted entries on this page.' :
+      `Partial: ${data.partialReason}; skipped: ${data.skipped}.`) + ` hidden by policy: ${directoryHidden} (entries encountered).`);
   }
   async function read(rel) {
     cancelPending(); const ticket = ++action;
@@ -79,7 +79,7 @@
       b.className = 'search-match'; el('searchResults').appendChild(b);
     }
     const skips = Object.values(data.skipped).reduce((a, b) => a + b, 0);
-    status(`${data.matches.length} matches; ${data.filesScanned} files scanned; ${data.bytesScanned} text bytes; ${data.bytesRead} read-budget bytes (estimate); ${data.elapsedMs} ms. ` +
+    status(`${data.matches.length} matches; ${data.filesScanned} files scanned; ${data.bytesScanned} text bytes; ${data.bytesRead} read-budget bytes (estimate); ${data.elapsedMs} ms; hidden by policy: ${data.hiddenByPolicy} (entries encountered). ` +
       (data.complete ? 'Complete over permitted files.' : `Partial: ${data.partialReason}; excluded directories: ${data.excludedDirectories}; skipped: ${skips}.`));
   }
   function applyState(state) {

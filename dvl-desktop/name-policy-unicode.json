@@ -1,0 +1,19 @@
+{
+  "strategy": "broad-component-refusal",
+  "codePoints": [
+    "U+00DF",
+    "U+017F",
+    "U+1E9E",
+    "U+212A",
+    "U+FB00",
+    "U+FB01",
+    "U+FB02",
+    "U+FB03",
+    "U+FB04",
+    "U+FB05",
+    "U+FB06"
+  ],
+  "basis": "Observed owner Mac same-device aliases; not universal Unicode protection",
+  "plannedReplacement": "Pinned Unicode default full C+F fold-then-match; preserve original lookup bytes",
+  "caseFoldingSource": "https://www.unicode.org/Public/18.0.0/ucd/CaseFolding.txt"
+}

@@ -34,7 +34,7 @@ function rootAllowed(root, userDataPath) {
 function validateNative(out, op) {
   const bad = () => { throw failure('RUNTIME_FAILED'); };
   if (!out || typeof out !== 'object' || Array.isArray(out) || typeof out.ok !== 'boolean') bad();
-  const keys = out.ok ? (op === 'read' ? ['ok', 'mode', 'hex', 'bytes', 'dev', 'ino'] : ['ok', 'mode', 'entries', 'offset', 'more', 'limited', 'skipped', 'dev', 'ino', 'stamp']) : ['ok', 'error'];
+  const keys = out.ok ? (op === 'read' ? ['ok', 'mode', 'hex', 'bytes', 'dev', 'ino'] : ['ok', 'mode', 'entries', 'offset', 'more', 'limited', 'skipped', 'hiddenByPolicy', 'dev', 'ino', 'stamp']) : ['ok', 'error'];
   if (Object.keys(out).length !== keys.length || Object.keys(out).some(k => !keys.includes(k))) bad();
   if (!out.ok) { if (!errors.has(out.error)) bad(); return out; }
   if (!['seatbelt', 'landlock'].includes(out.mode)) bad();
@@ -42,8 +42,8 @@ function validateNative(out, op) {
   if (op === 'read') {
     if (!Number.isInteger(out.bytes) || out.bytes < 0 || out.bytes > 1048576 || typeof out.hex !== 'string' || out.hex.length !== out.bytes * 2 || /[^0-9a-f]/.test(out.hex)) bad();
   } else {
-    if (!Number.isInteger(out.offset) || out.offset < 0 || out.offset > 10000 || !Number.isInteger(out.skipped) || out.skipped < 0 || out.skipped > 10000 || typeof out.more !== 'boolean' || typeof out.limited !== 'boolean' || typeof out.stamp !== 'string' || !/^\d{1,20}:\d{1,9}:\d{1,20}:\d{1,9}$/.test(out.stamp)) bad();
     if (!Array.isArray(out.entries) || out.entries.length > 200) bad();
+    if (!Number.isInteger(out.offset) || out.offset < 0 || out.offset > 10000 || !Number.isInteger(out.skipped) || out.skipped < 0 || out.skipped > 10000 || !Number.isInteger(out.hiddenByPolicy) || out.hiddenByPolicy < 0 || out.hiddenByPolicy > 10000 || out.hiddenByPolicy + out.skipped + out.entries.length > out.offset || typeof out.more !== 'boolean' || typeof out.limited !== 'boolean' || typeof out.stamp !== 'string' || !/^\d{1,20}:\d{1,9}:\d{1,20}:\d{1,9}$/.test(out.stamp)) bad();
     for (const e of out.entries) {
       if (!e || Object.keys(e).length !== 3 || Object.keys(e).some(k => !['nameHex', 'kind', 'size'].includes(k)) || !['file', 'directory'].includes(e.kind) || !Number.isSafeInteger(e.size) || e.size < 0 || typeof e.nameHex !== 'string' || !e.nameHex.length || e.nameHex.length > 8192 || e.nameHex.length % 2 || /[^0-9a-f]/.test(e.nameHex)) bad();
     }

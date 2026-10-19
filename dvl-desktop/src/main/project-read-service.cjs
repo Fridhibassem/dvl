@@ -8,6 +8,7 @@ const { spawn } = require('node:child_process');
 const { TextDecoder } = require('node:util');
 const { performance } = require('node:perf_hooks');
 const os = require('node:os');
+const { hasGuardedCharacter } = require('./name-policy.cjs');
 const { ReaderSession } = require('./reader-session.cjs');
 const { policy, rootAllowed, matchText } = require('./read-support.cjs');
 const decoder = new TextDecoder('utf-8', { fatal: true });
@@ -21,9 +22,8 @@ function identity(root) {
   return { dev: String(st.dev), ino: String(st.ino) };
 }
 function denyName(name) {
-  // Conservative refusal of the three reviewed filesystem-folding hazards.
-  // This is intentionally not a claim of universal Unicode case folding.
-  if (/[\u017f\u212a\u00df\u1e9e]/.test(name)) return true;
+  // Broad compatibility limitation, shared with the generated native table.
+  if (hasGuardedCharacter(name)) return true;
   const n = name.toLowerCase();
   return policy.deniedNames.includes(n) || policy.deniedPrefixes.some(x => n.startsWith(x)) || policy.deniedExtensions.some(x => n.endsWith(x));
 }
@@ -176,10 +176,10 @@ class ProjectReadService {
     const out = await this.native(ctx, 'list', rel, prior?.offset || 0, job);
     const stamp = `${out.dev}:${out.ino}:${out.stamp}`;
     if (prior && stamp !== prior.stamp) throw fail('DIRECTORY_CHANGED');
-    let skipped = 0;
+    let skipped = 0, hiddenByPolicy = out.hiddenByPolicy;
     const entries = [];
     for (const item of out.entries) {
-      let name; try { name = textBytes(item.nameHex).text; validPath(name, false); } catch { skipped++; continue; }
+      let name; try { name = textBytes(item.nameHex).text; validPath(name, false); } catch (e) { if (e.code === 'POLICY_DENIED') hiddenByPolicy++; else skipped++; continue; }
       entries.push({ name, relativePath: rel === '.' ? name : `${rel}/${name}`, kind: item.kind, size: item.size });
     }
     let nextCursor = null;
@@ -188,11 +188,11 @@ class ProjectReadService {
       if (this.cursors.size >= 64) throw fail('BUSY');
       nextCursor = token(); this.cursors.set(nextCursor, { ctx, rel, offset: out.offset, stamp, expires: performance.now() + 60000, searchJob });
     }
-    return { entries, nextCursor, complete: !out.more && !out.limited && !skipped && !out.skipped, partialReason: out.limited ? 'ENTRY_LIMIT' : out.more ? 'PAGE_LIMIT' : skipped || out.skipped ? 'ENTRIES_SKIPPED' : null, skipped: skipped + out.skipped, nativeSkipped: out.skipped, boundaryMode: out.mode };
+    return { entries, nextCursor, complete: !out.more && !out.limited && !skipped && !out.skipped, partialReason: out.limited ? 'ENTRY_LIMIT' : out.more ? 'PAGE_LIMIT' : skipped || out.skipped ? 'ENTRIES_SKIPPED' : null, skipped: skipped + out.skipped, nativeSkipped: out.skipped, hiddenByPolicy, boundaryMode: out.mode };
   }
   async search(ctx, rel, query, job) {
     const directories = [{ rel, cursor: undefined }], matches = [], skipped = {};
-    let files = 0, bytes = 0, bytesRead = 0, directoryPages = 0, partialReason = null, excludedDirectories = 0;
+    let files = 0, bytes = 0, bytesRead = 0, directoryPages = 0, partialReason = null, excludedDirectories = 0, hiddenByPolicy = 0;
     const skip = code => { skipped[code] = (skipped[code] || 0) + 1; };
     try {
       while (directories.length) {
@@ -203,6 +203,7 @@ class ProjectReadService {
           if (['PATH_DENIED', 'PERMISSION_DENIED', 'NOT_FOUND', 'FILE_CHANGED', 'DIRECTORY_CHANGED', 'BUSY', 'RUNTIME_FAILED'].includes(e.code)) { skip(e.code); continue; }
           throw e;
         }
+        hiddenByPolicy += page.hiddenByPolicy || 0;
         if (page.nativeSkipped) skipped.NATIVE_ENTRIES_SKIPPED = (skipped.NATIVE_ENTRIES_SKIPPED || 0) + page.nativeSkipped;
         if (page.skipped > (page.nativeSkipped || 0)) skipped.INVALID_NAMES = (skipped.INVALID_NAMES || 0) + page.skipped - (page.nativeSkipped || 0);
         if (page.nextCursor) directories.unshift({ rel: d.rel, cursor: page.nextCursor });
@@ -238,7 +239,7 @@ class ProjectReadService {
     if (!partialReason && excludedDirectories) partialReason = 'DIRECTORIES_EXCLUDED';
     // Search-owned cursors never escape the operation. Reclaim remaining pages.
     for (const [key, value] of this.cursors) if (value.searchJob === job) this.cursors.delete(key);
-    return { matches, filesScanned: files, bytesScanned: bytes, bytesRead, bytesReadIsEstimate: true, elapsedMs: Math.round(performance.now() - job.startedAt), skipped, excludedDirectories, complete: !partialReason, partialReason, observation: 'best-effort; not a project snapshot' };
+    return { matches, filesScanned: files, bytesScanned: bytes, bytesRead, bytesReadIsEstimate: true, elapsedMs: Math.round(performance.now() - job.startedAt), skipped, excludedDirectories, hiddenByPolicy, complete: !partialReason, partialReason, observation: 'best-effort; not a project snapshot' };
   }
   async close() {
     this.closed = true; this.invalidate();

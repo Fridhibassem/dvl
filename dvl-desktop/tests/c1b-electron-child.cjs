@@ -13,9 +13,11 @@ const project = path.join(data, 'fixture-project'), other = path.join(data, 'fix
 fs.mkdirSync(project); fs.mkdirSync(other);
 fs.writeFileSync(path.join(project, 'known.txt'), '<script>window.C1B_EXECUTED=true</script> C1B_QUERY_SENTINEL');
 fs.writeFileSync(path.join(project, '.env'), 'C1B_HIDDEN_SECRET');
+for (const [i, name] of ['.conﬁg', 'kubeconﬁg', '.password-ﬅore', 'ordinary.tfﬅate', 'ordinary.keyﬅore', '.password-ﬆore', 'ordinary.tfﬆate', 'ordinary.keyﬆore'].entries()) { const dir = path.join(project, 'alias-case' + i); fs.mkdirSync(dir); fs.writeFileSync(path.join(dir, name), 'C1B_HIDDEN_SECRET'); }
 fs.mkdirSync(path.join(project, 'dist')); fs.writeFileSync(path.join(project, 'dist/ignored.txt'), 'C1B_QUERY_SENTINEL');
 fs.writeFileSync(path.join(other, 'other.txt'), 'OTHER_PROJECT_CONTENT');
 fs.mkdirSync(path.join(other, 'paging'));
+fs.writeFileSync(path.join(other, 'paging', '.env'), 'C1B_HIDDEN_SECRET');
 for (let i = 0; i < 201; i++) fs.writeFileSync(path.join(other, 'paging', 'page' + String(i).padStart(3, '0') + '.txt'), 'PAGE_CONTENT_' + i + '\n' + 'line\n'.repeat(100));
 const inventory = () => [fs.readFileSync(path.join(project, 'known.txt'), 'hex'), fs.readFileSync(path.join(project, '.env'), 'hex'), fs.readFileSync(path.join(other, 'other.txt'), 'hex')];
 const before = inventory();
@@ -44,17 +46,19 @@ app.whenReady().then(async () => {
     await check('Actual native list/read/search through production IPC', async () => {
       const list = await invoke('listDirectory', request({ relativePath: '.' })); assert.equal(list.ok, true, JSON.stringify(list));
       assert.ok(list.data.entries.some(e => e.name === 'known.txt')); assert.ok(!list.data.entries.some(e => e.name === '.env'));
+      assert.equal(list.data.hiddenByPolicy, 1);
+      assert.equal(list.data.entries.length, 10);
       const read = await invoke('readTextFile', request()); assert.equal(read.ok, true, JSON.stringify(read)); assert.match(read.data.text, /C1B_QUERY_SENTINEL/);
       assert.ok(['seatbelt', 'landlock'].includes(read.data.boundaryMode));
       const search = await invoke('searchText', request({ relativePath: '.', query: 'C1B_QUERY_SENTINEL' }));
-      assert.equal(search.ok, true, JSON.stringify(search)); assert.equal(search.data.complete, false); assert.equal(search.data.partialReason, 'DIRECTORIES_EXCLUDED'); assert.equal(search.data.excludedDirectories, 1);
+      assert.equal(search.ok, true, JSON.stringify(search)); assert.equal(search.data.complete, false); assert.equal(search.data.partialReason, 'DIRECTORIES_EXCLUDED'); assert.equal(search.data.excludedDirectories, 1); assert.equal(search.data.hiddenByPolicy, 9); assert.doesNotMatch(JSON.stringify(search), /C1B_HIDDEN_SECRET/);
     });
     await check('Live UI displays markup as text and does not execute it', async () => {
       await js(`window.dvlFiles.showProject(${JSON.stringify(context.projectId)})`);
       await js(`new Promise((resolve, reject) => {
         const start = Date.now(); const t = setInterval(() => {
           const b = Array.from(document.querySelectorAll('.file-entry')).find(b => b.textContent === 'known.txt');
-          if (b) { clearInterval(t); b.click(); resolve(); }
+          if (b) { clearInterval(t); if (!document.getElementById('filesStatus').textContent.includes('hidden by policy: 1')) return reject(new Error('Missing hidden policy count')); b.click(); resolve(); }
           else if (Date.now() - start > 8000) { clearInterval(t); reject(new Error('No file entry')); }
         }, 20);
       })`);

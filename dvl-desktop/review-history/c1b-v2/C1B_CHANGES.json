@@ -1,0 +1,295 @@
+{
+  "baselineC1bV1ZipSha256": "1c5f05b639e2cba2fe585d680ff3549ffbb63945498691e5f4db0acf99ed7db3",
+  "fromC1a": [
+    {
+      "path": "C1B_STATUS_AND_REVIEW_REQUEST.md",
+      "status": "added",
+      "before": null,
+      "after": "fe7dd79e6fc12a7cd66b8134dc4e9c7ef34fa8ac70ce5192e16096aa6a3c605e"
+    },
+    {
+      "path": "README_C1B_START_HERE.md",
+      "status": "added",
+      "before": null,
+      "after": "0ae476bebc7f299837ed2155bce668650cef56aac0d9911186789f417366bfcd"
+    },
+    {
+      "path": "native/project-reader.c",
+      "status": "modified",
+      "before": "a9705e7d024616eae7b96529285ecdb7a5d36f428d8cc5129877658c8072a3f8",
+      "after": "d5c7b8a6c1899660440057c98cd0977d6815d8d0c255cc6e72d88b7eb366a878"
+    },
+    {
+      "path": "native/read-policy.h",
+      "status": "modified",
+      "before": "07ffc0b67f60016e4983f9ca45c27fac05d392396cce1abaf97c1cdf0a055da6",
+      "after": "0eee7bc85ae1712fa0370caf98e0101e61ea2d38594891743ed41ae1d90248d0"
+    },
+    {
+      "path": "package.json",
+      "status": "modified",
+      "before": "ae85232618d38c73e9bdb336201414061184d27d984c9fe60e41cd185222d1f8",
+      "after": "ed01cd3a574eabeda3eb29a3309e381ade7f3bc8e157b91e155e3cf25212e0f5"
+    },
+    {
+      "path": "read-policy.json",
+      "status": "modified",
+      "before": "b367e169fa0e36d62a1cf6e6a7c231bb27499fb91c48e22ba79369ea2b34cf31",
+      "after": "87a3befdb1e3f2e6416ca24ce97094ef341cd0b77ff678e373838bb5d8c95ca7"
+    },
+    {
+      "path": "scripts/build-reader.cjs",
+      "status": "modified",
+      "before": "2b99f6d49d45476561ac21ff587d3509a1ea82f079dbb7ef7949ca8e1099d8da",
+      "after": "c4993c8688680396a27faa56064495cc8c7ad273ee4f324d1c33e716c25bcce5"
+    },
+    {
+      "path": "scripts/generate-policy.cjs",
+      "status": "modified",
+      "before": "df34e3124cdd2a7bb16592965d3b88399275e7e07dd4c9d44606281709335957",
+      "after": "44c6762204aa15b7071c2e73c1beabb908909288078e8f36c10d80a35bb3c218"
+    },
+    {
+      "path": "scripts/verify-source.cjs",
+      "status": "added",
+      "before": null,
+      "after": "c0603dddec4395b7108fab474ad52749f9f5ab2af2b015b9b638e2c02609525d"
+    },
+    {
+      "path": "src/main/desktop-reader.cjs",
+      "status": "added",
+      "before": null,
+      "after": "b61b64643775da712bd1fe938a78f81c33d2cbf0a986a8be95237e663de22b2b"
+    },
+    {
+      "path": "src/main/main.js",
+      "status": "modified",
+      "before": "36bdacd06e5ba40c565abafa65517c5647daca13b4b45b799458ffc2a590beff",
+      "after": "adfbb2052e4f6dba934cd4bc433fae0eaf753652a990ecb112aa40fd070ffd52"
+    },
+    {
+      "path": "src/main/project-read-service.cjs",
+      "status": "modified",
+      "before": "fcd07357841a270d72d1b0de93d55818d050637f13bc419442d75c5ab3287f73",
+      "after": "00702419d1d969b29cd9f8d3730821f6844bab307f2359354ebeb11b5e29951c"
+    },
+    {
+      "path": "src/main/read-support.cjs",
+      "status": "modified",
+      "before": "3195ab702f51b92b226bfc7e0f1f894bf3a2b70d72da735b1db376ed20e3680f",
+      "after": "e03a16c7894d5e7f79d53722c46d83534b51df27ced3d1e370c87fb29c0b7736"
+    },
+    {
+      "path": "src/main/reader-session.cjs",
+      "status": "modified",
+      "before": "4965fac845dbdeeaca4edeec710dd4cbb61cc3583e80874fc33da552fa07f79d",
+      "after": "44ff0cd6e10bd00927ad5174303bd39d88f455955b0fcc82c20f08afe131c22b"
+    },
+    {
+      "path": "src/preload/preload.js",
+      "status": "modified",
+      "before": "c65349d8dcc2f5ae2fb571a0dfdea70684f3afe5f7504c0599c14fbf252919e4",
+      "after": "b766cb656d1f5457b9eb7190bc380d77140abfd3c5504b92fe19bca1e3d81ac6"
+    },
+    {
+      "path": "src/renderer/files.js",
+      "status": "added",
+      "before": null,
+      "after": "c084a34989d04ed175e1daba89f666c5c573dcc150ea0ccb2f6663a2f265f068"
+    },
+    {
+      "path": "src/renderer/index.html",
+      "status": "modified",
+      "before": "6b8c322059d427a6757b2862767431c327cf4da65c994b43dd2fc328c46d5bb3",
+      "after": "e9ff0015c3a39dbd74c0bfc4ae0422c2466854f21700d422707aa69fc2a301d1"
+    },
+    {
+      "path": "src/renderer/renderer.js",
+      "status": "modified",
+      "before": "e0af7f8112b4056ab719d5eb6a2af1c375da1a9da5e02c1b40839d5d38d6ba78",
+      "after": "aba776a12b2c4bd0c3431318eb1242b3da6c6027e1025936bb46dd042dddb7a0"
+    },
+    {
+      "path": "tests/c1b-b-auth.cjs",
+      "status": "added",
+      "before": null,
+      "after": "90ec19dd7c832dc002bd2a594e317500f147724384f4d851fde04d1f7f11def6"
+    },
+    {
+      "path": "tests/c1b-electron-child.cjs",
+      "status": "added",
+      "before": null,
+      "after": "c6d92a80791cb7a231364264eed232e3ab94ca09e109ef79f23baffffc6bdfc8"
+    },
+    {
+      "path": "tests/c1b-electron-restore.cjs",
+      "status": "added",
+      "before": null,
+      "after": "5b803c7dbde6590fb86563df38c5bf41da745cb504aab09c0eadc065c2cd00d9"
+    },
+    {
+      "path": "tests/c1b-electron.cjs",
+      "status": "added",
+      "before": null,
+      "after": "45a94d4aba17084df25a9cdde82100c7a295734fc3ec4eed3650935df85ef2f2"
+    },
+    {
+      "path": "tests/c1b-ipc.cjs",
+      "status": "added",
+      "before": null,
+      "after": "3e9c22a22d2de83d60c9b20300ff21df407e9908a4017ad5bdea365a6eec566f"
+    },
+    {
+      "path": "tests/c1b-policy.cjs",
+      "status": "added",
+      "before": null,
+      "after": "24bd67d67b60934238bb61066fb04b3673846d636d9cdca23f5e21c0d29ec86b"
+    },
+    {
+      "path": "tests/c1b-renderer.cjs",
+      "status": "added",
+      "before": null,
+      "after": "10af28b65dc4a9155abfafdf03740340ce3d2169e37c0f096a903cdf0f05a4c4"
+    },
+    {
+      "path": "tests/c1b-v2-control.cjs",
+      "status": "added",
+      "before": null,
+      "after": "8fbc5b7821815e22527d457d3e998cc6583b339d70326da0167bf802f34de917"
+    },
+    {
+      "path": "tests/c1b-v2-native.cjs",
+      "status": "added",
+      "before": null,
+      "after": "2b8963a82b3ae0085ef0b70076dc10d61264082e56174f6a66a09db132bc6fbf"
+    },
+    {
+      "path": "tests/green-gate.cjs",
+      "status": "modified",
+      "before": "a1c599efc9859812486462c91102c0dbcc55583dd33e79c5e17c4f825e8f4d4c",
+      "after": "f951f0faf6f8a65828aa0a9ef401ceb80a1b0a2cac7eb7a8dd14d8116913dd4f"
+    }
+  ],
+  "fromC1bV1": [
+    {
+      "path": "C1B_STATUS_AND_REVIEW_REQUEST.md",
+      "status": "modified",
+      "before": "9da62d74b1a18cafc2d746f7ee8ba15ada925413750231b57b12590d617f4ff2",
+      "after": "fe7dd79e6fc12a7cd66b8134dc4e9c7ef34fa8ac70ce5192e16096aa6a3c605e"
+    },
+    {
+      "path": "README_C1B_START_HERE.md",
+      "status": "modified",
+      "before": "fe5986d8dbad78086e99da35090be3fc8683a1d9f0f1e3a7b080e9c847bc3079",
+      "after": "0ae476bebc7f299837ed2155bce668650cef56aac0d9911186789f417366bfcd"
+    },
+    {
+      "path": "native/project-reader.c",
+      "status": "modified",
+      "before": "e7eea669b4e80824d6db97fc307702b4f50b0e728de76592b9841f909edca649",
+      "after": "d5c7b8a6c1899660440057c98cd0977d6815d8d0c255cc6e72d88b7eb366a878"
+    },
+    {
+      "path": "package.json",
+      "status": "modified",
+      "before": "511fd6df9c3e37cc77528d1a2a1601252c3c0e4158d2f7592c9ee8941f03140f",
+      "after": "ed01cd3a574eabeda3eb29a3309e381ade7f3bc8e157b91e155e3cf25212e0f5"
+    },
+    {
+      "path": "read-policy.json",
+      "status": "modified",
+      "before": "de981cb3e0a7b0f4a6b7d87fcead4a432d2ae551b56dcdd2b8917d1e7440cbf9",
+      "after": "87a3befdb1e3f2e6416ca24ce97094ef341cd0b77ff678e373838bb5d8c95ca7"
+    },
+    {
+      "path": "src/main/desktop-reader.cjs",
+      "status": "modified",
+      "before": "27b9a24fe3493679a031da46e94d4a2c8aeedf9c0f80fe3b3ac1ee1098b5865d",
+      "after": "b61b64643775da712bd1fe938a78f81c33d2cbf0a986a8be95237e663de22b2b"
+    },
+    {
+      "path": "src/main/main.js",
+      "status": "modified",
+      "before": "b41a9e72337a1862918616b39b72890178445b3e7cd7d9b6a81c00262dab4036",
+      "after": "adfbb2052e4f6dba934cd4bc433fae0eaf753652a990ecb112aa40fd070ffd52"
+    },
+    {
+      "path": "src/main/project-read-service.cjs",
+      "status": "modified",
+      "before": "cfc09efcfa7c9adee097a9aa9ee527315484178658a46b44a68d9c81863f5f14",
+      "after": "00702419d1d969b29cd9f8d3730821f6844bab307f2359354ebeb11b5e29951c"
+    },
+    {
+      "path": "src/main/read-support.cjs",
+      "status": "modified",
+      "before": "d6ff832311e8642b9094686bdb55b03473b2d6a22a327eccc153b6fb0196ed7d",
+      "after": "e03a16c7894d5e7f79d53722c46d83534b51df27ced3d1e370c87fb29c0b7736"
+    },
+    {
+      "path": "src/main/reader-session.cjs",
+      "status": "modified",
+      "before": "4965fac845dbdeeaca4edeec710dd4cbb61cc3583e80874fc33da552fa07f79d",
+      "after": "44ff0cd6e10bd00927ad5174303bd39d88f455955b0fcc82c20f08afe131c22b"
+    },
+    {
+      "path": "src/renderer/files.js",
+      "status": "modified",
+      "before": "11699c4da2b58d1838b700e04ad4be3ed1b613973f98725c728647d607551650",
+      "after": "c084a34989d04ed175e1daba89f666c5c573dcc150ea0ccb2f6663a2f265f068"
+    },
+    {
+      "path": "src/renderer/index.html",
+      "status": "modified",
+      "before": "e4fc76339d250e1816e046a0a8b26d43eaec17d73c4115e8c6001ecfa52b31c3",
+      "after": "e9ff0015c3a39dbd74c0bfc4ae0422c2466854f21700d422707aa69fc2a301d1"
+    },
+    {
+      "path": "tests/c1b-b-auth.cjs",
+      "status": "added",
+      "before": null,
+      "after": "90ec19dd7c832dc002bd2a594e317500f147724384f4d851fde04d1f7f11def6"
+    },
+    {
+      "path": "tests/c1b-electron-child.cjs",
+      "status": "modified",
+      "before": "01e20aa3dad302d46e9019022f0d974a478a2f7a454ad455a80af5d4faa50d64",
+      "after": "c6d92a80791cb7a231364264eed232e3ab94ca09e109ef79f23baffffc6bdfc8"
+    },
+    {
+      "path": "tests/c1b-electron-restore.cjs",
+      "status": "added",
+      "before": null,
+      "after": "5b803c7dbde6590fb86563df38c5bf41da745cb504aab09c0eadc065c2cd00d9"
+    },
+    {
+      "path": "tests/c1b-electron.cjs",
+      "status": "modified",
+      "before": "81a770a1d4d69ed7199d8848d14269f77689fc50a4f7dbb2a781920444291269",
+      "after": "45a94d4aba17084df25a9cdde82100c7a295734fc3ec4eed3650935df85ef2f2"
+    },
+    {
+      "path": "tests/c1b-ipc.cjs",
+      "status": "modified",
+      "before": "3425eab89ff06420c7b18c9d8e1f266f5cb12f6c8519d9a36d1cfc09bdf4da42",
+      "after": "3e9c22a22d2de83d60c9b20300ff21df407e9908a4017ad5bdea365a6eec566f"
+    },
+    {
+      "path": "tests/c1b-renderer.cjs",
+      "status": "modified",
+      "before": "aabf550091eeaa3b521f6642e423d6668db61d37670dbec424af02be400ffeee",
+      "after": "10af28b65dc4a9155abfafdf03740340ce3d2169e37c0f096a903cdf0f05a4c4"
+    },
+    {
+      "path": "tests/c1b-v2-control.cjs",
+      "status": "added",
+      "before": null,
+      "after": "8fbc5b7821815e22527d457d3e998cc6583b339d70326da0167bf802f34de917"
+    },
+    {
+      "path": "tests/c1b-v2-native.cjs",
+      "status": "added",
+      "before": null,
+      "after": "2b8963a82b3ae0085ef0b70076dc10d61264082e56174f6a66a09db132bc6fbf"
+    }
+  ]
+}

@@ -57,7 +57,7 @@ async function main() {
   });
   await test('F8 strict native protocol validates error/mode/kind/size/identity/offset/hex and unknown fields', () => {
     const read = { ok: true, mode: 'landlock', hex: '61', bytes: 1, dev: '1', ino: '2' };
-    const list = { ok: true, mode: 'landlock', entries: [{ nameHex: '61', kind: 'file', size: 1 }], offset: 1, more: false, limited: false, skipped: 0, dev: '1', ino: '2', stamp: '1:0:1:0' };
+    const list = { ok: true, mode: 'landlock', entries: [{ nameHex: '61', kind: 'file', size: 1 }], offset: 1, more: false, limited: false, skipped: 0, hiddenByPolicy: 0, dev: '1', ino: '2', stamp: '1:0:1:0' };
     validateNative(read, 'read'); validateNative(list, 'list');
     for (const value of [{ ...read, bytes: 2 }, { ...read, mode: 'unsafe' }, { ...read, ino: 'x' }, { ...read, dev: '18446744073709551616' }, { ...read, surprise: 1 }, { ok: false, error: 'PRIVATE_CONTENT' }]) assert.throws(() => validateNative(value, 'read'), e => e.code === 'RUNTIME_FAILED');
     for (const value of [{ ...list, offset: -1 }, { ...list, more: 1 }, { ...list, entries: [{ nameHex: '61', kind: 'script', size: 1 }] }, { ...list, entries: [{ nameHex: '61', kind: 'file', size: -1 }] }]) assert.throws(() => validateNative(value, 'list'), e => e.code === 'RUNTIME_FAILED');
@@ -110,7 +110,7 @@ async function main() {
     for (const child of children) child.emit('close', null, 'SIGKILL'); assert.equal(s.children.size, 0); assert.equal(s.abandoned.size, 0);
   });
   await test('F3 one root-bound process serves every list/read within a search (simulated protocol)', async () => {
-    const bin = fake('simulated-session', `const readline=require('node:readline');let header=[],parts=[];const rl=readline.createInterface({input:process.stdin});rl.on('line',line=>{if(header.length<4){header.push(line);return;}parts.push(line);if(parts.length!==3)return;const [op]=parts;parts=[];const out=op==='list'?{ok:true,mode:'landlock',entries:['a','b','c'].map(n=>({nameHex:Buffer.from(n).toString('hex'),kind:'file',size:5})),offset:3,more:false,limited:false,skipped:0,dev:'1',ino:'2',stamp:'1:0:1:0'}:{ok:true,mode:'landlock',hex:Buffer.from('hello').toString('hex'),bytes:5,dev:'1',ino:'2'};console.log(JSON.stringify(out));});`);
+    const bin = fake('simulated-session', `const readline=require('node:readline');let header=[],parts=[];const rl=readline.createInterface({input:process.stdin});rl.on('line',line=>{if(header.length<4){header.push(line);return;}parts.push(line);if(parts.length!==3)return;const [op]=parts;parts=[];const out=op==='list'?{ok:true,mode:'landlock',entries:['a','b','c'].map(n=>({nameHex:Buffer.from(n).toString('hex'),kind:'file',size:5})),offset:3,more:false,limited:false,skipped:0,hiddenByPolicy:0,dev:'1',ino:'2',stamp:'1:0:1:0'}:{ok:true,mode:'landlock',hex:Buffer.from('hello').toString('hex'),bytes:5,dev:'1',ino:'2'};console.log(JSON.stringify(out));});`);
     let spawns = 0; const s = service({ binary: bin, spawn: (...a) => { spawns++; return spawn(...a); } });
     const r = await req(s, s.bind('A'), 'searchText', { query: 'hello' }); assert.equal(r.ok, true, JSON.stringify(r)); assert.equal(r.data.matches.length, 3); assert.equal(spawns, 1); assert.equal(s.children.size, 0);
   });

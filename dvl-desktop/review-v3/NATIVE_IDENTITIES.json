@@ -1,0 +1,12 @@
+{
+  "native/project-reader.c": {
+    "C1aReviewedSha256": "a9705e7d024616eae7b96529285ecdb7a5d36f428d8cc5129877658c8072a3f8",
+    "V2Sha256": "d5c7b8a6c1899660440057c98cd0977d6815d8d0c255cc6e72d88b7eb366a878",
+    "V3Sha256": "c1a2cb5779f517c0b248f8f8b5cd409836511da42390e2022569d9efd3607f3c"
+  },
+  "native/read-policy.h": {
+    "C1aReviewedSha256": "07ffc0b67f60016e4983f9ca45c27fac05d392396cce1abaf97c1cdf0a055da6",
+    "V2Sha256": "0eee7bc85ae1712fa0370caf98e0101e61ea2d38594891743ed41ae1d90248d0",
+    "V3Sha256": "73d25e2a074e87de3ea88678f2caa55d2348be8d79404e29b1df27255fd460fb"
+  }
+}

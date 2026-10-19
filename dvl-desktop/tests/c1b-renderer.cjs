@@ -25,7 +25,7 @@ async function test(name, fn) { await fn(); console.log('PASS', name); passed++;
   await test('Initial project obtains main-chosen generation and lists permitted entries as text', async () => {
     await window.dvlFiles.showProject('A'); const list = requests.shift();
     assert.equal(list.op, 'listDirectory'); assert.equal(list.req.projectId, 'A');
-    list.finish({ entries: [{ name: '<img src=x onerror=alert(1)>', relativePath: 'markup.txt', kind: 'file' }], complete: true, nextCursor: null }); await tick();
+    list.finish({ entries: [{ name: '<img src=x onerror=alert(1)>', relativePath: 'markup.txt', kind: 'file' }], complete: true, nextCursor: null, hiddenByPolicy: 0 }); await tick();
     assert.equal(elements.get('fileEntries').children[0].textContent, '<img src=x onerror=alert(1)>');
   });
   await test('Markup contents remain inert text', async () => {
@@ -38,19 +38,28 @@ async function test(name, fn) { await fn(); console.log('PASS', name); passed++;
     state = { ok: true, context: { projectId: 'B', contextGeneration: 'gb' } }; await window.dvlFiles.showProject('B');
     assert.equal(elements.get('fileText').textContent, ''); old.finish({ text: 'OLD_SECRET', byteLength: 10 }); await done;
     assert.equal(elements.get('fileText').textContent, ''); assert.ok(cancels.some(r => r.requestId === old.req.requestId));
-    const list = requests.shift(); list.finish({ entries: [], complete: true, nextCursor: null }); await tick();
+    const list = requests.shift(); list.finish({ entries: [], complete: true, nextCursor: null, hiddenByPolicy: 0 }); await tick();
   });
   await test('Search reports partial reason and counts without dropping semantics', async () => {
     elements.get('filesQuery').value = 'needle'; elements.get('filesSearchForm').events.submit({ preventDefault() {} });
-    const search = requests.shift(); search.finish({ matches: [{ relativePath: 'a.txt', line: 1, column: 1, snippet: '<b>needle</b>' }], filesScanned: 1, bytesScanned: 5, bytesRead: 10, elapsedMs: 12, complete: false, partialReason: 'DIRECTORIES_EXCLUDED', excludedDirectories: 1, skipped: { FILE_TOO_LARGE: 2 } }); await tick();
+    const search = requests.shift(); search.finish({ matches: [{ relativePath: 'a.txt', line: 1, column: 1, snippet: '<b>needle</b>' }], hiddenByPolicy: 7, filesScanned: 1, bytesScanned: 5, bytesRead: 10, elapsedMs: 12, complete: false, partialReason: 'DIRECTORIES_EXCLUDED', excludedDirectories: 1, skipped: { FILE_TOO_LARGE: 2 } }); await tick();
     assert.match(elements.get('filesStatus').textContent, /5 text bytes; 10 read-budget bytes \(estimate\); 12 ms/);
     assert.match(elements.get('filesStatus').textContent, /Partial: DIRECTORIES_EXCLUDED; excluded directories: 1; skipped: 2/);
+    assert.match(elements.get('filesStatus').textContent, /hidden by policy: 7 \(entries encountered\)/);
     assert.match(elements.get('searchResults').children[0].textContent, /<b>needle<\/b>/);
   });
   await test('Stop fences late completion and invokes owned cancellation', async () => {
     elements.get('filesSearchForm').events.submit({ preventDefault() {} }); const pending = requests.shift();
     elements.get('filesStop').events.click(); pending.finish({ matches: [], filesScanned: 999, complete: true, skipped: {}, excludedDirectories: 0 }); await tick();
     assert.equal(elements.get('filesStatus').textContent, 'Stopped.'); assert.ok(cancels.some(r => r.requestId === pending.req.requestId));
+  });
+  await test('List hidden counts accumulate per page and reset on refresh', async () => {
+    elements.get('filesRefresh').events.click(); requests.shift().finish({ entries: [], complete: false, partialReason: 'PAGE_LIMIT', skipped: 0, nextCursor: 'next', hiddenByPolicy: 2 }); await tick();
+    assert.match(elements.get('filesStatus').textContent, /hidden by policy: 2/);
+    elements.get('filesMore').events.click(); requests.shift().finish({ entries: [], complete: true, nextCursor: null, hiddenByPolicy: 3 }); await tick();
+    assert.match(elements.get('filesStatus').textContent, /hidden by policy: 5/);
+    elements.get('filesRefresh').events.click(); requests.shift().finish({ entries: [], complete: true, nextCursor: null, hiddenByPolicy: 1 }); await tick();
+    assert.match(elements.get('filesStatus').textContent, /hidden by policy: 1/);
   });
   await test('Shutdown shows exact pending/live/abandoned counts and disables reading', () => {
     listener({ ok: true, context: null, closing: true, shutdown: { pendingRequests: 2, liveHelpers: 1, abandonedHelpers: 1 } });

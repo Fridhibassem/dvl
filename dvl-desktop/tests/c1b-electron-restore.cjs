@@ -49,6 +49,7 @@ app.whenReady().then(async () => {
     }
     await js("document.getElementById('filesMore').click()");
     await wait("document.querySelectorAll('.file-entry').length === 201 && document.getElementById('filesMore').hidden");
+    assert.match(await js("document.getElementById('filesStatus').textContent"), /hidden by policy: 1 \(entries encountered\)/);
     await js("Array.from(document.querySelectorAll('.file-entry')).find(b => b.textContent === 'page000.txt').click()");
     await wait("document.getElementById('fileText').textContent.startsWith('PAGE_CONTENT_0')");
     const box = await geometry(); assert.ok(box.documentHeight <= box.height + 1, JSON.stringify(box)); assert.ok(box.headerTop >= 0);

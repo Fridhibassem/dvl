@@ -36,9 +36,9 @@ async function test(name, fn) { await fn(); console.log('PASS', name); count++; 
       }
     } finally { for (const p of created.reverse()) fs.rmdirSync(p); }
   });
-  await test('N-2 stored long-s/Kelvin/sharp-s names are denied by host and direct native', async () => {
+  await test('N-2 reopened: all eleven observed alias characters and eight disclosure names are refused', async () => {
     const c = service.bind('A'); let n = 0;
-    for (const name of ['credentialſ.json', 'srv.Key', '.ſsh', '.ßh', 'ẞ.txt']) {
+    for (const name of [...'ßſẞKﬀﬁﬂﬃﬄﬅﬆ'].map((c, i) => 'ordinary_' + i + '_' + c + '.txt').concat(['.conﬁg', 'kubeconﬁg', '.password-ﬅore', 'ordinary.tfﬅate', 'ordinary.keyﬅore', '.password-ﬆore', 'ordinary.tfﬆate', 'ordinary.keyﬆore'])) {
       fs.writeFileSync(path.join(base, name), 'STORED_FOLD_SECRET');
       assert.throws(() => validPath(name, false), e => e.code === 'POLICY_DENIED');
       assert.equal(raw(base, name).error, 'POLICY_DENIED');
