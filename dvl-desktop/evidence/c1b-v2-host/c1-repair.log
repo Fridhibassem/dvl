@@ -1,0 +1,21 @@
+PASS F7 single policy table denies every name/prefix/extension in JS AND production native entrypoint
+FD PROBE {"softBefore":16384,"fd3Closed":true,"fd37Closed":true}
+PASS F3 close inherited descriptors including fd above lowered soft limit
+PASS F4 JS and native reject home/ancestors/system roots before sandbox
+PASS F4 custom userData root, ancestors and descendants rejected by host and native
+PASS F8 strict native protocol validates error/mode/kind/size/identity/offset/hex and unknown fields
+MATCH CPU MS 9.51
+MATCH CPU MS 14.91
+EVENT LOOP MAX MS 11.38
+PASS F2 one-MiB line, 200 start/end matches: bounded CPU and event-loop delay
+PASS F2 matching cooperatively observes cancellation during a long line
+PASS F9 snippets stay well-formed and Unicode columns remain correct
+PASS F5 excluded directories are counted and search reports partial
+PASS F5 newline/CR query rejected instead of reporting a false no-match
+PASS F5 invalid listing names and directory failures retain earlier matches and expose skip counts
+PASS F5 path-depth refusal preserves completed search evidence
+PASS F5 time budget returns explicit partial results rather than false completion
+PASS F6 helpers ignoring SIGKILL cannot wedge requests/shutdown or exceed global helper ceiling
+PASS F3 one root-bound process serves every list/read within a search (simulated protocol)
+PASS F8 malformed session response fails closed without raw error text
+C1a REPAIR CONTROL CHECKS PASSED: 16 (simulated protocol tests are not native security evidence)

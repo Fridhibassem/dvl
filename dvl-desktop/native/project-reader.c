@@ -171,6 +171,7 @@ static int operation_inner(int rootfd,struct stat rs,const char *root,const char
   if(!S_ISREG(before.st_mode))return fail("NOT_REGULAR_FILE");if(before.st_nlink!=1)return fail("HARDLINK_DENIED");if(before.st_size>MAX_READ)return fail("FILE_TOO_LARGE");
   static unsigned char bytes[MAX_READ+1];size_t n=0;while(n<sizeof bytes){ssize_t r=read(fd,bytes+n,sizeof bytes-n);if(r<0){if(errno==EINTR)continue;return fail(ioerr());}if(!r)break;n+=(size_t)r;}if(n>MAX_READ)return fail("FILE_TOO_LARGE");
   struct stat after;if(fstat(fd,&after)||!unchanged(before,after)||after.st_nlink!=1)return fail("FILE_CHANGED");
+  if(memchr(bytes,0,n))return fail("UNSUPPORTED_ENCODING");
   used=0;append("{\"ok\":true,\"mode\":\"%s\",\"hex\":\"",mode);hex(bytes,n);append("\",\"bytes\":%zu,\"dev\":\"%llu\",\"ino\":\"%llu\"}",n,(unsigned long long)before.st_dev,(unsigned long long)before.st_ino);
  }else{
  int scanfd=dup(fd);DIR *d=scanfd<0?NULL:fdopendir(scanfd);if(!d){if(scanfd>=0)close(scanfd);return fail(ioerr());}unsigned seen=0,count=0,skipped=0;int more=0,limited=0;

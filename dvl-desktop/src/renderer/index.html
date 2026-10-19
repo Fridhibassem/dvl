@@ -176,6 +176,13 @@
     #filesStatus { font-size: 12px; color: #ccc; margin: 8px 0; overflow-wrap: anywhere; }
     .file-entry, .search-match { display: block; width: 100%; text-align: left; border-radius: 3px; margin: 3px 0; overflow-wrap: anywhere; }
     #fileText { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; line-height: 1.5; max-height: 400px; overflow: auto; }
+    /* Keep the app shell in the viewport; each panel owns its scrolling. */
+    .app { grid-template-rows: minmax(0, 1fr); }
+    aside, main { min-height: 0; }
+    main { grid-template-rows: auto auto minmax(0, 1fr); overflow: hidden; }
+    .workspace { grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
+    #fileEntries { max-height: 14em; overflow: auto; }
+    #searchResults { max-height: 10em; overflow: auto; }
     @media (max-width: 850px) { .app { grid-template-columns: 185px 1fr; } .workspace { grid-template-columns: 1fr; grid-template-rows: auto; overflow: auto; } }
   </style>
 </head>

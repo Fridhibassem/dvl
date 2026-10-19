@@ -17,6 +17,8 @@ function handleIpc(channel, handler) {
     if (!desktopReader || !desktopReader.isTrusted(event)) throw new Error('SENDER_DENIED');
     const documentEpoch = desktopReader.documentEpoch;
     const result = await handler(event, ...args);
+    // Fence delivery to an obsolete document. A committed B-channel mutation
+    // remains committed; STALE_CONTEXT is not a rollback or permission to retry.
     if (!desktopReader.isTrusted(event) || desktopReader.documentEpoch !== documentEpoch) throw new Error('STALE_CONTEXT');
     return result;
   });

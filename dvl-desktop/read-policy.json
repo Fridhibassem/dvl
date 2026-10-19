@@ -70,6 +70,7 @@
     "vendor",
     "dist",
     "build",
-    "coverage"
+    "coverage",
+    ".next"
   ]
 }

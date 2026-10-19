@@ -1,0 +1,9 @@
+PASS Timeout reports once with enum/numeric metadata: before_spawn_event
+PASS Timeout reports once with enum/numeric metadata: before_first_byte
+PASS Timeout reports once with enum/numeric metadata: after_first_byte
+PASS Timeout logging failure cannot change TIMEOUT or leak helper bytes
+PASS Forward wall-clock jump does not expire monotonic read deadline
+PASS Rejected binary reads consume the scan budget and preserve skip codes
+PASS Successful file growth is charged; decoded bytes never exceed charged bytes
+PASS Native protocol accepts only the exact UNSUPPORTED_ENCODING error shape
+C1B_V2_CONTROL_PASS 8 (simulated children/accounting; not OS confinement)

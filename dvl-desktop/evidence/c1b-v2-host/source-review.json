@@ -1,0 +1,24 @@
+{
+  "reverseC1aManifestEntries": 40,
+  "reverseC1bV1Entries": 48,
+  "v1MetaExceptions": [
+    "C1B_DIFF.patch",
+    "C1B_CHANGES.json"
+  ],
+  "metaExceptionsPreservedAt": "review-history/c1b-v1",
+  "syntaxFiles": 27,
+  "unchangedVsV1": [
+    "package-lock.json",
+    "tests/green-gate.cjs",
+    "tests/native-secret-check.cjs",
+    "tests/native-secret-child.cjs",
+    "tests/c1-unit.cjs",
+    "tests/c1-repair.cjs",
+    "tests/c1-boundary.cjs",
+    "tests/c1-native-repair.cjs",
+    "src/preload/preload.js"
+  ],
+  "deterministicPolicyGeneration": true,
+  "localConfinement": "UNAVAILABLE",
+  "ElectronRuntime": "UNTESTED"
+}

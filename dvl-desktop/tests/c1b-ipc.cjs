@@ -16,12 +16,12 @@ function setup() {
   const handlers = new Map(), logs = [], sender = new EventEmitter();
   let url;
   Object.assign(sender, { mainFrame: {}, getURL: () => url, isDestroyed: () => false, send: (channel, state) => { sender.lastState = state; }, setWindowOpenHandler: fn => { sender.open = fn; } });
-  const win = { webContents: sender };
+  let win = { webContents: sender };
   const c = new DesktopReader({ app: { isPackaged: false, getPath: () => path.join(base, 'userData') }, ipcMain: { handle: (name, fn) => handlers.set(name, fn) },
     getWindow: () => win, resolveProject: projectId => ({ projectId, path: projectId === 'A' ? project : other, available: true }), logEvent: (...args) => logs.push(args) });
   controllers.push(c); url = c.url; sender.mainFrame.url = url; c.attach(win); c.select({ projectId: 'A' });
   const event = { sender, senderFrame: sender.mainFrame };
-  return { c, sender, event, logs, setURL: value => { url = value; },
+  return { c, sender, event, logs, replaceWindow: next => { win = next; c.attach(next); }, setURL: value => { url = value; },
     invoke: (name, ...args) => handlers.get('dvl:reader:' + name)(event, ...args), handlers };
 }
 function req(c, extra = {}) { return { ...c.binding, requestId: 'ipc_' + ++number, relativePath: 'known.txt', ...extra }; }
@@ -112,6 +112,15 @@ async function main() {
     sender.emit('will-navigate', { preventDefault: () => blocked++ }); sender.emit('will-attach-webview', { preventDefault: () => blocked++ });
     assert.equal(blocked, 2); assert.equal(sender.open().action, 'deny');
     sender.emit('render-process-gone'); assert.equal(c.binding, null); assert.equal(c.service.context, null);
+  });
+  await test('Old-window destruction cannot clear a newer window binding', () => {
+    const x = setup(), newer = new EventEmitter();
+    Object.assign(newer, { mainFrame: { url: x.c.url }, getURL: () => x.c.url, isDestroyed: () => false, send() {}, setWindowOpenHandler() {} });
+    x.replaceWindow({ webContents: newer }); x.c.select({ projectId: 'B' });
+    const binding = x.c.binding, epoch = x.c.documentEpoch;
+    x.sender.emit('destroyed');
+    assert.equal(x.c.binding, binding); assert.equal(x.c.documentEpoch, epoch); assert.equal(x.c.service.context.projectId, 'B');
+    newer.emit('destroyed'); assert.equal(x.c.binding, null);
   });
   await test('Helper modification after startup is refused before spawning', async () => {
     const { c } = setup(); const local = path.join(base, 'modified-helper'); fs.copyFileSync(c.binary, local); fs.chmodSync(local, 0o700); fs.appendFileSync(local, 'modified');

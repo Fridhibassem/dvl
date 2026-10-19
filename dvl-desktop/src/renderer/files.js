@@ -65,6 +65,7 @@
     const data = await request('readTextFile', { relativePath: rel }, ticket);
     if (!data) return;
     el('fileText').textContent = data.text;
+    el('fileTitle').scrollIntoView?.({ block: 'start' });
     status(`Read ${data.byteLength} bytes. Observation only; not a project snapshot.`);
   }
   async function search() {
@@ -78,7 +79,7 @@
       b.className = 'search-match'; el('searchResults').appendChild(b);
     }
     const skips = Object.values(data.skipped).reduce((a, b) => a + b, 0);
-    status(`${data.matches.length} matches; ${data.filesScanned} files scanned. ` +
+    status(`${data.matches.length} matches; ${data.filesScanned} files scanned; ${data.bytesScanned} text bytes; ${data.bytesRead} read-budget bytes (estimate); ${data.elapsedMs} ms. ` +
       (data.complete ? 'Complete over permitted files.' : `Partial: ${data.partialReason}; excluded directories: ${data.excludedDirectories}; skipped: ${skips}.`));
   }
   function applyState(state) {

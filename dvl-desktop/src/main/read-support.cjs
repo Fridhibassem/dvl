@@ -4,7 +4,7 @@ const path = require('node:path');
 const os = require('node:os');
 const policy = require('../../read-policy.json');
 const failure = code => Object.assign(new Error(code), { code });
-const errors = new Set(['INVALID_REQUEST', 'PATH_DENIED', 'POLICY_DENIED', 'PROJECT_UNAVAILABLE', 'BOUNDARY_UNSUPPORTED', 'NOT_FOUND', 'PERMISSION_DENIED', 'SYMLINK_DENIED', 'HARDLINK_DENIED', 'NOT_REGULAR_FILE', 'FILE_TOO_LARGE', 'FILE_CHANGED', 'DIRECTORY_CHANGED', 'RUNTIME_FAILED']);
+const errors = new Set(['INVALID_REQUEST', 'PATH_DENIED', 'POLICY_DENIED', 'PROJECT_UNAVAILABLE', 'BOUNDARY_UNSUPPORTED', 'NOT_FOUND', 'PERMISSION_DENIED', 'SYMLINK_DENIED', 'HARDLINK_DENIED', 'NOT_REGULAR_FILE', 'FILE_TOO_LARGE', 'FILE_CHANGED', 'DIRECTORY_CHANGED', 'RUNTIME_FAILED', 'UNSUPPORTED_ENCODING']);
 function within(a, b) { const rel = path.relative(a, b); return rel === '' || (!rel.startsWith('..' + path.sep) && rel !== '..' && !path.isAbsolute(rel)); }
 function canonical(p) {
   p = path.resolve(p);

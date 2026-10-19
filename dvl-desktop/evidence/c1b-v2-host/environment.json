@@ -1,0 +1,8 @@
+{
+  "system": "Linux-6.18.55-x86_64-with-glibc2.39",
+  "machine": "x86_64",
+  "node": "v24.19.0",
+  "cc": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+  "syntaxFiles": 27,
+  "runtimeEvidence": "control/policy only; native boundary unavailable, Electron runtime UNTESTED"
+}

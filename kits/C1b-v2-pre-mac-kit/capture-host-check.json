@@ -1,0 +1,11 @@
+{
+  "result": "PASS",
+  "checks": [
+    "appended log excludes old rows",
+    "timeout phase/null fields preserved",
+    "zero-timeout launch records empty diagnostics without invented stages",
+    "capture folders cannot be overwritten",
+    "missing app log fails before launch"
+  ],
+  "runtime": "simulated npm child on Linux; actual Mac npm/Electron capture UNTESTED"
+}

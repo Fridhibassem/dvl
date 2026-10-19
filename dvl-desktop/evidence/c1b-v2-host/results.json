@@ -1,0 +1,57 @@
+[
+  {
+    "name": "build-reader",
+    "exit": 0,
+    "elapsedMs": 287
+  },
+  {
+    "name": "b-adapted",
+    "exit": 0,
+    "elapsedMs": 473
+  },
+  {
+    "name": "c1-unit",
+    "exit": 0,
+    "elapsedMs": 198
+  },
+  {
+    "name": "c1-repair",
+    "exit": 0,
+    "elapsedMs": 656
+  },
+  {
+    "name": "c1b-ipc",
+    "exit": 0,
+    "elapsedMs": 84
+  },
+  {
+    "name": "c1b-policy",
+    "exit": 0,
+    "elapsedMs": 102
+  },
+  {
+    "name": "c1b-renderer",
+    "exit": 0,
+    "elapsedMs": 103
+  },
+  {
+    "name": "v2-control",
+    "exit": 0,
+    "elapsedMs": 229
+  },
+  {
+    "name": "b-auth",
+    "exit": 0,
+    "elapsedMs": 76
+  },
+  {
+    "name": "boundary",
+    "exit": 1,
+    "elapsedMs": 311
+  },
+  {
+    "name": "v2-native",
+    "exit": 1,
+    "elapsedMs": 119
+  }
+]

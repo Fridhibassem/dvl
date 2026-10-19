@@ -1,87 +1,62 @@
-# DVL C1b — candidate v1, 2026-10-19
+# DVL C1b — Candidate V2 — 2026-10-20
 
-**Status: implementation candidate; NOT C1b PASS, NOT frozen, NOT full C1 acceptance.**
+**CANDIDATE ONLY. C1b NOT PASS, NOT FROZEN. Full C1 NOT accepted.**
 
 ## ابدأ من هنا
 
-هذي نسخة منفصلة لاختبار C1b: عرض الملفات، قراءة النصوص والبحث الحرفي داخل المشروع المختار. نسخة B المجمّدة ونسخة C1a الأصلية ما تبدّلوش. ما تخلطش المجلّد هذا مع النسخ القديمة.
+هذي نسخة V2 مستقلة، فيها إصلاحات تقرير `C1B_INDEPENDENT_REVIEW_V1.md`. فكّ الـZIP في مجلّد جديد؛ ما تكتبش فوق B أو C1a أو C1b V1. المجلّد الداخلي اسمو `dvl-desktop-C1b-v2`.
 
-نجحت هنا 78 check تحكّمية/سياسة، والبناء الأصلي نجح على Linux. اختبار العزل الحقيقي ما نجحش على هذا المضيف: Landlock رجع `ENOSYS`. تشغيل Electron واختبارات الماك للنسخة الجديدة **UNTESTED**. نتائج الماك السابقة تخص C1a، وما تنتقلش تلقائيًا إلى C1b.
+نجح البناء و105 اختبارات تحكّم/سياسة هنا. العزل الحقيقي غير متاح على هذا المضيف؛ Electron وSeatbelt والواجهة الجديدة **UNTESTED على هذه النسخة**. نجاح V1 على الماك محفوظ كدليل سابق فقط. السبب الأصلي لأول TIMEOUT مازال غير مثبت.
 
-الخطوة التالية: اختبار هذه النسخة على الماك ثم مراجعة مستقلة. ما نمرّوش للمرحلة التالية قبل الأدلة.
+## Changes since V1
 
-## Run on the target Mac
+- Native helper refuses NUL-containing files after the existing post-read identity check, before hex serialization. Host UTF-8/NUL checks remain.
+- `.next` is excluded from recursive search traversal and counted in `excludedDirectories`. It remains listable and directly readable. Existing `*.tsbuildinfo` policy is unchanged.
+- Search charges attempted reads, including refusals, against the existing 20 MiB budget. `bytesScanned` counts decoded text; `bytesRead` is explicitly estimated budget accounting (`bytesReadIsEstimate: true`), based on listed size capped at 1 MiB, adjusted upward for successful larger reads. It is not an exact kernel I/O counter or a hard I/O bound against concurrent file growth. The UI labels it as an estimate and shows search elapsed time. The 5-second operation deadline is unchanged.
+- Numeric/enum-only `reader.timeout` diagnostics distinguish no observed spawn, no observed stdout, and observed stdout; monotonic deadlines, cursor lifetimes and shutdown waits avoid wall-clock steps. Diagnostics do not identify TCC or prove any root cause.
+- App/panel scrolling is contained; entries/results have bounded scroll regions; a completed read reveals its title/text region.
+- Regression coverage: rejected-read budgeting; timeout phases/privacy; clock jumps; all nine B channels reject foreign senders/non-main frames; realistic 794-file Next-shaped tree; actual Electron second-process restore without a dialog and 200+1 paging/layout checks.
+- A late event from an old window revokes its owners without clearing the new window binding (F-10). Duplicate push/pull listing (F-9) is recorded and unchanged.
+- No prebuilt helper or `node_modules` ships in this ZIP. Build on the target Mac.
 
-Use a new folder; keep B and the accepted-scope C1a copy intact. Close the app before qualification. Open Terminal in this folder (the one containing `package.json`).
+## First Mac step
+
+Close DVL. Extract the ZIP separately, then open Terminal in `dvl-desktop-C1b-v2` (the directory containing `package.json`).
 
 ```bash
 npm ci
-set -o pipefail
-npm run qualify:c1b 2>&1 | tee C1B_MAC_QUALIFICATION.log
 ```
 
-Record `sw_vers`, `node --version`, `xcode-select -p`, `cc --version`, and the shell exit status immediately after the qualification pipeline. The qualification command verifies source hashes before building the platform-specific helper. It requires strict native success; unsupported confinement fails the gate.
-
-This includes:
-
-1. Source verification and C1a Node/native suites, with the four negative confinement assertions and prefix sibling test.
-2. B 24 regression assertions with an authenticated window/frame mock and awaited asynchronous shutdown.
-3. C1b controller, root/name policy and DOM control tests.
-4. Unchanged B real Electron secret/restart regression.
-5. C1a native suites in Electron's embedded Node runtime, then a real production Electron window/preload/IPC/UI integration test, including regular-file and symlink replacement regressions and clean shutdown counts.
-
-After successful qualification, inspect the real UI:
+After installation, run qualification from that same folder:
 
 ```bash
-npm start
+set -o pipefail
+npm run qualify:c1b 2>&1 | tee C1B_V2_MAC_QUALIFICATION.log
+printf 'QUALIFICATION_EXIT=%s\n' "$?"
 ```
 
-Open a disposable project under a normal local directory; check listing, Up, Refresh, paging, literal Search, file display, Stop, A→B switching and reload. File text must stay inert. Partial/skipped results must remain visible. Run on the exact target Mac, including the post-change native policy tests.
+Keep the complete output. The source manifest is checked before deterministic policy generation and native compilation. Unsupported confinement is a gate failure. `qualify:c1b` includes the original coupled confinement/repair suites, V2 native fixture, B assertions under the C1b-authenticated harness, control/policy regressions, real Electron secret/restart check, native suites in Electron embedded Node, the production UI test, and a second production Electron process restoring the persisted last project without a picker. Both app shutdowns must show zero pending/live/abandoned helpers.
 
-## Scope and implementation
+Expected markers include `C1B_V2_CONTROL_PASS 8`, `C1B_B_AUTH_PASS 18`, `C1B_V2_NATIVE_PASS 3`, `C1B_ELECTRON_INTEGRATION_PASS 8`, `C1B_ELECTRON_RESTORE_PASS 3`, `C1B_ELECTRON_GATE_PASS`, and `QUALIFICATION_EXIT=0`. A marker alone is insufficient if an earlier suite failed.
 
-- `src/main/desktop-reader.cjs`: one app-lifetime service; actual `app.getPath('userData')`; exact own-window/main-frame/file-URL checks; strict IPC schemas; no renderer bind/root API; four pending requests and 30 request admissions per one-second window; separate bounded context/cancel budgets; per-document/per-request ownership and late-response fencing.
-- `src/main/main.js`: narrow reader lifecycle integration, selection hooks, validation before/after B IPC responses, navigation safeguards and bounded reader shutdown before database close. Cleanup counts go to the live UI and numeric shutdown log; nonzero counts also produce an explicit shutdown dialog.
-- `src/preload/preload.js`: explicit read/context/cancel methods; state callbacks never receive the Electron event object.
-- `src/renderer/files.js` and the existing Files panel: permitted listing with pagination, text-only file display, literal search, Stop, stale-response suppression and clearing on switch. Existing B controls remain.
-- `ProjectReadService`: helper verification before every new session; the reviewed root-bound session, queue, timeouts, generation fencing and confinement baseline remain.
-- Build creates a per-platform helper digest; missing/modified/wrong-platform helpers fail closed. Rebuild on the target platform before launching. Startup failure stays confined to Files so existing desktop state remains accessible.
+## Manual target-Mac evidence after qualification
 
-## Review conditions
+Run `npm start`. Restore the real Desktop project without reselecting it. Record the first listing result. Repeat five fresh launches with that location, and five with an owner-created copy outside Desktop (without `node_modules`); preserve any `reader.timeout` records. Do not reset privacy permissions or purge caches for this initial comparison.
 
-| Condition | Candidate treatment | Evidence remaining |
-|---|---|---|
-| C-1 | Prior C1a Mac gate retained as historical evidence | Changed C1b needs its own Mac qualification |
-| C-2 / N-1 | Protected home entries derived from `homeTrees` union dot-prefixed denied names, in host and generated C; `.password-store` added | Host/direct-native pre-confinement regression passed here; run on Mac too |
-| N-2 | Conservatively refuse U+017F, U+212A, U+00DF and U+1E9E in every component, in host and native | Stored-name regressions passed here; Mac checks remain |
-| C-3 | Exactly one production `DesktopReader` / `ProjectReadService`, reused across window recreation | Actual Electron lifetime qualification pending |
-| C-4 | Sender/frame/URL checks, exact payloads, text rendering, quotas, cancellation ownership, helper digest, no reader payload logging | Real Electron and packaged distribution checks pending |
-| C-5 | Cleanup counts surfaced; completeness explicitly limited to permitted files; partial reasons/counts displayed | Real UI checks pending |
+Repeat the original literal query `next/image-types/global`; report elapsed time, `bytesRead` estimate, `bytesScanned`, matches, exclusions and skip reasons. Partial results remain partial: skipped binary files or excluded directories must not be relabelled complete. Check file-text visibility and fixed header/sidebar at the target window size. Manual Stop/switch under load remain additional evidence, distinct from control/DOM simulations.
 
-## Historical source and regression identity
+Still unanswered: whether iCloud Desktop & Documents is enabled and whether a permission prompt appeared during the original failure. The supplied TCC excerpt shows Terminal attribution and an Accessibility warning, not a visible Desktop access refusal; it neither establishes nor excludes TCC as the cause.
 
-Input: owner-uploaded `dvl-desktop-C1a-repair-v2.zip`. Its 40 listed source entries all matched before editing. The manifest itself accounts for the additional manifest file in the reviewer’s 41-file description. The original B manifest differs only in `package.json`, as expected from the C1a scripts additions. This check did not certify unlisted binary/log bytes.
+## Evidence and review
 
-`review-history/C1A_SOURCE_SHA256.json` preserves the original C1a manifest. `review-history/c1a/main.js` and `green-gate.cjs` preserve those original files. `review-history/C1A_INDEPENDENT_REVIEW_V2.md` is the retrieved review, not a new review of C1b. `C1A_MAC_RETEST.log` is the owner's uploaded prior run.
+Read `C1B_STATUS_AND_REVIEW_REQUEST.md`. V2 host logs are in `evidence/c1b-v2-host/`. `evidence/c1b-host/` and `evidence/owner-v1/` are explicitly V1 history. `review-history/c1b-v1/` retains the V1 manifest, README and diff. The reviewer's prototype remains reference material, not the candidate.
 
-New-candidate B harness changes add realistic sender/frame state, await reader shutdown and implement DOM `textContent` clearing in the mock. The original 24 assertions remain. No B database schema, secret encryption behavior, dependency lockfile, native-secret test or security flags were changed. See `C1B_CHANGES.json` and `C1B_DIFF.patch` for the complete diff.
+`C1B_V2_DIFF.patch` compares V1 to V2. `C1B_DIFF.patch` compares the original C1a source to the final V2 implementation. `C1B_CHANGES.json` records both source baselines and file hashes. `SOURCE_SHA256.json` covers every shipped regular file except itself; generated binaries, dependency directories and future run logs are not shipped.
 
-## Evidence and limits
+## Boundaries
 
-See `C1B_STATUS_AND_REVIEW_REQUEST.md` and `evidence/c1b-host/`. Control results are not OS qualification. Policy tests refuse selected roots/names before confinement, so they do not prove filesystem isolation. Real Electron tests have syntax checks only here and are **UNTESTED at runtime**.
+B repair v3 remains frozen as a separate reference. C1a remains scoped PASS, not frozen. V1 received FIX REQUIRED; V2 requires its own Mac qualification and independent re-review. This is source mode only: no packaged/signed release, Apple Silicon, TCC/iCloud/external/network location qualification is claimed. The Landlock ABI minimum and Seatbelt confinement profile are unchanged. Arena changes remain unapproved.
 
-No workers, providers, AI execution, shell tools, project writing, `.dvl` activation, RootLock, Kernel authority or Arena ABI2/seccomp changes are introduced.
+No workers/providers, AI execution, shell tools, project writes, `.dvl` activation, RootLock or Kernel authority are added. Reads are best-effort observations, not Project Truth or atomic snapshots. Name-based secret policy is not universal detection; agent/provider requesters remain gated on the policy decision in review C-2. Deferred system-root exclusions and the other C1a evidence limits remain open.
 
-The four Unicode code points above are conservatively denied even in otherwise ordinary names. This is a deliberate compatibility restriction, not a general Unicode folding solution. Existing iCloud/Library/TCC/external/network-volume limitations remain unqualified. Reads are observations, not Project Truth or atomic snapshots; a name policy is not universal secret detection.
-
-I-1 is covered by keeping boundary and repair suites coupled. I-2 (missing private macOS SPI diagnostics), I-3 (broader system-root exclusions), I-5/I-6/I-7 remain open/deferred as in the review. The stale persistent-session comment I-8 is corrected. No broad `/var`/`/private/var` prohibition is added without a policy decision about temporary/project locations.
-
-## Packaged distribution boundary
-
-This deliverable is a source candidate, not a signed or packaged desktop release. In packaged mode the controller resolves the helper only at `resources/app.asar.unpacked/bin/project-reader`; it never executes inside `app.asar`. Keep `bin/reader-integrity.json` in the application source/asar and place the platform/architecture-specific helper at that unpacked path with executable permissions. The release pipeline must explicitly unpack it and run the same checks against the installed app. No packaging tool or signed distribution was added or tested here. A local digest detects missing/changed helper bytes; it is not a defense against an attacker who can replace both code and manifest, nor an OS sandbox substitute.
-
-Technical references: [Electron IPC sender validation](https://www.electronjs.org/docs/latest/tutorial/security/#17-validate-the-sender-of-all-ipc-messages), [webContents lifecycle and mainFrame](https://www.electronjs.org/docs/latest/api/web-contents).
-
-## STATE
-
-Goal: integrate the read-only project reader into desktop, one gate at a time. Decisions: B frozen baseline retained separately; C1a scoped PASS remains historical; C1b candidate implemented with N-1/N-2 changes; original ABI>=3/Seatbelt baseline unchanged; Arena excluded. Open: target Mac run, actual Electron runtime, packaging qualification and independent review. Next: run this candidate's qualification, inspect the UI, then review the exact source/diff/evidence. No later stage is authorized by these local control results.
+STATE -> Goal: close C1b read-only desktop gate | Decisions: V2 scoped repairs, `.next` search exclusion, B preserved | Open: target Mac qualification/manual evidence, original TIMEOUT cause, independent V2 review | Next: install dependencies in the separate V2 folder, then qualify this exact source.

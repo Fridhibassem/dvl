@@ -1,0 +1,58 @@
+--- a/native/project-reader.c
++++ b/native/project-reader.c
+@@ -171,6 +171,7 @@
+   if(!S_ISREG(before.st_mode))return fail("NOT_REGULAR_FILE");if(before.st_nlink!=1)return fail("HARDLINK_DENIED");if(before.st_size>MAX_READ)return fail("FILE_TOO_LARGE");
+   static unsigned char bytes[MAX_READ+1];size_t n=0;while(n<sizeof bytes){ssize_t r=read(fd,bytes+n,sizeof bytes-n);if(r<0){if(errno==EINTR)continue;return fail(ioerr());}if(!r)break;n+=(size_t)r;}if(n>MAX_READ)return fail("FILE_TOO_LARGE");
+   struct stat after;if(fstat(fd,&after)||!unchanged(before,after)||after.st_nlink!=1)return fail("FILE_CHANGED");
++  if(memchr(bytes,0,n))return fail("UNSUPPORTED_ENCODING");
+   used=0;append("{\"ok\":true,\"mode\":\"%s\",\"hex\":\"",mode);hex(bytes,n);append("\",\"bytes\":%zu,\"dev\":\"%llu\",\"ino\":\"%llu\"}",n,(unsigned long long)before.st_dev,(unsigned long long)before.st_ino);
+  }else{
+  int scanfd=dup(fd);DIR *d=scanfd<0?NULL:fdopendir(scanfd);if(!d){if(scanfd>=0)close(scanfd);return fail(ioerr());}unsigned seen=0,count=0,skipped=0;int more=0,limited=0;
+--- a/src/main/read-support.cjs
++++ b/src/main/read-support.cjs
+@@ -4,7 +4,7 @@
+ const os = require('node:os');
+ const policy = require('../../read-policy.json');
+ const failure = code => Object.assign(new Error(code), { code });
+-const errors = new Set(['INVALID_REQUEST', 'PATH_DENIED', 'POLICY_DENIED', 'PROJECT_UNAVAILABLE', 'BOUNDARY_UNSUPPORTED', 'NOT_FOUND', 'PERMISSION_DENIED', 'SYMLINK_DENIED', 'HARDLINK_DENIED', 'NOT_REGULAR_FILE', 'FILE_TOO_LARGE', 'FILE_CHANGED', 'DIRECTORY_CHANGED', 'RUNTIME_FAILED']);
++const errors = new Set(['INVALID_REQUEST', 'PATH_DENIED', 'POLICY_DENIED', 'PROJECT_UNAVAILABLE', 'BOUNDARY_UNSUPPORTED', 'NOT_FOUND', 'PERMISSION_DENIED', 'SYMLINK_DENIED', 'HARDLINK_DENIED', 'NOT_REGULAR_FILE', 'FILE_TOO_LARGE', 'FILE_CHANGED', 'DIRECTORY_CHANGED', 'RUNTIME_FAILED', 'UNSUPPORTED_ENCODING']);
+ function within(a, b) { const rel = path.relative(a, b); return rel === '' || (!rel.startsWith('..' + path.sep) && rel !== '..' && !path.isAbsolute(rel)); }
+ function canonical(p) {
+   p = path.resolve(p);
+--- a/read-policy.json
++++ b/read-policy.json
+@@ -70,6 +70,7 @@
+     "vendor",
+     "dist",
+     "build",
+-    "coverage"
++    "coverage",
++    ".next"
+   ]
+ }
+--- a/src/renderer/index.html
++++ b/src/renderer/index.html
+@@ -176,6 +176,13 @@
+     #filesStatus { font-size: 12px; color: #ccc; margin: 8px 0; overflow-wrap: anywhere; }
+     .file-entry, .search-match { display: block; width: 100%; text-align: left; border-radius: 3px; margin: 3px 0; overflow-wrap: anywhere; }
+     #fileText { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; line-height: 1.5; max-height: 400px; overflow: auto; }
++    /* C1b scroll containment: the page never scrolls; panels scroll internally. */
++    .app { grid-template-rows: minmax(0, 1fr); }
++    aside, main { min-height: 0; }
++    main { grid-template-rows: auto auto minmax(0, 1fr); overflow: hidden; }
++    .workspace { grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
++    #fileEntries { max-height: 14em; overflow: auto; }
++    #searchResults { max-height: 10em; overflow: auto; }
+     @media (max-width: 850px) { .app { grid-template-columns: 185px 1fr; } .workspace { grid-template-columns: 1fr; grid-template-rows: auto; overflow: auto; } }
+   </style>
+ </head>
+--- a/src/renderer/files.js
++++ b/src/renderer/files.js
+@@ -65,6 +65,7 @@
+     const data = await request('readTextFile', { relativePath: rel }, ticket);
+     if (!data) return;
+     el('fileText').textContent = data.text;
++    el('fileTitle').scrollIntoView?.({ block: 'start' });
+     status(`Read ${data.byteLength} bytes. Observation only; not a project snapshot.`);
+   }
+   async function search() {

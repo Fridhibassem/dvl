@@ -1,0 +1,7 @@
+PASS Initial project obtains main-chosen generation and lists permitted entries as text
+PASS Markup contents remain inert text
+PASS Project switch clears visible content and fences a late result
+PASS Search reports partial reason and counts without dropping semantics
+PASS Stop fences late completion and invokes owned cancellation
+PASS Shutdown shows exact pending/live/abandoned counts and disables reading
+C1b RENDERER CONTROL CHECKS PASSED: 6 (DOM simulation; not browser qualification)

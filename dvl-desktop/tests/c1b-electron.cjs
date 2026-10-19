@@ -24,15 +24,16 @@ function run(script, { embeddedNode = false, marker, args = [] } = {}) {
 (async () => {
   try {
     // Both native suites are coupled: repair-only is not confinement evidence.
-    for (const [script, marker] of [['c1-boundary.cjs', 'C1a CHECKS PASSED: 17'], ['c1-native-repair.cjs', 'C1a REPAIR NATIVE CHECKS PASSED: 10'], ['c1b-policy.cjs', 'C1b POLICY CHECKS PASSED: 3']]) {
+    for (const [script, marker] of [['c1-boundary.cjs', 'C1a CHECKS PASSED: 17'], ['c1-native-repair.cjs', 'C1a REPAIR NATIVE CHECKS PASSED: 10'], ['c1b-policy.cjs', 'C1b POLICY CHECKS PASSED: 3'], ['c1b-v2-native.cjs', 'C1B_V2_NATIVE_PASS 3']]) {
       await run(script, { embeddedNode: true, marker });
     }
     console.log('PASS Native suites in Electron embedded Node (not UI tests)');
     await run('c1b-electron-child.cjs', { marker: 'C1B_ELECTRON_INTEGRATION_PASS', args: [base] });
+    await run('c1b-electron-restore.cjs', { marker: 'C1B_ELECTRON_RESTORE_PASS 3', args: [base] });
     const logs = fs.readFileSync(path.join(base, 'state/logs/dvl.log'), 'utf8');
     const rows = logs.trim().split('\n').map(line => JSON.parse(line));
-    const close = rows.find(row => row.event === 'reader.shutdown'); assert.ok(close);
-    assert.equal(close.pendingRequests, 0); assert.equal(close.abandonedHelpers, 0); assert.equal(close.liveHelpers, 0);
+    const closes = rows.filter(row => row.event === 'reader.shutdown'); assert.equal(closes.length, 2);
+    for (const close of closes) { assert.equal(close.pendingRequests, 0); assert.equal(close.abandonedHelpers, 0); assert.equal(close.liveHelpers, 0); }
     assert.ok(rows.some(row => row.event === 'db.closed'));
     console.log('C1B_ELECTRON_GATE_PASS (includes clean shutdown counts; independent review still required)');
   } finally { fs.rmSync(base, { recursive: true, force: true }); }

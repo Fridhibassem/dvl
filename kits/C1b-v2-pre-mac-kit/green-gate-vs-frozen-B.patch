@@ -1,0 +1,46 @@
+--- frozen-B/tests/green-gate.cjs
++++ C1b-V2/tests/green-gate.cjs
+@@ -2,6 +2,7 @@
+ const os = require('node:os');
+ const path = require('node:path');
+ const vm = require('node:vm');
++const { pathToFileURL } = require('node:url');
+ const assert = require('node:assert/strict');
+ const { DatabaseSync } = require('node:sqlite');
+ const source = fs.readFileSync(path.join(__dirname, '../src/main/main.js'), 'utf8');
+@@ -14,7 +15,7 @@
+   const state = { quit: false, errorShown: false, sql: [] };
+   let start;
+   class Window {
+-    constructor(config) { this.options = config; this.events = new Map(); this.minimized = false; windows.push(this); }
++    constructor(config) { this.options = config; this.events = new Map(); this.minimized = false; windows.push(this); const url = pathToFileURL(path.join(__dirname, '../src/renderer/index.html')).href; this.webContents = { mainFrame: { url }, getURL: () => url, isDestroyed: () => false, on() {}, setWindowOpenHandler() {}, send() {} }; }
+     on(name, fn) { this.events.set(name, fn); }
+     loadFile() {}
+     isMinimized() { return this.minimized; }
+@@ -48,7 +49,7 @@
+     __dirname: path.join(__dirname, '../src/main'), process, Buffer, console });
+   vm.runInContext(source, ctx); if (start) start();
+   const result = { ctx, handlers, events, windows, state, electron,
+-    invoke: (name, ...args) => handlers.get('dvl:' + name)({}, ...args) };
++    invoke: (name, ...args) => handlers.get('dvl:' + name)({ sender: windows[0].webContents, senderFrame: windows[0].webContents.mainFrame }, ...args) };
+   boots.push(result); return result;
+ }
+ function inspect(data, fn) {
+@@ -95,7 +96,7 @@
+     r.windows[0].minimized = true; r.events.get('second-instance')(); assert.equal(r.windows[0].restored, true); assert.equal(r.windows[0].focused, true);
+     r.windows[0].close(); r.events.get('second-instance')(); assert.equal(r.windows.length, 1);
+   });
+-  await test('Before-quit checkpoints and closes database', () => { r.events.get('before-quit')(); const logs = fs.readFileSync(path.join(data, 'logs/dvl.log'), 'utf8'); assert.match(logs, /app.shutdown/); assert.match(logs, /db.wal_checkpoint/); assert.match(logs, /db.closed/); assert.throws(() => c.getSetting('test')); });
++  await test('Before-quit checkpoints and closes database', async () => { await r.events.get('before-quit')({ preventDefault() {} }); const logs = fs.readFileSync(path.join(data, 'logs/dvl.log'), 'utf8'); assert.match(logs, /app.shutdown/); assert.match(logs, /db.wal_checkpoint/); assert.match(logs, /db.closed/); assert.throws(() => c.getSetting('test')); });
+   const reopened = boot(data);
+   await test('Restart preserves project, setting and decryptable secret via IPC', async () => { assert.equal((await reopened.invoke('get-last-project')).projectId, id); assert.equal((await reopened.invoke('get-setting', 'test')).n, 1); assert.equal((await reopened.invoke('has-secret', 'test')).decryptable, true); });
+   await test('Unreadable ciphertext returns boolean failure; row retained', async () => {
+@@ -154,7 +155,7 @@
+   });
+   await test('Renderer handles unreadable secret, IPC failure and stale recent', async () => {
+     const elements = new Map();
+-    function element() { return { textContent: '', children: [], events: {}, appendChild(c) { this.children.push(c); }, addEventListener(n, f) { this.events[n] = f; }, set innerHTML(v) { this.children = []; } }; }
++    function element() { return { _text: '', get textContent() { return this._text; }, set textContent(v) { this._text = v; this.children = []; }, children: [], events: {}, appendChild(c) { this.children.push(c); }, addEventListener(n, f) { this.events[n] = f; }, set innerHTML(v) { this.children = []; } }; }
+     for (const n of ['openProject', 'projectPath', 'projectId', 'recentProjects', 'saveSetting', 'saveSecret', 'deleteSecret', 'secretStatus', 'appStatus']) elements.set(n, element());
+     let missing = false;
+     const dvl = { getLastProject: async () => null, listRecentProjects: async () => [{ projectId: 'p', displayName: 'Project', path: '/fixture', available: !missing }], openRecentProject: async () => null, hasSecret: async () => ({ configured: true, decryptable: false }), setSecret: async () => { throw new Error('unavailable'); } };

@@ -6,6 +6,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawn } = require('node:child_process');
 const { TextDecoder } = require('node:util');
+const { performance } = require('node:perf_hooks');
 const os = require('node:os');
 const { ReaderSession } = require('./reader-session.cjs');
 const { policy, rootAllowed, matchText } = require('./read-support.cjs');
@@ -44,6 +45,8 @@ function textBytes(hex) {
 class ProjectReadService {
   constructor(resolveProject, options = {}) {
     this.resolveProject = resolveProject;
+    this.startedAt = performance.now();
+    this.onTimeout = options.onTimeout || null;
     this.binary = options.binary || path.join(__dirname, '../../bin/project-reader');
     this.timeoutMs = options.timeoutMs || 5000;
     this.killGraceMs = options.killGraceMs || 2000;
@@ -91,12 +94,13 @@ class ProjectReadService {
       if (ctx.seen.size >= 10000) throw fail('BUSY');
       if (this.active >= 2 && this.queue.length >= 8) throw fail('BUSY');
       ctx.seen.add(req.requestId);
-      job = { controller: new AbortController(), reason: null, child: null, ctx };
+      job = { controller: new AbortController(), reason: null, child: null, ctx, operation };
       this.jobs.set(req.requestId, job);
       await this.slot(job);
       try {
         this.current(ctx); this.checkJob(job);
-        job.deadline = Date.now() + this.timeoutMs;
+        job.startedAt = performance.now();
+        job.deadline = job.startedAt + this.timeoutMs;
         const data = operation === 'readTextFile' ? await this.read(ctx, req.relativePath, job) : operation === 'listDirectory' ? await this.list(ctx, req.relativePath, req.cursor, job) : await this.search(ctx, req.relativePath, req.query, job);
         this.current(ctx); if (job.controller.signal.aborted) throw fail(job.reason || 'CANCELLED');
         const result = { ...response, ok: true, data };
@@ -126,7 +130,21 @@ class ProjectReadService {
       const item = this.queue.shift(); item.job.controller.signal.removeEventListener('abort', item.abort); this.active++; item.resolve();
     }
   }
-  checkJob(job) { if (job.controller.signal.aborted) throw fail(job.reason || 'CANCELLED'); if (job.deadline && Date.now() >= job.deadline) throw fail('TIMEOUT'); }
+  checkJob(job) { if (job.controller.signal.aborted) throw fail(job.reason || 'CANCELLED'); if (job.deadline && performance.now() >= job.deadline) { this.reportTimeout(job); throw fail('TIMEOUT'); } }
+  reportTimeout(job) {
+    if (job.timeoutReported || !job.startedAt) return;
+    job.timeoutReported = true;
+    const now = performance.now();
+    const ms = value => value === undefined ? null : Math.max(0, Math.round(value - job.startedAt));
+    const metadata = {
+      op: job.operation,
+      phase: job.firstByteAt !== undefined ? 'after_first_byte' : job.spawnAt !== undefined ? 'before_first_byte' : 'before_spawn_event',
+      spawnMs: ms(job.spawnAt), firstByteMs: ms(job.firstByteAt),
+      elapsedMs: ms(now), startupMs: Math.max(0, Math.round(job.startedAt - this.startedAt))
+    };
+    // Fixed enum/numeric/null fields only. Logging cannot change reader outcomes.
+    try { this.onTimeout?.(metadata); } catch {}
+  }
   cancel(context, requestId) {
     if (!context || !this.context || context.projectId !== this.context.projectId || context.contextGeneration !== this.context.contextGeneration) throw fail('STALE_CONTEXT');
     const j = this.jobs.get(requestId);
@@ -153,7 +171,7 @@ class ProjectReadService {
     let prior;
     if (cursor) {
       prior = this.cursors.get(cursor); this.cursors.delete(cursor);
-      if (!prior || prior.ctx !== ctx || prior.rel !== rel || prior.expires < Date.now()) throw fail('INVALID_CURSOR');
+      if (!prior || prior.ctx !== ctx || prior.rel !== rel || prior.expires < performance.now()) throw fail('INVALID_CURSOR');
     }
     const out = await this.native(ctx, 'list', rel, prior?.offset || 0, job);
     const stamp = `${out.dev}:${out.ino}:${out.stamp}`;
@@ -166,15 +184,15 @@ class ProjectReadService {
     }
     let nextCursor = null;
     if (out.more) {
-      for (const [key, value] of this.cursors) if (value.expires < Date.now()) this.cursors.delete(key);
+      for (const [key, value] of this.cursors) if (value.expires < performance.now()) this.cursors.delete(key);
       if (this.cursors.size >= 64) throw fail('BUSY');
-      nextCursor = token(); this.cursors.set(nextCursor, { ctx, rel, offset: out.offset, stamp, expires: Date.now() + 60000, searchJob });
+      nextCursor = token(); this.cursors.set(nextCursor, { ctx, rel, offset: out.offset, stamp, expires: performance.now() + 60000, searchJob });
     }
     return { entries, nextCursor, complete: !out.more && !out.limited && !skipped && !out.skipped, partialReason: out.limited ? 'ENTRY_LIMIT' : out.more ? 'PAGE_LIMIT' : skipped || out.skipped ? 'ENTRIES_SKIPPED' : null, skipped: skipped + out.skipped, nativeSkipped: out.skipped, boundaryMode: out.mode };
   }
   async search(ctx, rel, query, job) {
     const directories = [{ rel, cursor: undefined }], matches = [], skipped = {};
-    let files = 0, bytes = 0, directoryPages = 0, partialReason = null, excludedDirectories = 0;
+    let files = 0, bytes = 0, bytesRead = 0, directoryPages = 0, partialReason = null, excludedDirectories = 0;
     const skip = code => { skipped[code] = (skipped[code] || 0) + 1; };
     try {
       while (directories.length) {
@@ -197,30 +215,35 @@ class ProjectReadService {
             } else { excludedDirectories++; }
             continue;
           }
-          if (files >= 2000 || bytes + Math.min(entry.size, 1048577) > 20 * 1024 * 1024) { partialReason = 'SCAN_LIMIT'; break; }
-          files++; let data;
+          // Reserve the listed size even if the helper later rejects the file.
+          // This is budget accounting, not an exact filesystem I/O measurement:
+          // a file can change after listing, and a refusal may read no bytes.
+          const charge = Math.min(entry.size, 1048576);
+          if (files >= 2000 || bytesRead + charge > 20 * 1024 * 1024) { partialReason = 'SCAN_LIMIT'; break; }
+          bytesRead += charge; files++; let data;
           try { data = await this.read(ctx, entry.relativePath, job); } catch (e) {
             if (['FILE_TOO_LARGE', 'UNSUPPORTED_ENCODING', 'PERMISSION_DENIED', 'NOT_FOUND', 'FILE_CHANGED', 'HARDLINK_DENIED', 'SYMLINK_DENIED', 'NOT_REGULAR_FILE', 'PATH_DENIED'].includes(e.code)) { skip(e.code); continue; }
             throw e;
           }
+          bytesRead += Math.max(0, data.byteLength - charge);
           bytes += data.byteLength;
-          if (bytes > 20 * 1024 * 1024) { partialReason = 'SCAN_LIMIT'; break; }
+          if (bytesRead > 20 * 1024 * 1024) { partialReason = 'SCAN_LIMIT'; break; }
           partialReason = await matchText(data.text, query, entry.relativePath, matches, () => this.checkJob(job));
           if (partialReason) break;
         }
         if (partialReason) break;
       }
-    } catch (e) { if (e.code === 'TIMEOUT') partialReason = 'TIMEOUT'; else throw e; }
+    } catch (e) { if (e.code === 'TIMEOUT') { this.reportTimeout(job); partialReason = 'TIMEOUT'; } else throw e; }
     if (!partialReason && Object.keys(skipped).length) partialReason = 'FILES_SKIPPED';
     if (!partialReason && excludedDirectories) partialReason = 'DIRECTORIES_EXCLUDED';
     // Search-owned cursors never escape the operation. Reclaim remaining pages.
     for (const [key, value] of this.cursors) if (value.searchJob === job) this.cursors.delete(key);
-    return { matches, filesScanned: files, bytesScanned: bytes, skipped, excludedDirectories, complete: !partialReason, partialReason, observation: 'best-effort; not a project snapshot' };
+    return { matches, filesScanned: files, bytesScanned: bytes, bytesRead, bytesReadIsEstimate: true, elapsedMs: Math.round(performance.now() - job.startedAt), skipped, excludedDirectories, complete: !partialReason, partialReason, observation: 'best-effort; not a project snapshot' };
   }
   async close() {
     this.closed = true; this.invalidate();
-    const deadline = Date.now() + this.killGraceMs + 100;
-    while (this.jobs.size && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 5));
+    const deadline = performance.now() + this.killGraceMs + 100;
+    while (this.jobs.size && performance.now() < deadline) await new Promise(resolve => setTimeout(resolve, 5));
     return { pendingRequests: this.jobs.size, abandonedHelpers: this.abandoned.size, liveHelpers: this.children.size };
   }
 }

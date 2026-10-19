@@ -1,149 +1,138 @@
 --- /dev/null
-+++ c1b/C1B_STATUS_AND_REVIEW_REQUEST.md
-@@ -0,0 +1,51 @@
-+# DVL C1b v1 — implementation and review request
++++ b/C1B_STATUS_AND_REVIEW_REQUEST.md
+@@ -0,0 +1,65 @@
++# C1b V2 — implementation evidence and independent re-review request
 +
-+Date: 2026-10-19. Status: CANDIDATE / MAC AND ELECTRON RUNTIME UNTESTED / INDEPENDENT REVIEW PENDING.
++Date: 2026-10-20 (Europe/Paris). **V2 candidate; NOT PASS; NOT frozen.**
 +
-+## Goal
++## Exact baseline
 +
-+Expose the reviewed read-only project reader to the desktop's own main frame, preserving project selection, local state and secret handling while denying root injection and stale/cross-document disclosure. Scope is C1b only.
++V1 candidate ZIP SHA256: `1c5f05b639e2cba2fe585d680ff3549ffbb63945498691e5f4db0acf99ed7db3`. The independent V1 review is preserved at `review-history/C1B_INDEPENDENT_REVIEW_V1.md`: FIX REQUIRED, no security blocker found in its stated scope. V2 is not covered by that verdict or V1's Mac pass.
 +
-+## Executed on this host
++## Finding disposition
 +
-+Linux 6.18.55 x86_64; Node v24.19.0; cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0. Exact command results are in `evidence/c1b-host/results.json` and individual logs, including numeric exit codes.
-+
-+| Command | Observed result | Evidence class |
++| Finding | V2 treatment | Remaining evidence |
 +|---|---|---|
-+| `node scripts/build-reader.cjs` | exit 0, strict compilation and deterministic policy generation | Real compiler/build |
-+| `node tests/green-gate.cjs` | 24/24 | B logic with authenticated Electron mocks |
-+| `node tests/c1-unit.cjs` | 16/16; support probe BOUNDARY_UNSUPPORTED | Control, not confinement |
-+| `node tests/c1-repair.cjs` | 16/16 | Real pre-confinement checks plus simulated session cases |
-+| `node tests/c1b-ipc.cjs` | 13/13 | Controller with simulated request completion |
-+| `node tests/c1b-policy.cjs` | 3/3 | Host and direct production native pre-confinement refusal |
-+| `node tests/c1b-renderer.cjs` | 6/6 | DOM simulation, not browser rendering |
-+| `node --check` on changed/new JS and CJS | exit 0 | Syntax only |
++| F-1 binary transfer / Next search / accounting | Native NUL rejection, exact native-error whitelist addition, `.next` search exclusion, estimated attempted-read budget charged on failure, successful-growth correction, visible elapsed/counters | Control budget tests pass; real native 794-file fixture and real-project Mac measurement required |
++| F-2 unexplained first-open TIMEOUT | Deduplicated numeric/enum diagnostics wired to main logger; spawn event and first stdout timing; actual-Electron second-process restore test | Original cause unestablished. Target Desktop and outside-Desktop restarts required; diagnostics are not a causal fix |
++| F-3 page scroll | Scoped CSS containment before existing media rule, bounded lists/results, reveal file title after read | DOM logic passes; actual-Electron geometry/paging test written but runtime UNTESTED here |
++| F-4 missing regressions | Realistic native fixture and actual restored-state/layout/paging checks added | Execute on target; no claim of new actual-Electron Stop/switch-under-load coverage |
++| F-5 B-channel negative tests | 18 denials across 9 production B handlers, foreign sender and non-main frame; no handler side effects | Mock-level test passes; B 24 assertions unchanged from V1 authenticated harness |
++| F-6 committed mutation then stale delivery | Handler comment states commit is not rolled back and STALE_CONTEXT is not permission to retry | Recorded, behaviour unchanged |
++| F-7 source ZIP prebuilt binary | No `bin/` or dependencies in deliverable; full shipped-file manifest | Target build required |
++| F-8 wall-clock deadlines | Monotonic operation/session timers, cursors and close wait; forward-clock test | Control test passes |
++| F-9 duplicate initial listing | Deferred, unchanged | Known waste; no claim of fixing original TIMEOUT |
++| F-10 old-window event | Revoke old owners; only current/no-window event invalidates binding; targeted regression | Controller test passes |
 +
-+Total: 78 checks. They do **not** qualify native confinement or Electron.
++## Executed V2 host evidence
 +
-+Earlier executed attempt: `node tests/c1-boundary.cjs` failed with `OS boundary probe failed: UNSUPPORTED` (exit 1). A separate ABI probe returned `result=-1 errno=38 (Function not implemented)`. No ABI threshold was lowered. Native isolation is BLOCKED on this host.
++Host and exact exits: `evidence/c1b-v2-host/environment.json`, `results.json` and individual logs. Linux 6.18.55 x86_64, Node v24.19.0, cc 13.3.0.
 +
-+Attempted dependency install in the candidate: `npm ci --ignore-scripts --no-audit --no-fund --fetch-retries=0 --fetch-timeout=15000`, exit 1, HTTP 403 for `undici-types-7.24.6.tgz` from the npm registry. That is an environment/dependency-download failure, not Electron runtime evidence. An earlier install attempt from the scratch root had no lockfile and failed with EUSAGE; it changed no source and was retried from the candidate folder. There is no local Electron executable or Chromium browser for runtime/visual qualification here.
++| Check | Observed V2 result | Class |
++|---|---|---|
++| strict native build | exit 0 | Real compiler; not sandbox execution |
++| B assertions | 24/24 under the unchanged C1b-authenticated harness | Mock Electron, real disposable SQLite |
++| C1a unit / repair | 16/16 + 16/16 | Controls / simulated sessions / pre-confinement |
++| C1b IPC | 14/14 | Simulated completion/controller lifecycle |
++| policy | 3/3 | Direct native pre-confinement refusal, not confinement |
++| renderer | 6/6 | DOM simulation, not layout |
++| V2 control | 8/8 | Simulated child timing, privacy, clock and budget checks |
++| B channel negative auth | 18/18 | Production handlers, mocked frames |
++| JS/CJS syntax | 27 files | Syntax only |
++| real boundary suite | exit 1, OS boundary probe UNSUPPORTED | Host unavailable, NOT PASS |
++| V2 native fixture | exit 1, helper returned BOUNDARY_UNSUPPORTED before binary-read assertion | Host unavailable, fixture runtime NOT qualified |
++| Electron/native-secret/restore/layout | UNTESTED at runtime here; no local executable | Must execute on target Mac |
 +
-+## Verification still required
++Total: **105 passing control/policy assertions**, not 105 security or real-app checks. No ABI threshold was lowered and no confinement bypass was added. The original native repair suite and 500-file benchmark remain byte-identical and coupled to the boundary suite in qualification. The lockfile, preload, B gate harness and native-secret tests are byte-identical to V1; the frozen B reference remains untouched.
 +
-+1. Run `npm ci` and `npm run qualify:c1b` on the target Mac; retain complete stdout/stderr, numeric pipeline exit status, source verification, environment and all four native denial booleans.
-+2. Real app list/read/search/Stop/switch/reload; confirm no stale content, actual text-only markup display, paging and explicit partial outcomes.
-+3. Source review of lifecycle relationships, not just individual fixes: project restore/selection → bind, navigation/crash → revoke, new document → new generation, before-quit → bounded close → counts → DB checkpoint/close.
-+4. Verify source identity and helper hash behavior on the installed/package layout before claiming packaged support. Source mode and unpacked-path enforcement are implemented; packaged distribution is not delivered.
-+5. Independent review of the exact candidate and new tests. Do not transfer C1a's verdict to these changes.
++## Counter semantics and limits
 +
-+## Review targets
++`bytesScanned` is decoded text length. `bytesRead` is estimated budget charged before each read: min(listed size, 1 MiB), including failed attempts, and increased to actual returned length for successful growth. `bytesReadIsEstimate` is always true. A refusal before opening can overcount; concurrent growth followed by native refusal can undercount actual I/O. It is not a byte-accurate native read meter or an immutable snapshot. The 20 MiB budget now bounds charged work, alongside the existing file count and 5-second operation limit. Native refusals avoid transferring NUL payloads; invalid non-NUL UTF-8 still reaches host validation.
 +
-+- Confirm one production service instance per app even after closing/recreating a window. Native/live/abandoned helpers remain app-budgeted.
-+- Try foreign webContents, child/navigated/detached frames, forged URLs and frame reuse after same-URL reload. Try completing an old request after project switch, crash and close.
-+- Try malformed payloads, caller root, wrong project/generation, duplicate IDs, queue/rate exhaustion, stealing cancellation and rapid reloads. Verify failures contain only bounded codes.
-+- Recheck N-1 derived host/native policy, N-2 stored spelling restrictions and legitimate Unicode compatibility. No `DVL_HOME` production override was added. The policy regression temporarily creates missing empty credential directories and removes only directories it created; it never writes into existing credential directories.
-+- Attack startup and pre-spawn helper verification, packaged placement, missing helper/manifest, symlink helper, wrong architecture and tampered bytes. Note documented local-attacker/TOCTOU limits; this is not code signing.
-+- Recheck text rendering and stale UI responses using actual Electron. Native suites run in Electron embedded Node in addition to the real app integration tests; those evidence classes must remain distinct.
-+- Validate close counts remain honest under stuck-helper simulation and real workloads; verify no reader paths/queries/content are logged. Legacy B project-selection path logs are unchanged and are not reader payload logs.
-+- Review the minimal B harness changes in the diff. Do not weaken an assertion merely to get a green count.
++`startupMs` is time from service construction to admitted job start, not complete process boot duration. `spawnMs` and `firstByteMs` are observed event delays from job admission; null means not observed. Phases classify observed progress only. `after_first_byte` can include earlier list results in a search session. No path, request ID, project ID, query or file content is included in timeout metadata. A diagnostic callback failure cannot change reader outcomes. Normal EOF cleanup retains its existing watchdog; failed cleanup is reported by shutdown counts, not presented as a new causal explanation of the original listing timeout.
++
++The Next-shaped fixture has 794 files: 300 TSX sources, 30 migrations, 120 NUL-containing image fixtures, two root metadata files and 342 `.next` build/cache files. Expected traversal visits 452 files, skips exactly 120 with UNSUPPORTED_ENCODING, excludes one directory, and returns two root matches. It must finish without TIMEOUT or SCAN_LIMIT. `complete` remains false with FILES_SKIPPED, rather than concealing intentional skips/exclusions. It logs aggregate performance only.
++
++The second Electron process validates previously persisted `last_project_id` before importing production main, forbids any Open dialog, waits for the automatic first list, pages 200+1 files, reads a file, and checks page height/header/title visibility at desktop sizes. It does not emulate or claim to reproduce Desktop/TCC privacy behaviour.
++
++## Owner evidence added since review
++
++See `evidence/owner-v1/TARGETED_MAC_EVIDENCE_2026-10-20.md`: filtered TCC excerpt, folder flags, installed Electron version. No Desktop denial is visible in the supplied excerpt. These observations do not establish the original timeout cause. iCloud setting and permission-prompt history remain unanswered. V1's complete owner-pasted qualification and manual history are retained separately; none qualifies V2.
 +
 +## Independent reviewer prompt
 +
-+Review this DVL C1b candidate independently. Read README_C1B_START_HERE.md, the full source diff, the C1a v1 §6 and v2 C-2 to C-5 conditions, and actual evidence. C1a was PASS scoped and C-1 was met on the owner's Mac; C1b has new source and is not accepted. Preserve the frozen B reference and original Landlock ABI>=3/Seatbelt requirements. No Arena remediation is approved. Check security and behavior across modules/lifecycles, including regressions from each fix. Execute appropriate tests where possible; label simulations, unsupported environments, unexecuted tests and owner evidence separately. Return concrete reproducible findings with severity, affected relationships, smallest coherent correction and targeted regression. Do not rewrite architecture or activate later-stage workers/providers. If you find no blocker, state exactly which source/platform/evidence scope your verdict covers. Never infer full C1 PASS or freeze from control tests.
---- /dev/null
-+++ c1b/README_C1B_START_HERE.md
-@@ -0,0 +1,87 @@
-+# DVL C1b — candidate v1, 2026-10-19
++Independently review this exact V2 candidate against the preserved C1b V1 review. Verify SOURCE_SHA256.json, C1B_V2_DIFF.patch (V1→V2), C1B_DIFF.patch (C1a→V2) and C1B_CHANGES.json. Source review must trace relationships: selection/startup restore → binding → push/pull UI; navigation/crash/window replacement → ownership revocation; native error shape → host decoding → search budget/partial semantics; timeout timer/checkJob → metadata → logger; quit → helper counts → DB close. Check each repair's adjacent regressions, not only its isolated assertion.
 +
-+**Status: implementation candidate; NOT C1b PASS, NOT frozen, NOT full C1 acceptance.**
++Validate F-1 accounting as explicitly estimated, including failed reads, file growth and the distinction from actual I/O; verify `.next` remains listable/readable and exclusions/skips remain visible. Review the native refusal's position after post-read identity checks, with unchanged confinement baseline. Try forged metadata/native payloads, malformed requests, stale owners and old-window events. Review the new actual-Electron restore and geometry assertions for false positives, preserving the original tests.
++
++Execute appropriate tests where supported. Keep Linux/Seatbelt, simulations, compiler checks, actual Electron, embedded Node, owner-pasted evidence and UNTESTED paths distinct. Return concrete reproducible findings with severity, affected relationships, smallest coherent fix and targeted regression. The original TIMEOUT is unresolved, not proven user error, TCC or fixed by V2; use the new Mac evidence to judge it. Do not demand broad unrelated platform reruns, fabricate blockers, lower confinement, introduce Arena/ABI2, redesign the UI or activate later-stage workers/providers. No C1b freeze, full C1 acceptance or packaged-release claim without the applicable evidence.
+--- /dev/null
++++ b/README_C1B_START_HERE.md
+@@ -0,0 +1,62 @@
++# DVL C1b — Candidate V2 — 2026-10-20
++
++**CANDIDATE ONLY. C1b NOT PASS, NOT FROZEN. Full C1 NOT accepted.**
 +
 +## ابدأ من هنا
 +
-+هذي نسخة منفصلة لاختبار C1b: عرض الملفات، قراءة النصوص والبحث الحرفي داخل المشروع المختار. نسخة B المجمّدة ونسخة C1a الأصلية ما تبدّلوش. ما تخلطش المجلّد هذا مع النسخ القديمة.
++هذي نسخة V2 مستقلة، فيها إصلاحات تقرير `C1B_INDEPENDENT_REVIEW_V1.md`. فكّ الـZIP في مجلّد جديد؛ ما تكتبش فوق B أو C1a أو C1b V1. المجلّد الداخلي اسمو `dvl-desktop-C1b-v2`.
 +
-+نجحت هنا 78 check تحكّمية/سياسة، والبناء الأصلي نجح على Linux. اختبار العزل الحقيقي ما نجحش على هذا المضيف: Landlock رجع `ENOSYS`. تشغيل Electron واختبارات الماك للنسخة الجديدة **UNTESTED**. نتائج الماك السابقة تخص C1a، وما تنتقلش تلقائيًا إلى C1b.
++نجح البناء و105 اختبارات تحكّم/سياسة هنا. العزل الحقيقي غير متاح على هذا المضيف؛ Electron وSeatbelt والواجهة الجديدة **UNTESTED على هذه النسخة**. نجاح V1 على الماك محفوظ كدليل سابق فقط. السبب الأصلي لأول TIMEOUT مازال غير مثبت.
 +
-+الخطوة التالية: اختبار هذه النسخة على الماك ثم مراجعة مستقلة. ما نمرّوش للمرحلة التالية قبل الأدلة.
++## Changes since V1
 +
-+## Run on the target Mac
++- Native helper refuses NUL-containing files after the existing post-read identity check, before hex serialization. Host UTF-8/NUL checks remain.
++- `.next` is excluded from recursive search traversal and counted in `excludedDirectories`. It remains listable and directly readable. Existing `*.tsbuildinfo` policy is unchanged.
++- Search charges attempted reads, including refusals, against the existing 20 MiB budget. `bytesScanned` counts decoded text; `bytesRead` is explicitly estimated budget accounting (`bytesReadIsEstimate: true`), based on listed size capped at 1 MiB, adjusted upward for successful larger reads. It is not an exact kernel I/O counter or a hard I/O bound against concurrent file growth. The UI labels it as an estimate and shows search elapsed time. The 5-second operation deadline is unchanged.
++- Numeric/enum-only `reader.timeout` diagnostics distinguish no observed spawn, no observed stdout, and observed stdout; monotonic deadlines, cursor lifetimes and shutdown waits avoid wall-clock steps. Diagnostics do not identify TCC or prove any root cause.
++- App/panel scrolling is contained; entries/results have bounded scroll regions; a completed read reveals its title/text region.
++- Regression coverage: rejected-read budgeting; timeout phases/privacy; clock jumps; all nine B channels reject foreign senders/non-main frames; realistic 794-file Next-shaped tree; actual Electron second-process restore without a dialog and 200+1 paging/layout checks.
++- A late event from an old window revokes its owners without clearing the new window binding (F-10). Duplicate push/pull listing (F-9) is recorded and unchanged.
++- No prebuilt helper or `node_modules` ships in this ZIP. Build on the target Mac.
 +
-+Use a new folder; keep B and the accepted-scope C1a copy intact. Close the app before qualification. Open Terminal in this folder (the one containing `package.json`).
++## First Mac step
++
++Close DVL. Extract the ZIP separately, then open Terminal in `dvl-desktop-C1b-v2` (the directory containing `package.json`).
 +
 +```bash
 +npm ci
-+set -o pipefail
-+npm run qualify:c1b 2>&1 | tee C1B_MAC_QUALIFICATION.log
 +```
 +
-+Record `sw_vers`, `node --version`, `xcode-select -p`, `cc --version`, and the shell exit status immediately after the qualification pipeline. The qualification command verifies source hashes before building the platform-specific helper. It requires strict native success; unsupported confinement fails the gate.
-+
-+This includes:
-+
-+1. Source verification and C1a Node/native suites, with the four negative confinement assertions and prefix sibling test.
-+2. B 24 regression assertions with an authenticated window/frame mock and awaited asynchronous shutdown.
-+3. C1b controller, root/name policy and DOM control tests.
-+4. Unchanged B real Electron secret/restart regression.
-+5. C1a native suites in Electron's embedded Node runtime, then a real production Electron window/preload/IPC/UI integration test, including regular-file and symlink replacement regressions and clean shutdown counts.
-+
-+After successful qualification, inspect the real UI:
++After installation, run qualification from that same folder:
 +
 +```bash
-+npm start
++set -o pipefail
++npm run qualify:c1b 2>&1 | tee C1B_V2_MAC_QUALIFICATION.log
++printf 'QUALIFICATION_EXIT=%s\n' "$?"
 +```
 +
-+Open a disposable project under a normal local directory; check listing, Up, Refresh, paging, literal Search, file display, Stop, A→B switching and reload. File text must stay inert. Partial/skipped results must remain visible. Run on the exact target Mac, including the post-change native policy tests.
++Keep the complete output. The source manifest is checked before deterministic policy generation and native compilation. Unsupported confinement is a gate failure. `qualify:c1b` includes the original coupled confinement/repair suites, V2 native fixture, B assertions under the C1b-authenticated harness, control/policy regressions, real Electron secret/restart check, native suites in Electron embedded Node, the production UI test, and a second production Electron process restoring the persisted last project without a picker. Both app shutdowns must show zero pending/live/abandoned helpers.
 +
-+## Scope and implementation
++Expected markers include `C1B_V2_CONTROL_PASS 8`, `C1B_B_AUTH_PASS 18`, `C1B_V2_NATIVE_PASS 3`, `C1B_ELECTRON_INTEGRATION_PASS 8`, `C1B_ELECTRON_RESTORE_PASS 3`, `C1B_ELECTRON_GATE_PASS`, and `QUALIFICATION_EXIT=0`. A marker alone is insufficient if an earlier suite failed.
 +
-+- `src/main/desktop-reader.cjs`: one app-lifetime service; actual `app.getPath('userData')`; exact own-window/main-frame/file-URL checks; strict IPC schemas; no renderer bind/root API; four pending requests and 30 request admissions per one-second window; separate bounded context/cancel budgets; per-document/per-request ownership and late-response fencing.
-+- `src/main/main.js`: narrow reader lifecycle integration, selection hooks, validation before/after B IPC responses, navigation safeguards and bounded reader shutdown before database close. Cleanup counts go to the live UI and numeric shutdown log; nonzero counts also produce an explicit shutdown dialog.
-+- `src/preload/preload.js`: explicit read/context/cancel methods; state callbacks never receive the Electron event object.
-+- `src/renderer/files.js` and the existing Files panel: permitted listing with pagination, text-only file display, literal search, Stop, stale-response suppression and clearing on switch. Existing B controls remain.
-+- `ProjectReadService`: helper verification before every new session; the reviewed root-bound session, queue, timeouts, generation fencing and confinement baseline remain.
-+- Build creates a per-platform helper digest; missing/modified/wrong-platform helpers fail closed. Rebuild on the target platform before launching. Startup failure stays confined to Files so existing desktop state remains accessible.
++## Manual target-Mac evidence after qualification
 +
-+## Review conditions
++Run `npm start`. Restore the real Desktop project without reselecting it. Record the first listing result. Repeat five fresh launches with that location, and five with an owner-created copy outside Desktop (without `node_modules`); preserve any `reader.timeout` records. Do not reset privacy permissions or purge caches for this initial comparison.
 +
-+| Condition | Candidate treatment | Evidence remaining |
-+|---|---|---|
-+| C-1 | Prior C1a Mac gate retained as historical evidence | Changed C1b needs its own Mac qualification |
-+| C-2 / N-1 | Protected home entries derived from `homeTrees` union dot-prefixed denied names, in host and generated C; `.password-store` added | Host/direct-native pre-confinement regression passed here; run on Mac too |
-+| N-2 | Conservatively refuse U+017F, U+212A, U+00DF and U+1E9E in every component, in host and native | Stored-name regressions passed here; Mac checks remain |
-+| C-3 | Exactly one production `DesktopReader` / `ProjectReadService`, reused across window recreation | Actual Electron lifetime qualification pending |
-+| C-4 | Sender/frame/URL checks, exact payloads, text rendering, quotas, cancellation ownership, helper digest, no reader payload logging | Real Electron and packaged distribution checks pending |
-+| C-5 | Cleanup counts surfaced; completeness explicitly limited to permitted files; partial reasons/counts displayed | Real UI checks pending |
++Repeat the original literal query `next/image-types/global`; report elapsed time, `bytesRead` estimate, `bytesScanned`, matches, exclusions and skip reasons. Partial results remain partial: skipped binary files or excluded directories must not be relabelled complete. Check file-text visibility and fixed header/sidebar at the target window size. Manual Stop/switch under load remain additional evidence, distinct from control/DOM simulations.
 +
-+## Historical source and regression identity
++Still unanswered: whether iCloud Desktop & Documents is enabled and whether a permission prompt appeared during the original failure. The supplied TCC excerpt shows Terminal attribution and an Accessibility warning, not a visible Desktop access refusal; it neither establishes nor excludes TCC as the cause.
 +
-+Input: owner-uploaded `dvl-desktop-C1a-repair-v2.zip`. Its 40 listed source entries all matched before editing. The manifest itself accounts for the additional manifest file in the reviewer’s 41-file description. The original B manifest differs only in `package.json`, as expected from the C1a scripts additions. This check did not certify unlisted binary/log bytes.
++## Evidence and review
 +
-+`review-history/C1A_SOURCE_SHA256.json` preserves the original C1a manifest. `review-history/c1a/main.js` and `green-gate.cjs` preserve those original files. `review-history/C1A_INDEPENDENT_REVIEW_V2.md` is the retrieved review, not a new review of C1b. `C1A_MAC_RETEST.log` is the owner's uploaded prior run.
++Read `C1B_STATUS_AND_REVIEW_REQUEST.md`. V2 host logs are in `evidence/c1b-v2-host/`. `evidence/c1b-host/` and `evidence/owner-v1/` are explicitly V1 history. `review-history/c1b-v1/` retains the V1 manifest, README and diff. The reviewer's prototype remains reference material, not the candidate.
 +
-+New-candidate B harness changes add realistic sender/frame state, await reader shutdown and implement DOM `textContent` clearing in the mock. The original 24 assertions remain. No B database schema, secret encryption behavior, dependency lockfile, native-secret test or security flags were changed. See `C1B_CHANGES.json` and `C1B_DIFF.patch` for the complete diff.
++`C1B_V2_DIFF.patch` compares V1 to V2. `C1B_DIFF.patch` compares the original C1a source to the final V2 implementation. `C1B_CHANGES.json` records both source baselines and file hashes. `SOURCE_SHA256.json` covers every shipped regular file except itself; generated binaries, dependency directories and future run logs are not shipped.
 +
-+## Evidence and limits
++## Boundaries
 +
-+See `C1B_STATUS_AND_REVIEW_REQUEST.md` and `evidence/c1b-host/`. Control results are not OS qualification. Policy tests refuse selected roots/names before confinement, so they do not prove filesystem isolation. Real Electron tests have syntax checks only here and are **UNTESTED at runtime**.
++B repair v3 remains frozen as a separate reference. C1a remains scoped PASS, not frozen. V1 received FIX REQUIRED; V2 requires its own Mac qualification and independent re-review. This is source mode only: no packaged/signed release, Apple Silicon, TCC/iCloud/external/network location qualification is claimed. The Landlock ABI minimum and Seatbelt confinement profile are unchanged. Arena changes remain unapproved.
 +
-+No workers, providers, AI execution, shell tools, project writing, `.dvl` activation, RootLock, Kernel authority or Arena ABI2/seccomp changes are introduced.
++No workers/providers, AI execution, shell tools, project writes, `.dvl` activation, RootLock or Kernel authority are added. Reads are best-effort observations, not Project Truth or atomic snapshots. Name-based secret policy is not universal detection; agent/provider requesters remain gated on the policy decision in review C-2. Deferred system-root exclusions and the other C1a evidence limits remain open.
 +
-+The four Unicode code points above are conservatively denied even in otherwise ordinary names. This is a deliberate compatibility restriction, not a general Unicode folding solution. Existing iCloud/Library/TCC/external/network-volume limitations remain unqualified. Reads are observations, not Project Truth or atomic snapshots; a name policy is not universal secret detection.
-+
-+I-1 is covered by keeping boundary and repair suites coupled. I-2 (missing private macOS SPI diagnostics), I-3 (broader system-root exclusions), I-5/I-6/I-7 remain open/deferred as in the review. The stale persistent-session comment I-8 is corrected. No broad `/var`/`/private/var` prohibition is added without a policy decision about temporary/project locations.
-+
-+## Packaged distribution boundary
-+
-+This deliverable is a source candidate, not a signed or packaged desktop release. In packaged mode the controller resolves the helper only at `resources/app.asar.unpacked/bin/project-reader`; it never executes inside `app.asar`. Keep `bin/reader-integrity.json` in the application source/asar and place the platform/architecture-specific helper at that unpacked path with executable permissions. The release pipeline must explicitly unpack it and run the same checks against the installed app. No packaging tool or signed distribution was added or tested here. A local digest detects missing/changed helper bytes; it is not a defense against an attacker who can replace both code and manifest, nor an OS sandbox substitute.
-+
-+Technical references: [Electron IPC sender validation](https://www.electronjs.org/docs/latest/tutorial/security/#17-validate-the-sender-of-all-ipc-messages), [webContents lifecycle and mainFrame](https://www.electronjs.org/docs/latest/api/web-contents).
-+
-+## STATE
-+
-+Goal: integrate the read-only project reader into desktop, one gate at a time. Decisions: B frozen baseline retained separately; C1a scoped PASS remains historical; C1b candidate implemented with N-1/N-2 changes; original ABI>=3/Seatbelt baseline unchanged; Arena excluded. Open: target Mac run, actual Electron runtime, packaging qualification and independent review. Next: run this candidate's qualification, inspect the UI, then review the exact source/diff/evidence. No later stage is authorized by these local control results.
---- c1a/native/project-reader.c
-+++ c1b/native/project-reader.c
++STATE -> Goal: close C1b read-only desktop gate | Decisions: V2 scoped repairs, `.next` search exclusion, B preserved | Open: target Mac qualification/manual evidence, original TIMEOUT cause, independent V2 review | Next: install dependencies in the separate V2 folder, then qualify this exact source.
+--- a/native/project-reader.c
++++ b/native/project-reader.c
 @@ -1,5 +1,5 @@
  /* DVL C1 boundary prototype. No provider, mutation or shell API.
 - * One request per short-lived process. All output is buffered until identity
@@ -160,8 +149,16 @@
   char b[4096];size_t n=strlen(s);if(n>=sizeof b)return 1;for(size_t i=0;i<=n;i++)b[i]=(char)tolower((unsigned char)s[i]);
   for(int i=0;policy_deniedNames[i];i++)if(!strcmp(b,policy_deniedNames[i]))return 1;
   for(int i=0;policy_deniedPrefixes[i];i++)if(!strncmp(b,policy_deniedPrefixes[i],strlen(policy_deniedPrefixes[i])))return 1;
---- c1a/native/read-policy.h
-+++ c1b/native/read-policy.h
+@@ -169,6 +171,7 @@
+   if(!S_ISREG(before.st_mode))return fail("NOT_REGULAR_FILE");if(before.st_nlink!=1)return fail("HARDLINK_DENIED");if(before.st_size>MAX_READ)return fail("FILE_TOO_LARGE");
+   static unsigned char bytes[MAX_READ+1];size_t n=0;while(n<sizeof bytes){ssize_t r=read(fd,bytes+n,sizeof bytes-n);if(r<0){if(errno==EINTR)continue;return fail(ioerr());}if(!r)break;n+=(size_t)r;}if(n>MAX_READ)return fail("FILE_TOO_LARGE");
+   struct stat after;if(fstat(fd,&after)||!unchanged(before,after)||after.st_nlink!=1)return fail("FILE_CHANGED");
++  if(memchr(bytes,0,n))return fail("UNSUPPORTED_ENCODING");
+   used=0;append("{\"ok\":true,\"mode\":\"%s\",\"hex\":\"",mode);hex(bytes,n);append("\",\"bytes\":%zu,\"dev\":\"%llu\",\"ino\":\"%llu\"}",n,(unsigned long long)before.st_dev,(unsigned long long)before.st_ino);
+  }else{
+  int scanfd=dup(fd);DIR *d=scanfd<0?NULL:fdopendir(scanfd);if(!d){if(scanfd>=0)close(scanfd);return fail(ioerr());}unsigned seen=0,count=0,skipped=0;int more=0,limited=0;
+--- a/native/read-policy.h
++++ b/native/read-policy.h
 @@ -1,7 +1,7 @@
  /* Generated from read-policy.json; do not hand-edit. */
 -static const char *policy_deniedNames[]={".git",".dvl",".ssh",".gnupg",".aws",".azure",".kube",".docker",".config",".env",".npmrc",".pypirc",".netrc","credentials","credentials.json",".git-credentials",".pgpass",".vault-token","kubeconfig",".htpasswd",NULL};
@@ -172,24 +169,25 @@
  static const char *policy_rootTrees[]={"/etc","/private/etc","/System","/usr","/bin","/sbin","/dev","/proc","/sys",NULL};
 -static const char *policy_homeTrees[]={"Library",".config",".local/share",".ssh",".aws",".docker",NULL};
 +static const char *policy_homeTrees[]={".aws",".azure",".config",".docker",".dvl",".env",".git",".git-credentials",".gnupg",".htpasswd",".kube",".local/share",".netrc",".npmrc",".password-store",".pgpass",".pypirc",".ssh",".vault-token","Library",NULL};
---- c1a/package.json
-+++ c1b/package.json
-@@ -11,7 +11,11 @@
+--- a/package.json
++++ b/package.json
+@@ -11,7 +11,12 @@
      "test:c1:unit": "node tests/c1-unit.cjs",
      "test:c1:native": "node tests/c1-boundary.cjs && node tests/c1-native-repair.cjs",
      "test:c1": "npm run build:reader && npm run test:c1:unit && npm run test:c1:repair && npm run test:c1:native",
 -    "test:c1:repair": "node tests/c1-repair.cjs"
 +    "test:c1:repair": "node tests/c1-repair.cjs",
-+    "test:c1b:control": "node tests/c1b-ipc.cjs && node tests/c1b-policy.cjs && node tests/c1b-renderer.cjs",
++    "test:c1b:control": "node tests/c1b-ipc.cjs && node tests/c1b-policy.cjs && node tests/c1b-renderer.cjs && node tests/c1b-v2-control.cjs && node tests/c1b-b-auth.cjs",
 +    "test:c1b:electron": "node tests/c1b-electron.cjs",
-+    "qualify:c1b": "npm run verify:source && npm run test:c1 && npm test && npm run test:c1b:control && npm run test:native-secret && npm run test:c1b:electron",
-+    "verify:source": "node scripts/verify-source.cjs"
++    "qualify:c1b": "npm run verify:source && npm run test:c1 && npm run test:c1b:native && npm test && npm run test:c1b:control && npm run test:native-secret && npm run test:c1b:electron",
++    "verify:source": "node scripts/verify-source.cjs",
++    "test:c1b:native": "node tests/c1b-v2-native.cjs"
    },
    "devDependencies": {
      "electron": "44.7.2"
---- c1a/read-policy.json
-+++ c1b/read-policy.json
-@@ -1,9 +1,75 @@
+--- a/read-policy.json
++++ b/read-policy.json
+@@ -1,9 +1,76 @@
  {
 -  "deniedNames": [".git", ".dvl", ".ssh", ".gnupg", ".aws", ".azure", ".kube", ".docker", ".config", ".env", ".npmrc", ".pypirc", ".netrc", "credentials", "credentials.json", ".git-credentials", ".pgpass", ".vault-token", "kubeconfig", ".htpasswd"],
 -  "deniedPrefixes": [".env.", "id_rsa", "id_ed25519", "id_ecdsa", "id_dsa"],
@@ -269,11 +267,12 @@
 +    "vendor",
 +    "dist",
 +    "build",
-+    "coverage"
++    "coverage",
++    ".next"
 +  ]
  }
---- c1a/scripts/build-reader.cjs
-+++ c1b/scripts/build-reader.cjs
+--- a/scripts/build-reader.cjs
++++ b/scripts/build-reader.cjs
 @@ -1,11 +1,18 @@
  const { spawnSync } = require('node:child_process');
  const path = require('node:path');
@@ -293,8 +292,8 @@
 +if (!result.error && result.status === 0) {
 +  fs.writeFileSync(manifest, JSON.stringify({ platform: process.platform, arch: process.arch, sha256: crypto.createHash('sha256').update(fs.readFileSync(path.join(root, 'bin/project-reader'))).digest('hex') }, null, 2) + '\n');
 +}
---- c1a/scripts/generate-policy.cjs
-+++ c1b/scripts/generate-policy.cjs
+--- a/scripts/generate-policy.cjs
++++ b/scripts/generate-policy.cjs
 @@ -3,7 +3,8 @@
  const root = path.join(__dirname, '..');
  const p = require('../read-policy.json');
@@ -306,7 +305,7 @@
    if (!Array.isArray(values) || values.some(s => typeof s !== 'string' || !/^[\x20-\x7e]+$/.test(s))) throw new Error('Invalid policy table');
    result += `static const char *policy_${key}[]={${values.map(s => JSON.stringify(s)).join(',')},NULL};\n`;
 --- /dev/null
-+++ c1b/scripts/verify-source.cjs
++++ b/scripts/verify-source.cjs
 @@ -0,0 +1,16 @@
 +'use strict';
 +const fs = require('node:fs');
@@ -325,8 +324,8 @@
 +  console.log('C1B SOURCE MATCH PASS:', checked, 'entries');
 +} catch (e) { console.error(e.message); process.exitCode = 1; }
 --- /dev/null
-+++ c1b/src/main/desktop-reader.cjs
-@@ -0,0 +1,159 @@
++++ b/src/main/desktop-reader.cjs
+@@ -0,0 +1,163 @@
 +'use strict';
 +const fs = require('node:fs');
 +const path = require('node:path');
@@ -364,7 +363,8 @@
 +    this.integrityError = verifyHelper(this.binary, this.manifest) ? null : 'HELPER_INTEGRITY_FAILED';
 +    this.service = new ProjectReadService(resolveProject, {
 +      userDataPath: app.getPath('userData'), binary: this.binary,
-+      verifyBinary: () => verifyHelper(this.binary, this.manifest)
++      verifyBinary: () => verifyHelper(this.binary, this.manifest),
++      onTimeout: metadata => this.logEvent('warn', 'reader.timeout', metadata)
 +    });
 +    this.project = null; this.binding = null; this.bindingError = null;
 +    this.epoch = 0; this.documentEpoch = 0; this.owners = new Map(); this.rates = new Map(); this.closing = false; this.closeResult = null;
@@ -396,8 +396,11 @@
 +    return ++bucket.count <= limit;
 +  }
 +  resetDocument(sender) {
-+    this.epoch++; this.documentEpoch++; this.binding = null; this.service.invalidate();
 +    for (const owner of this.owners.values()) if (owner.sender === sender) owner.revoked = true;
++    // A late event from a replaced window must not revoke the current window.
++    const current = this.getWindow()?.webContents;
++    if (current && current !== sender) return;
++    this.epoch++; this.documentEpoch++; this.binding = null; this.service.invalidate();
 +    // Do not reset rate buckets on reload: reload cannot replenish capacity.
 +  }
 +  attach(win) {
@@ -486,9 +489,9 @@
 +  }
 +}
 +module.exports = { DesktopReader, verifyHelper };
---- c1a/src/main/main.js
-+++ c1b/src/main/main.js
-@@ -8,6 +8,19 @@
+--- a/src/main/main.js
++++ b/src/main/main.js
+@@ -8,6 +8,21 @@
  let mainWindow = null;
  
  let logFile = null;
@@ -501,6 +504,8 @@
 +    if (!desktopReader || !desktopReader.isTrusted(event)) throw new Error('SENDER_DENIED');
 +    const documentEpoch = desktopReader.documentEpoch;
 +    const result = await handler(event, ...args);
++    // Fence delivery to an obsolete document. A committed B-channel mutation
++    // remains committed; STALE_CONTEXT is not a rollback or permission to retry.
 +    if (!desktopReader.isTrusted(event) || desktopReader.documentEpoch !== documentEpoch) throw new Error('STALE_CONTEXT');
 +    return result;
 +  });
@@ -508,7 +513,7 @@
  
  function logsDirectory() {
    return path.join(app.getPath('userData'), 'logs');
-@@ -232,6 +245,7 @@
+@@ -232,6 +247,7 @@
  
    const project = getProjectById(projectId);
    logEvent('info', 'project.opened', { projectId: project.projectId, path: project.path });
@@ -516,7 +521,7 @@
    return project;
  }
  
-@@ -315,6 +329,7 @@
+@@ -315,6 +331,7 @@
  
    const selected = getProjectById(projectId);
    logEvent('info', 'project.recent_selected', { projectId: selected.projectId, path: selected.path });
@@ -524,7 +529,7 @@
    return selected;
  }
  
-@@ -455,6 +470,7 @@
+@@ -455,6 +472,7 @@
    });
  
    mainWindow = win;
@@ -532,7 +537,7 @@
    win.on('closed', () => {
      if (mainWindow === win) mainWindow = null;
    });
-@@ -462,7 +478,7 @@
+@@ -462,7 +480,7 @@
    win.loadFile(path.join(__dirname, '../renderer/index.html'));
  }
  
@@ -541,7 +546,7 @@
    try {
      return getLastProject();
    } catch (_) {
-@@ -471,7 +487,7 @@
+@@ -471,7 +489,7 @@
    }
  });
  
@@ -550,7 +555,7 @@
    try {
      return listRecentProjects();
    } catch (_) {
-@@ -480,7 +496,7 @@
+@@ -480,7 +498,7 @@
    }
  });
  
@@ -559,7 +564,7 @@
    try {
      return touchProject(projectId);
    } catch (_) {
-@@ -489,7 +505,7 @@
+@@ -489,7 +507,7 @@
    }
  });
  
@@ -568,7 +573,7 @@
    try {
      const result = await dialog.showOpenDialog({
        title: 'Open Project',
-@@ -510,7 +526,7 @@
+@@ -510,7 +528,7 @@
  });
  
  
@@ -577,7 +582,7 @@
    try {
      return setSetting(name, value);
    } catch (error) {
-@@ -519,7 +535,7 @@
+@@ -519,7 +537,7 @@
    }
  });
  
@@ -586,7 +591,7 @@
    try {
      return getSetting(name);
    } catch (error) {
-@@ -528,7 +544,7 @@
+@@ -528,7 +546,7 @@
    }
  });
  
@@ -595,7 +600,7 @@
    try {
      return setSecret(name, value);
    } catch (error) {
-@@ -537,7 +553,7 @@
+@@ -537,7 +555,7 @@
    }
  });
  
@@ -604,7 +609,7 @@
    try {
      return hasSecret(name);
    } catch (error) {
-@@ -546,7 +562,7 @@
+@@ -546,7 +564,7 @@
    }
  });
  
@@ -613,7 +618,7 @@
    try {
      return deleteSecret(name);
    } catch (error) {
-@@ -579,6 +595,9 @@
+@@ -579,6 +597,9 @@
          platform: process.platform
        });
        openDatabase();
@@ -623,7 +628,7 @@
        createWindow();
  
        app.on('activate', () => {
-@@ -597,9 +616,24 @@
+@@ -597,9 +618,24 @@
    });
  }
  
@@ -650,16 +655,23 @@
  });
  
  app.on('window-all-closed', () => {
---- c1a/src/main/project-read-service.cjs
-+++ c1b/src/main/project-read-service.cjs
-@@ -1,5 +1,5 @@
+--- a/src/main/project-read-service.cjs
++++ b/src/main/project-read-service.cjs
+@@ -1,11 +1,12 @@
  'use strict';
 -// Host-internal boundary prototype. NOT exposed to Electron/IPC in C1a.
 +// Root-bound read service; C1b exposure is mediated by DesktopReader.
  // Root comes from a trusted registry resolver, never from request arguments.
  const fs = require('node:fs');
  const path = require('node:path');
-@@ -20,6 +20,9 @@
+ const crypto = require('node:crypto');
+ const { spawn } = require('node:child_process');
+ const { TextDecoder } = require('node:util');
++const { performance } = require('node:perf_hooks');
+ const os = require('node:os');
+ const { ReaderSession } = require('./reader-session.cjs');
+ const { policy, rootAllowed, matchText } = require('./read-support.cjs');
+@@ -20,6 +21,9 @@
    return { dev: String(st.dev), ino: String(st.ino) };
  }
  function denyName(name) {
@@ -669,7 +681,12 @@
    const n = name.toLowerCase();
    return policy.deniedNames.includes(n) || policy.deniedPrefixes.some(x => n.startsWith(x)) || policy.deniedExtensions.some(x => n.endsWith(x));
  }
-@@ -44,6 +47,7 @@
+@@ -41,9 +45,12 @@
+ class ProjectReadService {
+   constructor(resolveProject, options = {}) {
+     this.resolveProject = resolveProject;
++    this.startedAt = performance.now();
++    this.onTimeout = options.onTimeout || null;
      this.binary = options.binary || path.join(__dirname, '../../bin/project-reader');
      this.timeoutMs = options.timeoutMs || 5000;
      this.killGraceMs = options.killGraceMs || 2000;
@@ -677,7 +694,46 @@
      this.spawn = options.spawn || spawn; // trusted test seam, never a request option
      this.userDataPath = path.resolve(options.userDataPath || path.join(os.homedir(), process.platform === 'darwin' ? 'Library/Application Support/dvl-desktop' : '.config/dvl-desktop'));
      this.children = new Set(); this.abandoned = new Set();
-@@ -134,6 +138,7 @@
+@@ -87,12 +94,13 @@
+       if (ctx.seen.size >= 10000) throw fail('BUSY');
+       if (this.active >= 2 && this.queue.length >= 8) throw fail('BUSY');
+       ctx.seen.add(req.requestId);
+-      job = { controller: new AbortController(), reason: null, child: null, ctx };
++      job = { controller: new AbortController(), reason: null, child: null, ctx, operation };
+       this.jobs.set(req.requestId, job);
+       await this.slot(job);
+       try {
+         this.current(ctx); this.checkJob(job);
+-        job.deadline = Date.now() + this.timeoutMs;
++        job.startedAt = performance.now();
++        job.deadline = job.startedAt + this.timeoutMs;
+         const data = operation === 'readTextFile' ? await this.read(ctx, req.relativePath, job) : operation === 'listDirectory' ? await this.list(ctx, req.relativePath, req.cursor, job) : await this.search(ctx, req.relativePath, req.query, job);
+         this.current(ctx); if (job.controller.signal.aborted) throw fail(job.reason || 'CANCELLED');
+         const result = { ...response, ok: true, data };
+@@ -122,7 +130,21 @@
+       const item = this.queue.shift(); item.job.controller.signal.removeEventListener('abort', item.abort); this.active++; item.resolve();
+     }
+   }
+-  checkJob(job) { if (job.controller.signal.aborted) throw fail(job.reason || 'CANCELLED'); if (job.deadline && Date.now() >= job.deadline) throw fail('TIMEOUT'); }
++  checkJob(job) { if (job.controller.signal.aborted) throw fail(job.reason || 'CANCELLED'); if (job.deadline && performance.now() >= job.deadline) { this.reportTimeout(job); throw fail('TIMEOUT'); } }
++  reportTimeout(job) {
++    if (job.timeoutReported || !job.startedAt) return;
++    job.timeoutReported = true;
++    const now = performance.now();
++    const ms = value => value === undefined ? null : Math.max(0, Math.round(value - job.startedAt));
++    const metadata = {
++      op: job.operation,
++      phase: job.firstByteAt !== undefined ? 'after_first_byte' : job.spawnAt !== undefined ? 'before_first_byte' : 'before_spawn_event',
++      spawnMs: ms(job.spawnAt), firstByteMs: ms(job.firstByteAt),
++      elapsedMs: ms(now), startupMs: Math.max(0, Math.round(job.startedAt - this.startedAt))
++    };
++    // Fixed enum/numeric/null fields only. Logging cannot change reader outcomes.
++    try { this.onTimeout?.(metadata); } catch {}
++  }
+   cancel(context, requestId) {
+     if (!context || !this.context || context.projectId !== this.context.projectId || context.contextGeneration !== this.context.contextGeneration) throw fail('STALE_CONTEXT');
+     const j = this.jobs.get(requestId);
+@@ -134,6 +156,7 @@
      if (!fs.existsSync(this.binary)) throw fail('BOUNDARY_UNSUPPORTED');
      if (!job.session) {
        if (this.children.size >= 2) throw fail('BUSY');
@@ -685,8 +741,88 @@
        job.session = new ReaderSession(this, ctx, job);
      }
      const result = await job.session.call(op, rel, offset);
---- c1a/src/main/read-support.cjs
-+++ c1b/src/main/read-support.cjs
+@@ -148,7 +171,7 @@
+     let prior;
+     if (cursor) {
+       prior = this.cursors.get(cursor); this.cursors.delete(cursor);
+-      if (!prior || prior.ctx !== ctx || prior.rel !== rel || prior.expires < Date.now()) throw fail('INVALID_CURSOR');
++      if (!prior || prior.ctx !== ctx || prior.rel !== rel || prior.expires < performance.now()) throw fail('INVALID_CURSOR');
+     }
+     const out = await this.native(ctx, 'list', rel, prior?.offset || 0, job);
+     const stamp = `${out.dev}:${out.ino}:${out.stamp}`;
+@@ -161,15 +184,15 @@
+     }
+     let nextCursor = null;
+     if (out.more) {
+-      for (const [key, value] of this.cursors) if (value.expires < Date.now()) this.cursors.delete(key);
++      for (const [key, value] of this.cursors) if (value.expires < performance.now()) this.cursors.delete(key);
+       if (this.cursors.size >= 64) throw fail('BUSY');
+-      nextCursor = token(); this.cursors.set(nextCursor, { ctx, rel, offset: out.offset, stamp, expires: Date.now() + 60000, searchJob });
++      nextCursor = token(); this.cursors.set(nextCursor, { ctx, rel, offset: out.offset, stamp, expires: performance.now() + 60000, searchJob });
+     }
+     return { entries, nextCursor, complete: !out.more && !out.limited && !skipped && !out.skipped, partialReason: out.limited ? 'ENTRY_LIMIT' : out.more ? 'PAGE_LIMIT' : skipped || out.skipped ? 'ENTRIES_SKIPPED' : null, skipped: skipped + out.skipped, nativeSkipped: out.skipped, boundaryMode: out.mode };
+   }
+   async search(ctx, rel, query, job) {
+     const directories = [{ rel, cursor: undefined }], matches = [], skipped = {};
+-    let files = 0, bytes = 0, directoryPages = 0, partialReason = null, excludedDirectories = 0;
++    let files = 0, bytes = 0, bytesRead = 0, directoryPages = 0, partialReason = null, excludedDirectories = 0;
+     const skip = code => { skipped[code] = (skipped[code] || 0) + 1; };
+     try {
+       while (directories.length) {
+@@ -192,30 +215,35 @@
+             } else { excludedDirectories++; }
+             continue;
+           }
+-          if (files >= 2000 || bytes + Math.min(entry.size, 1048577) > 20 * 1024 * 1024) { partialReason = 'SCAN_LIMIT'; break; }
+-          files++; let data;
++          // Reserve the listed size even if the helper later rejects the file.
++          // This is budget accounting, not an exact filesystem I/O measurement:
++          // a file can change after listing, and a refusal may read no bytes.
++          const charge = Math.min(entry.size, 1048576);
++          if (files >= 2000 || bytesRead + charge > 20 * 1024 * 1024) { partialReason = 'SCAN_LIMIT'; break; }
++          bytesRead += charge; files++; let data;
+           try { data = await this.read(ctx, entry.relativePath, job); } catch (e) {
+             if (['FILE_TOO_LARGE', 'UNSUPPORTED_ENCODING', 'PERMISSION_DENIED', 'NOT_FOUND', 'FILE_CHANGED', 'HARDLINK_DENIED', 'SYMLINK_DENIED', 'NOT_REGULAR_FILE', 'PATH_DENIED'].includes(e.code)) { skip(e.code); continue; }
+             throw e;
+           }
++          bytesRead += Math.max(0, data.byteLength - charge);
+           bytes += data.byteLength;
+-          if (bytes > 20 * 1024 * 1024) { partialReason = 'SCAN_LIMIT'; break; }
++          if (bytesRead > 20 * 1024 * 1024) { partialReason = 'SCAN_LIMIT'; break; }
+           partialReason = await matchText(data.text, query, entry.relativePath, matches, () => this.checkJob(job));
+           if (partialReason) break;
+         }
+         if (partialReason) break;
+       }
+-    } catch (e) { if (e.code === 'TIMEOUT') partialReason = 'TIMEOUT'; else throw e; }
++    } catch (e) { if (e.code === 'TIMEOUT') { this.reportTimeout(job); partialReason = 'TIMEOUT'; } else throw e; }
+     if (!partialReason && Object.keys(skipped).length) partialReason = 'FILES_SKIPPED';
+     if (!partialReason && excludedDirectories) partialReason = 'DIRECTORIES_EXCLUDED';
+     // Search-owned cursors never escape the operation. Reclaim remaining pages.
+     for (const [key, value] of this.cursors) if (value.searchJob === job) this.cursors.delete(key);
+-    return { matches, filesScanned: files, bytesScanned: bytes, skipped, excludedDirectories, complete: !partialReason, partialReason, observation: 'best-effort; not a project snapshot' };
++    return { matches, filesScanned: files, bytesScanned: bytes, bytesRead, bytesReadIsEstimate: true, elapsedMs: Math.round(performance.now() - job.startedAt), skipped, excludedDirectories, complete: !partialReason, partialReason, observation: 'best-effort; not a project snapshot' };
+   }
+   async close() {
+     this.closed = true; this.invalidate();
+-    const deadline = Date.now() + this.killGraceMs + 100;
+-    while (this.jobs.size && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 5));
++    const deadline = performance.now() + this.killGraceMs + 100;
++    while (this.jobs.size && performance.now() < deadline) await new Promise(resolve => setTimeout(resolve, 5));
+     return { pendingRequests: this.jobs.size, abandonedHelpers: this.abandoned.size, liveHelpers: this.children.size };
+   }
+ }
+--- a/src/main/read-support.cjs
++++ b/src/main/read-support.cjs
+@@ -4,7 +4,7 @@
+ const os = require('node:os');
+ const policy = require('../../read-policy.json');
+ const failure = code => Object.assign(new Error(code), { code });
+-const errors = new Set(['INVALID_REQUEST', 'PATH_DENIED', 'POLICY_DENIED', 'PROJECT_UNAVAILABLE', 'BOUNDARY_UNSUPPORTED', 'NOT_FOUND', 'PERMISSION_DENIED', 'SYMLINK_DENIED', 'HARDLINK_DENIED', 'NOT_REGULAR_FILE', 'FILE_TOO_LARGE', 'FILE_CHANGED', 'DIRECTORY_CHANGED', 'RUNTIME_FAILED']);
++const errors = new Set(['INVALID_REQUEST', 'PATH_DENIED', 'POLICY_DENIED', 'PROJECT_UNAVAILABLE', 'BOUNDARY_UNSUPPORTED', 'NOT_FOUND', 'PERMISSION_DENIED', 'SYMLINK_DENIED', 'HARDLINK_DENIED', 'NOT_REGULAR_FILE', 'FILE_TOO_LARGE', 'FILE_CHANGED', 'DIRECTORY_CHANGED', 'RUNTIME_FAILED', 'UNSUPPORTED_ENCODING']);
+ function within(a, b) { const rel = path.relative(a, b); return rel === '' || (!rel.startsWith('..' + path.sep) && rel !== '..' && !path.isAbsolute(rel)); }
+ function canonical(p) {
+   p = path.resolve(p);
 @@ -21,13 +21,14 @@
      if (path.dirname(p) === p) break;
    } return false;
@@ -709,8 +845,38 @@
  }
 -module.exports = { policy, rootAllowed, validateNative, matchText, yieldLoop };
 +module.exports = { protectedHomeTrees, policy, rootAllowed, validateNative, matchText, yieldLoop };
---- c1a/src/preload/preload.js
-+++ c1b/src/preload/preload.js
+--- a/src/main/reader-session.cjs
++++ b/src/main/reader-session.cjs
+@@ -1,4 +1,5 @@
+ 'use strict';
++const { performance } = require('node:perf_hooks');
+ const { validateNative } = require('./read-support.cjs');
+ const failure = code => Object.assign(new Error(code), { code });
+ const LIMIT = 2 * 1024 * 1024 + 4096;
+@@ -12,10 +13,11 @@
+     this.done = new Promise(resolve => { this.resolveDone = resolve; });
+     this.abort = () => this.stop(job.reason || 'CANCELLED');
+     job.controller.signal.addEventListener('abort', this.abort, { once: true });
+-    this.timer = setTimeout(() => this.stop('TIMEOUT'), Math.max(1, job.deadline - Date.now()));
++    this.timer = setTimeout(() => this.stop('TIMEOUT'), Math.max(1, job.deadline - performance.now()));
+     child.stdin.on('error', () => {});
+     child.stderr.on('data', () => {});
+-    child.stdout.on('data', data => this.receive(data));
++    child.once('spawn', () => { job.spawnAt = performance.now(); });
++    child.stdout.on('data', data => { if (job.firstByteAt === undefined) job.firstByteAt = performance.now(); this.receive(data); });
+     child.on('error', () => this.stop('BOUNDARY_UNSUPPORTED'));
+     child.on('close', (code, signal) => {
+       service.children.delete(child); service.abandoned.delete(child); this.closed = true;
+@@ -49,6 +51,7 @@
+   stop(code) {
+     if (this.closed || this.abandoned) return;
+     this.stopped ||= code;
++    if (this.stopped === 'TIMEOUT' && !this.ending) this.service.reportTimeout(this.job);
+     try { this.child.kill('SIGKILL'); } catch {}
+     if (!this.grace) this.grace = setTimeout(() => {
+       if (this.closed) return;
+--- a/src/preload/preload.js
++++ b/src/preload/preload.js
 @@ -10,5 +10,16 @@
    getSetting: (name) => ipcRenderer.invoke('dvl:get-setting', name),
    setSecret: (name, value) => ipcRenderer.invoke('dvl:set-secret', name, value),
@@ -730,8 +896,8 @@
 +  }
  });
 --- /dev/null
-+++ c1b/src/renderer/files.js
-@@ -0,0 +1,116 @@
++++ b/src/renderer/files.js
+@@ -0,0 +1,117 @@
 +'use strict';
 +(() => {
 +  const el = name => document.getElementById(name);
@@ -799,6 +965,7 @@
 +    const data = await request('readTextFile', { relativePath: rel }, ticket);
 +    if (!data) return;
 +    el('fileText').textContent = data.text;
++    el('fileTitle').scrollIntoView?.({ block: 'start' });
 +    status(`Read ${data.byteLength} bytes. Observation only; not a project snapshot.`);
 +  }
 +  async function search() {
@@ -812,7 +979,7 @@
 +      b.className = 'search-match'; el('searchResults').appendChild(b);
 +    }
 +    const skips = Object.values(data.skipped).reduce((a, b) => a + b, 0);
-+    status(`${data.matches.length} matches; ${data.filesScanned} files scanned. ` +
++    status(`${data.matches.length} matches; ${data.filesScanned} files scanned; ${data.bytesScanned} text bytes; ${data.bytesRead} read-budget bytes (estimate); ${data.elapsedMs} ms. ` +
 +      (data.complete ? 'Complete over permitted files.' : `Partial: ${data.partialReason}; excluded directories: ${data.excludedDirectories}; skipped: ${skips}.`));
 +  }
 +  function applyState(state) {
@@ -848,9 +1015,9 @@
 +  el('filesSearchForm').addEventListener('submit', event => { event.preventDefault(); search(); });
 +  controls();
 +})();
---- c1a/src/renderer/index.html
-+++ c1b/src/renderer/index.html
-@@ -168,6 +168,15 @@
+--- a/src/renderer/index.html
++++ b/src/renderer/index.html
+@@ -168,6 +168,22 @@
        color: #999;
        font-size: 12px;
      }
@@ -862,11 +1029,18 @@
 +    #filesStatus { font-size: 12px; color: #ccc; margin: 8px 0; overflow-wrap: anywhere; }
 +    .file-entry, .search-match { display: block; width: 100%; text-align: left; border-radius: 3px; margin: 3px 0; overflow-wrap: anywhere; }
 +    #fileText { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; line-height: 1.5; max-height: 400px; overflow: auto; }
++    /* Keep the app shell in the viewport; each panel owns its scrolling. */
++    .app { grid-template-rows: minmax(0, 1fr); }
++    aside, main { min-height: 0; }
++    main { grid-template-rows: auto auto minmax(0, 1fr); overflow: hidden; }
++    .workspace { grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
++    #fileEntries { max-height: 14em; overflow: auto; }
++    #searchResults { max-height: 10em; overflow: auto; }
 +    @media (max-width: 850px) { .app { grid-template-columns: 185px 1fr; } .workspace { grid-template-columns: 1fr; grid-template-rows: auto; overflow: auto; } }
    </style>
  </head>
  <body>
-@@ -215,10 +224,25 @@
+@@ -215,10 +231,25 @@
          </section>
  
          <section class="panel" id="filesPanel">
@@ -896,7 +1070,7 @@
          </section>
  
          <section class="panel" id="terminalPanel">
-@@ -238,6 +262,7 @@
+@@ -238,6 +269,7 @@
      </main>
    </div>
  
@@ -904,8 +1078,8 @@
    <script src="./renderer.js"></script>
  </body>
  </html>
---- c1a/src/renderer/renderer.js
-+++ c1b/src/renderer/renderer.js
+--- a/src/renderer/renderer.js
++++ b/src/renderer/renderer.js
 @@ -8,6 +8,7 @@
  const secretStatus = document.getElementById('secretStatus');
  
@@ -924,8 +1098,55 @@
    if (!projects || projects.length === 0) {
      const empty = document.createElement('div');
 --- /dev/null
-+++ c1b/tests/c1b-electron-child.cjs
-@@ -0,0 +1,108 @@
++++ b/tests/c1b-b-auth.cjs
+@@ -0,0 +1,44 @@
++'use strict';
++// Production B handlers, authenticated mock frames, real disposable SQLite.
++const fs = require('node:fs');
++const path = require('node:path');
++const os = require('node:os');
++const vm = require('node:vm');
++const assert = require('node:assert/strict');
++const { pathToFileURL } = require('node:url');
++const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'dvl-b-auth-')));
++const handlers = new Map(), events = new Map(), windows = [];
++let ready, dialogs = 0;
++class Window {
++  constructor() {
++    const url = pathToFileURL(path.join(__dirname, '../src/renderer/index.html')).href;
++    this.webContents = { mainFrame: { url }, getURL: () => url, isDestroyed: () => false, on() {}, send() {}, setWindowOpenHandler() {} }; windows.push(this);
++  }
++  on() {} loadFile() {} static getAllWindows() { return windows; }
++}
++const electron = {
++  app: { getPath: () => base, getVersion: () => '0.6.0', isReady: () => true, requestSingleInstanceLock: () => true,
++    quit() {}, on: (name, fn) => events.set(name, fn), whenReady: () => ({ then: fn => { ready = fn; } }) },
++  BrowserWindow: Window, ipcMain: { handle: (name, fn) => handlers.set(name, fn) },
++  dialog: { showOpenDialog: async () => { dialogs++; return { canceled: true }; }, showErrorBox() {} },
++  safeStorage: { isEncryptionAvailable: () => false }
++};
++const context = vm.createContext({ require: name => name === 'electron' ? electron : require(name), __dirname: path.join(__dirname, '../src/main'), process, Buffer, console });
++(async () => {
++  vm.runInContext(fs.readFileSync(path.join(__dirname, '../src/main/main.js'), 'utf8'), context); ready();
++  const sender = windows[0].webContents;
++  const calls = new Map([
++    ['get-last-project', []], ['list-recent-projects', []], ['open-recent-project', ['missing']], ['open-project', []],
++    ['set-setting', ['probe', 1]], ['get-setting', ['probe']], ['set-secret', ['probe', 'PRIVATE_VALUE']], ['has-secret', ['probe']], ['delete-secret', ['probe']]
++  ]);
++  let count = 0;
++  for (const [name, args] of calls) for (const event of [
++    { sender: { ...sender }, senderFrame: sender.mainFrame },
++    { sender, senderFrame: { url: sender.getURL() } }
++  ]) {
++    await assert.rejects(handlers.get('dvl:' + name)(event, ...args), /SENDER_DENIED/); count++;
++  }
++  assert.equal(dialogs, 0); assert.equal(context.getSetting('probe'), null);
++  assert.equal(context.listRecentProjects().length, 0); assert.equal(context.hasSecret('probe').configured, false);
++  console.log('C1B_B_AUTH_PASS', count, '(9 B channels x foreign sender/non-main frame; mock-level)');
++})().catch(e => { console.error(e); process.exitCode = 1; }).finally(() => { context.closeDatabase(); fs.rmSync(base, { recursive: true, force: true }); });
+--- /dev/null
++++ b/tests/c1b-electron-child.cjs
+@@ -0,0 +1,111 @@
 +'use strict';
 +// Actual production Electron window, preload, main IPC and native reader.
 +// Fixtures and state are disposable; no production testing hooks are enabled.
@@ -934,6 +1155,7 @@
 +const fs = require('node:fs');
 +const os = require('node:os');
 +const assert = require('node:assert/strict');
++console.log('ELECTRON_RUNTIME', process.versions.electron, 'NODE', process.versions.node, process.platform, process.arch);
 +const data = process.argv[2];
 +if (!data || !fs.realpathSync(data).startsWith(fs.realpathSync(os.tmpdir()) + path.sep)) throw new Error('Disposable OS temp directory required');
 +const project = path.join(data, 'fixture-project'), other = path.join(data, 'fixture-other');
@@ -942,6 +1164,8 @@
 +fs.writeFileSync(path.join(project, '.env'), 'C1B_HIDDEN_SECRET');
 +fs.mkdirSync(path.join(project, 'dist')); fs.writeFileSync(path.join(project, 'dist/ignored.txt'), 'C1B_QUERY_SENTINEL');
 +fs.writeFileSync(path.join(other, 'other.txt'), 'OTHER_PROJECT_CONTENT');
++fs.mkdirSync(path.join(other, 'paging'));
++for (let i = 0; i < 201; i++) fs.writeFileSync(path.join(other, 'paging', 'page' + String(i).padStart(3, '0') + '.txt'), 'PAGE_CONTENT_' + i + '\n' + 'line\n'.repeat(100));
 +const inventory = () => [fs.readFileSync(path.join(project, 'known.txt'), 'hex'), fs.readFileSync(path.join(project, '.env'), 'hex'), fs.readFileSync(path.join(other, 'other.txt'), 'hex')];
 +const before = inventory();
 +app.setPath('userData', path.join(data, 'state'));
@@ -1035,8 +1259,79 @@
 +  } catch (e) { clearTimeout(timer); console.error('C1b Electron integration failed:', e.message); app.exit(1); }
 +});
 --- /dev/null
-+++ c1b/tests/c1b-electron.cjs
-@@ -0,0 +1,39 @@
++++ b/tests/c1b-electron-restore.cjs
+@@ -0,0 +1,68 @@
++'use strict';
++// Second real Electron process: previous process pre-seeded last_project_id
++// through production IPC. No picker/legacy import or manual refresh is allowed.
++const { app, BrowserWindow, dialog } = require('electron');
++const fs = require('node:fs');
++const path = require('node:path');
++const os = require('node:os');
++const assert = require('node:assert/strict');
++const { DatabaseSync } = require('node:sqlite');
++const base = process.argv[2];
++if (!base || !fs.realpathSync(base).startsWith(fs.realpathSync(os.tmpdir()) + path.sep)) throw new Error('Disposable OS temp directory required');
++const state = path.join(base, 'state'), project = path.join(base, 'fixture-other');
++const db = new DatabaseSync(path.join(state, 'dvl.sqlite'), { readOnly: true });
++const last = db.prepare("SELECT value FROM app_state WHERE key='last_project_id'").get();
++assert.ok(last?.value);
++assert.equal(db.prepare('SELECT canonical_path FROM projects WHERE project_id=?').get(last.value).canonical_path, fs.realpathSync(project)); db.close();
++app.setPath('userData', state);
++let dialogs = 0;
++dialog.showOpenDialog = async () => { dialogs++; throw new Error('Restore must not open a picker'); };
++const timer = setTimeout(() => { console.error('C1b restore/layout test timed out'); app.exit(1); }, 45000);
++require('../src/main/main.js');
++app.whenReady().then(async () => {
++  try {
++    const win = BrowserWindow.getAllWindows()[0]; assert.ok(win);
++    if (win.webContents.isLoadingMainFrame()) await new Promise((resolve, reject) => {
++      win.webContents.once('did-finish-load', resolve); win.webContents.once('did-fail-load', () => reject(new Error('Production page failed to load')));
++    });
++    const js = source => win.webContents.executeJavaScript(source);
++    const wait = expression => js(`new Promise((resolve, reject) => {
++      const start = performance.now(); const timer = setInterval(() => {
++        if (${expression}) { clearInterval(timer); resolve(); }
++        else if (performance.now() - start > 12000) { clearInterval(timer); reject(new Error('UI condition timed out')); }
++      }, 20);
++    })`);
++    await wait("Array.from(document.querySelectorAll('.file-entry')).some(b => b.textContent === 'other.txt') && document.getElementById('filesStatus').textContent.startsWith('Complete')");
++    assert.equal(dialogs, 0); assert.equal(await js("document.getElementById('projectId').textContent"), last.value);
++    console.log('PASS Startup restore automatically lists the persisted project without a dialog');
++
++    await js("Array.from(document.querySelectorAll('.file-entry')).find(b => b.textContent === '▸ paging').click()");
++    await wait("document.querySelectorAll('.file-entry').length === 200 && !document.getElementById('filesMore').hidden");
++    const geometry = () => js(`({ height: innerHeight, documentHeight: document.scrollingElement.scrollHeight,
++      headerTop: document.querySelector('.topbar').getBoundingClientRect().top,
++      entriesHeight: document.getElementById('fileEntries').clientHeight, entriesContent: document.getElementById('fileEntries').scrollHeight })`);
++    for (const [width, height] of [[1100, 720], [1440, 900]]) {
++      win.setSize(width, height);
++      await js('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
++      const box = await geometry(); assert.ok(box.documentHeight <= box.height + 1, JSON.stringify(box));
++      assert.ok(box.headerTop >= 0); assert.ok(box.entriesContent > box.entriesHeight);
++    }
++    await js("document.getElementById('filesMore').click()");
++    await wait("document.querySelectorAll('.file-entry').length === 201 && document.getElementById('filesMore').hidden");
++    await js("Array.from(document.querySelectorAll('.file-entry')).find(b => b.textContent === 'page000.txt').click()");
++    await wait("document.getElementById('fileText').textContent.startsWith('PAGE_CONTENT_0')");
++    const box = await geometry(); assert.ok(box.documentHeight <= box.height + 1, JSON.stringify(box)); assert.ok(box.headerTop >= 0);
++    const visible = await js(`(() => { const title = document.getElementById('fileTitle').getBoundingClientRect();
++      const panel = document.getElementById('fileTitle').closest('.panel').getBoundingClientRect();
++      return title.top >= panel.top && title.bottom <= panel.bottom; })()`);
++    assert.equal(visible, true);
++    console.log('PASS Actual app pages 200+1 entries, contains scrolling and reveals file text');
++
++    const logs = fs.readFileSync(path.join(state, 'logs/dvl.log'), 'utf8');
++    assert.doesNotMatch(logs, /PAGE_CONTENT_|OTHER_PROJECT_CONTENT|C1B_QUERY_SENTINEL/); assert.equal(dialogs, 0);
++    assert.equal(fs.existsSync(path.join(project, '.dvl')), false);
++    console.log('PASS Restore/layout path keeps project read-only and content out of logs');
++    console.log('C1B_ELECTRON_RESTORE_PASS 3', process.versions.electron, process.platform, process.arch);
++    clearTimeout(timer); app.quit();
++  } catch (e) { clearTimeout(timer); console.error('C1b restore/layout failed:', e.message); app.exit(1); }
++});
+--- /dev/null
++++ b/tests/c1b-electron.cjs
+@@ -0,0 +1,40 @@
 +'use strict';
 +const { spawn } = require('node:child_process');
 +const path = require('node:path');
@@ -1063,22 +1358,23 @@
 +(async () => {
 +  try {
 +    // Both native suites are coupled: repair-only is not confinement evidence.
-+    for (const [script, marker] of [['c1-boundary.cjs', 'C1a CHECKS PASSED: 17'], ['c1-native-repair.cjs', 'C1a REPAIR NATIVE CHECKS PASSED: 10'], ['c1b-policy.cjs', 'C1b POLICY CHECKS PASSED: 3']]) {
++    for (const [script, marker] of [['c1-boundary.cjs', 'C1a CHECKS PASSED: 17'], ['c1-native-repair.cjs', 'C1a REPAIR NATIVE CHECKS PASSED: 10'], ['c1b-policy.cjs', 'C1b POLICY CHECKS PASSED: 3'], ['c1b-v2-native.cjs', 'C1B_V2_NATIVE_PASS 3']]) {
 +      await run(script, { embeddedNode: true, marker });
 +    }
 +    console.log('PASS Native suites in Electron embedded Node (not UI tests)');
 +    await run('c1b-electron-child.cjs', { marker: 'C1B_ELECTRON_INTEGRATION_PASS', args: [base] });
++    await run('c1b-electron-restore.cjs', { marker: 'C1B_ELECTRON_RESTORE_PASS 3', args: [base] });
 +    const logs = fs.readFileSync(path.join(base, 'state/logs/dvl.log'), 'utf8');
 +    const rows = logs.trim().split('\n').map(line => JSON.parse(line));
-+    const close = rows.find(row => row.event === 'reader.shutdown'); assert.ok(close);
-+    assert.equal(close.pendingRequests, 0); assert.equal(close.abandonedHelpers, 0); assert.equal(close.liveHelpers, 0);
++    const closes = rows.filter(row => row.event === 'reader.shutdown'); assert.equal(closes.length, 2);
++    for (const close of closes) { assert.equal(close.pendingRequests, 0); assert.equal(close.abandonedHelpers, 0); assert.equal(close.liveHelpers, 0); }
 +    assert.ok(rows.some(row => row.event === 'db.closed'));
 +    console.log('C1B_ELECTRON_GATE_PASS (includes clean shutdown counts; independent review still required)');
 +  } finally { fs.rmSync(base, { recursive: true, force: true }); }
 +})().catch(e => { console.error(e.message); process.exitCode = 1; });
 --- /dev/null
-+++ c1b/tests/c1b-ipc.cjs
-@@ -0,0 +1,134 @@
++++ b/tests/c1b-ipc.cjs
+@@ -0,0 +1,143 @@
 +'use strict';
 +// Controller tests use real policy/binding and a simulated request completion.
 +// These assertions are NOT native confinement or Electron runtime evidence.
@@ -1097,12 +1393,12 @@
 +  const handlers = new Map(), logs = [], sender = new EventEmitter();
 +  let url;
 +  Object.assign(sender, { mainFrame: {}, getURL: () => url, isDestroyed: () => false, send: (channel, state) => { sender.lastState = state; }, setWindowOpenHandler: fn => { sender.open = fn; } });
-+  const win = { webContents: sender };
++  let win = { webContents: sender };
 +  const c = new DesktopReader({ app: { isPackaged: false, getPath: () => path.join(base, 'userData') }, ipcMain: { handle: (name, fn) => handlers.set(name, fn) },
 +    getWindow: () => win, resolveProject: projectId => ({ projectId, path: projectId === 'A' ? project : other, available: true }), logEvent: (...args) => logs.push(args) });
 +  controllers.push(c); url = c.url; sender.mainFrame.url = url; c.attach(win); c.select({ projectId: 'A' });
 +  const event = { sender, senderFrame: sender.mainFrame };
-+  return { c, sender, event, logs, setURL: value => { url = value; },
++  return { c, sender, event, logs, replaceWindow: next => { win = next; c.attach(next); }, setURL: value => { url = value; },
 +    invoke: (name, ...args) => handlers.get('dvl:reader:' + name)(event, ...args), handlers };
 +}
 +function req(c, extra = {}) { return { ...c.binding, requestId: 'ipc_' + ++number, relativePath: 'known.txt', ...extra }; }
@@ -1194,6 +1490,15 @@
 +    assert.equal(blocked, 2); assert.equal(sender.open().action, 'deny');
 +    sender.emit('render-process-gone'); assert.equal(c.binding, null); assert.equal(c.service.context, null);
 +  });
++  await test('Old-window destruction cannot clear a newer window binding', () => {
++    const x = setup(), newer = new EventEmitter();
++    Object.assign(newer, { mainFrame: { url: x.c.url }, getURL: () => x.c.url, isDestroyed: () => false, send() {}, setWindowOpenHandler() {} });
++    x.replaceWindow({ webContents: newer }); x.c.select({ projectId: 'B' });
++    const binding = x.c.binding, epoch = x.c.documentEpoch;
++    x.sender.emit('destroyed');
++    assert.equal(x.c.binding, binding); assert.equal(x.c.documentEpoch, epoch); assert.equal(x.c.service.context.projectId, 'B');
++    newer.emit('destroyed'); assert.equal(x.c.binding, null);
++  });
 +  await test('Helper modification after startup is refused before spawning', async () => {
 +    const { c } = setup(); const local = path.join(base, 'modified-helper'); fs.copyFileSync(c.binary, local); fs.chmodSync(local, 0o700); fs.appendFileSync(local, 'modified');
 +    c.service.binary = local; c.service.verifyBinary = () => verifyHelper(local, c.manifest);
@@ -1214,7 +1519,7 @@
 +  for (const c of controllers) await c.close(); fs.rmSync(base, { recursive: true, force: true });
 +});
 --- /dev/null
-+++ c1b/tests/c1b-policy.cjs
++++ b/tests/c1b-policy.cjs
 @@ -0,0 +1,50 @@
 +'use strict';
 +// Pre-confinement policy checks. Passing does not qualify the OS boundary.
@@ -1267,8 +1572,8 @@
 +  console.log('C1b POLICY CHECKS PASSED:', count, '(pre-confinement; not OS qualification)');
 +})().catch(e => { console.error(e); process.exitCode = 1; }).finally(async () => { await service.close(); fs.rmSync(base, { recursive: true, force: true }); });
 --- /dev/null
-+++ c1b/tests/c1b-renderer.cjs
-@@ -0,0 +1,60 @@
++++ b/tests/c1b-renderer.cjs
+@@ -0,0 +1,61 @@
 +'use strict';
 +const fs = require('node:fs');
 +const path = require('node:path');
@@ -1313,7 +1618,8 @@
 +  });
 +  await test('Search reports partial reason and counts without dropping semantics', async () => {
 +    elements.get('filesQuery').value = 'needle'; elements.get('filesSearchForm').events.submit({ preventDefault() {} });
-+    const search = requests.shift(); search.finish({ matches: [{ relativePath: 'a.txt', line: 1, column: 1, snippet: '<b>needle</b>' }], filesScanned: 1, complete: false, partialReason: 'DIRECTORIES_EXCLUDED', excludedDirectories: 1, skipped: { FILE_TOO_LARGE: 2 } }); await tick();
++    const search = requests.shift(); search.finish({ matches: [{ relativePath: 'a.txt', line: 1, column: 1, snippet: '<b>needle</b>' }], filesScanned: 1, bytesScanned: 5, bytesRead: 10, elapsedMs: 12, complete: false, partialReason: 'DIRECTORIES_EXCLUDED', excludedDirectories: 1, skipped: { FILE_TOO_LARGE: 2 } }); await tick();
++    assert.match(elements.get('filesStatus').textContent, /5 text bytes; 10 read-budget bytes \(estimate\); 12 ms/);
 +    assert.match(elements.get('filesStatus').textContent, /Partial: DIRECTORIES_EXCLUDED; excluded directories: 1; skipped: 2/);
 +    assert.match(elements.get('searchResults').children[0].textContent, /<b>needle<\/b>/);
 +  });
@@ -1329,8 +1635,156 @@
 +  });
 +  console.log('C1b RENDERER CONTROL CHECKS PASSED:', passed, '(DOM simulation; not browser qualification)');
 +})().catch(e => { console.error(e); process.exitCode = 1; });
---- c1a/tests/green-gate.cjs
-+++ c1b/tests/green-gate.cjs
+--- /dev/null
++++ b/tests/c1b-v2-control.cjs
+@@ -0,0 +1,79 @@
++'use strict';
++// Simulated child protocol / accounting tests. No OS confinement claim.
++const assert = require('node:assert/strict');
++const fs = require('node:fs');
++const os = require('node:os');
++const path = require('node:path');
++const { EventEmitter } = require('node:events');
++const { PassThrough } = require('node:stream');
++const { ProjectReadService } = require('../src/main/project-read-service.cjs');
++const { validateNative } = require('../src/main/read-support.cjs');
++const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'dvl-c1b-v2-control-')));
++const root = path.join(base, 'project'); fs.mkdirSync(root);
++const services = []; let count = 0, serial = 0;
++const failure = code => Object.assign(new Error(code), { code });
++async function test(name, f) { await f(); count++; console.log('PASS', name); }
++function service(options = {}) {
++  const s = new ProjectReadService(projectId => ({ projectId, path: root, available: true }), options);
++  services.push(s); return s;
++}
++const request = (s, op, more = {}) => s.request(op, { ...s.bind('A'), requestId: 'v2_' + ++serial, relativePath: op === 'readTextFile' ? 'private-content.txt' : '.', ...more });
++function fakeChild(phase, complete = false) {
++  return () => {
++    const child = new EventEmitter();
++    child.stdin = new PassThrough(); child.stdout = new PassThrough(); child.stderr = new PassThrough(); child.unref = () => {};
++    let closed = false;
++    child.kill = () => { if (!closed) { closed = true; queueMicrotask(() => child.emit('close', null, 'SIGKILL')); } };
++    child.stdin.on('finish', () => { if (complete) child.kill(); });
++    queueMicrotask(() => {
++      if (phase !== 'before_spawn_event') child.emit('spawn');
++      if (phase === 'after_first_byte') child.stdout.write(complete ? JSON.stringify({ ok: true, mode: 'seatbelt', hex: '6f6b', bytes: 2, dev: '1', ino: '1' }) + '\n' : '{');
++    });
++    return child;
++  };
++}
++(async () => {
++  for (const phase of ['before_spawn_event', 'before_first_byte', 'after_first_byte']) {
++    await test('Timeout reports once with enum/numeric metadata: ' + phase, async () => {
++      const logs = [], s = service({ spawn: fakeChild(phase), timeoutMs: 40, killGraceMs: 40, onTimeout: data => logs.push(data) });
++      const out = await request(s, 'readTextFile'); assert.equal(out.error.code, 'TIMEOUT'); assert.equal(logs.length, 1);
++      const row = logs[0]; assert.deepEqual(Object.keys(row).sort(), ['elapsedMs', 'firstByteMs', 'op', 'phase', 'spawnMs', 'startupMs']);
++      assert.equal(row.phase, phase); assert.equal(row.op, 'readTextFile');
++      assert.ok(row.elapsedMs >= 0); assert.ok(row.startupMs >= 0);
++      assert.equal(row.spawnMs === null, phase === 'before_spawn_event');
++      assert.equal(row.firstByteMs === null, phase !== 'after_first_byte');
++      if (row.firstByteMs !== null) assert.ok(row.firstByteMs >= row.spawnMs);
++      assert.doesNotMatch(JSON.stringify(logs), /private-content|project|query|root/);
++      assert.equal(s.children.size, 0); assert.deepEqual(await s.close(), { pendingRequests: 0, liveHelpers: 0, abandonedHelpers: 0 });
++    });
++  }
++  await test('Timeout logging failure cannot change TIMEOUT or leak helper bytes', async () => {
++    const s = service({ spawn: fakeChild('after_first_byte'), timeoutMs: 30, killGraceMs: 30, onTimeout: () => { throw new Error('PRIVATE'); } });
++    const out = await request(s, 'readTextFile'); assert.equal(out.error.code, 'TIMEOUT'); assert.doesNotMatch(JSON.stringify(out), /PRIVATE|private-content/);
++  });
++  await test('Forward wall-clock jump does not expire monotonic read deadline', async () => {
++    const s = service({ spawn: fakeChild('after_first_byte', true) }), old = Date.now;
++    try { Date.now = () => old() + 3600000; const out = await request(s, 'readTextFile'); assert.equal(out.ok, true, JSON.stringify(out)); assert.equal(out.data.text, 'ok'); }
++    finally { Date.now = old; }
++  });
++  await test('Rejected binary reads consume the scan budget and preserve skip codes', async () => {
++    const s = service(); let reads = 0;
++    s.list = async () => ({ entries: Array.from({ length: 21 }, (_, i) => ({ name: 'asset' + i, relativePath: 'asset' + i, kind: 'file', size: 1048576 })), skipped: 0, nativeSkipped: 0 });
++    s.read = async () => { reads++; throw failure('UNSUPPORTED_ENCODING'); };
++    const out = await request(s, 'searchText', { query: 'ABSENT' }); assert.equal(out.ok, true);
++    assert.equal(reads, 20); assert.equal(out.data.filesScanned, 20); assert.equal(out.data.bytesRead, 20 * 1048576); assert.equal(out.data.bytesScanned, 0);
++    assert.equal(out.data.bytesReadIsEstimate, true); assert.deepEqual(out.data.skipped, { UNSUPPORTED_ENCODING: 20 }); assert.equal(out.data.partialReason, 'SCAN_LIMIT');
++  });
++  await test('Successful file growth is charged; decoded bytes never exceed charged bytes', async () => {
++    const s = service(); s.list = async () => ({ entries: [{ name: 'a', relativePath: 'a', kind: 'file', size: 1 }], skipped: 0, nativeSkipped: 0 });
++    s.read = async () => ({ text: 'hello', byteLength: 5 });
++    const out = await request(s, 'searchText', { query: 'hello' }); assert.equal(out.ok, true); assert.equal(out.data.bytesRead, 5); assert.equal(out.data.bytesScanned, 5); assert.equal(out.data.complete, true);
++  });
++  await test('Native protocol accepts only the exact UNSUPPORTED_ENCODING error shape', () => {
++    assert.equal(validateNative({ ok: false, error: 'UNSUPPORTED_ENCODING' }, 'read').error, 'UNSUPPORTED_ENCODING');
++    assert.throws(() => validateNative({ ok: false, error: 'UNSUPPORTED_ENCODING', hex: 'secret' }, 'read'), /RUNTIME_FAILED/);
++  });
++  console.log('C1B_V2_CONTROL_PASS', count, '(simulated children/accounting; not OS confinement)');
++})().catch(e => { console.error(e); process.exitCode = 1; }).finally(async () => {
++  for (const s of services) await s.close(); fs.rmSync(base, { recursive: true, force: true });
++});
+--- /dev/null
++++ b/tests/c1b-v2-native.cjs
+@@ -0,0 +1,63 @@
++'use strict';
++// Real OS confinement required. Unsupported hosts FAIL; no insecure fallback.
++const fs = require('node:fs');
++const path = require('node:path');
++const os = require('node:os');
++const assert = require('node:assert/strict');
++const { spawn, spawnSync } = require('node:child_process');
++const { performance } = require('node:perf_hooks');
++const { ProjectReadService } = require('../src/main/project-read-service.cjs');
++const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'dvl-c1b-v2-native-')));
++const root = path.join(base, 'project'); fs.mkdirSync(root);
++let expectedTextBytes = 0, pipeBytes = 0, spawns = 0, serial = 0, count = 0;
++function write(rel, text, charge = false) {
++  const target = path.join(root, rel); fs.mkdirSync(path.dirname(target), { recursive: true }); fs.writeFileSync(target, text);
++  if (charge) expectedTextBytes += Buffer.byteLength(text);
++}
++const marker = 'C1B_V2_LITERAL_NEEDLE';
++for (let i = 0; i < 300; i++) write('src/Component' + i + '.tsx', 'export const value = ' + i + ';\n' + '// source padding\n'.repeat(48), true);
++for (let i = 0; i < 30; i++) write('migrations/' + i + '.sql', 'SELECT 1;\n'.repeat(32), true);
++for (let i = 0; i < 120; i++) write('public/image' + i + '.png', Buffer.alloc(65536, 0));
++write('next-env.d.ts', '/// ' + marker + '\n', true);
++write('tsconfig.tsbuildinfo', '{"cache":"' + 'x'.repeat(400000) + marker + '"}', true);
++for (let i = 0; i < 340; i++) write('.next/chunks/' + i + '.js', '// generated\n'.repeat(1024));
++write('.next/cache/.tsbuildinfo', marker); write('.next/cache/webpack.pack', Buffer.alloc(1048576));
++const service = new ProjectReadService(projectId => ({ projectId, path: root, available: true }), {
++  spawn: (...args) => { spawns++; const child = spawn(...args); child.stdout.on('data', chunk => { pipeBytes += chunk.length; }); return child; }
++});
++const context = service.bind('A');
++const request = (op, relativePath, extra = {}) => service.request(op, { ...context, requestId: 'fixture_' + ++serial, relativePath, ...extra });
++async function test(name, f) { await f(); count++; console.log('PASS', name); }
++(async () => {
++  await test('Binary NUL refusal happens inside the confined helper before hex transfer', () => {
++    const st = fs.statSync(root, { bigint: true });
++    const result = spawnSync(path.join(__dirname, '../bin/project-reader'), {
++      input: `read\n${Buffer.from(root).toString('hex')}\n${Buffer.from('public/image0.png').toString('hex')}\n0 ${st.dev} ${st.ino}\n`,
++      encoding: 'utf8', timeout: 5000, maxBuffer: 4096
++    });
++    assert.equal(result.error, undefined); assert.equal(result.status, 1, result.stderr);
++    assert.deepEqual(JSON.parse(result.stdout), { ok: false, error: 'UNSUPPORTED_ENCODING' }); assert.ok(Buffer.byteLength(result.stdout) < 128);
++  });
++  await test('Next-shaped 794-file tree finishes its permitted search within the unchanged budget', async () => {
++    const start = performance.now(), beforeSpawns = spawns, beforePipe = pipeBytes;
++    const out = await request('searchText', '.', { query: marker }); assert.equal(out.ok, true, JSON.stringify(out));
++    const d = out.data; assert.equal(d.partialReason, 'FILES_SKIPPED'); assert.equal(d.complete, false);
++    assert.equal(d.filesScanned, 452); assert.deepEqual(d.skipped, { UNSUPPORTED_ENCODING: 120 }); assert.equal(d.excludedDirectories, 1);
++    assert.deepEqual(d.matches.map(m => m.relativePath).sort(), ['next-env.d.ts', 'tsconfig.tsbuildinfo']);
++    assert.equal(d.bytesScanned, expectedTextBytes); assert.equal(d.bytesRead, expectedTextBytes + 120 * 65536);
++    assert.equal(d.bytesReadIsEstimate, true); assert.ok(d.bytesRead >= d.bytesScanned); assert.equal(spawns - beforeSpawns, 1);
++    assert.ok(pipeBytes - beforePipe < expectedTextBytes * 2 + 200000, 'Binary hex must not dominate pipe traffic');
++    console.log('C1B_NEXT_FIXTURE', JSON.stringify({ elapsedMs: Math.round(performance.now() - start), pipeBytes: pipeBytes - beforePipe,
++      bytesScanned: d.bytesScanned, bytesRead: d.bytesRead, filesScanned: d.filesScanned, excludedDirectories: d.excludedDirectories, skipped: d.skipped, mode: process.platform }));
++  });
++  await test('.next remains listable and directly readable; only search traversal excludes it', async () => {
++    const list = await request('listDirectory', '.'); assert.equal(list.ok, true, JSON.stringify(list));
++    assert.ok(list.data.entries.some(e => e.name === '.next'));
++    const read = await request('readTextFile', '.next/cache/.tsbuildinfo'); assert.equal(read.ok, true, JSON.stringify(read)); assert.equal(read.data.text, marker);
++  });
++  console.log('C1B_V2_NATIVE_PASS', count, process.platform, process.arch);
++})().catch(e => { console.error(e); process.exitCode = 1; }).finally(async () => {
++  const counts = await service.close(); console.log('C1B_V2_NATIVE_CLOSE', JSON.stringify(counts));
++  if (Object.values(counts).some(Boolean)) process.exitCode = 1;
++  fs.rmSync(base, { recursive: true, force: true });
++});
+--- a/tests/green-gate.cjs
++++ b/tests/green-gate.cjs
 @@ -2,6 +2,7 @@
  const os = require('node:os');
  const path = require('node:path');

@@ -1,0 +1,27 @@
+C1B_V2_NATIVE_CLOSE {"pendingRequests":0,"abandonedHelpers":0,"liveHelpers":0}
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
+  {
++   error: 'BOUNDARY_UNSUPPORTED',
+-   error: 'UNSUPPORTED_ENCODING',
+    ok: false
+  }
+
+    at /workspace/scratch/6b74a90de945/work/c1b-v2/dvl-desktop-C1b-v2/tests/c1b-v2-native.cjs:39:12
+    at test (/workspace/scratch/6b74a90de945/work/c1b-v2/dvl-desktop-C1b-v2/tests/c1b-v2-native.cjs:30:38)
+    at /workspace/scratch/6b74a90de945/work/c1b-v2/dvl-desktop-C1b-v2/tests/c1b-v2-native.cjs:32:9
+    at Object.<anonymous> (/workspace/scratch/6b74a90de945/work/c1b-v2/dvl-desktop-C1b-v2/tests/c1b-v2-native.cjs:59:3)
+    at Module._compile (node:internal/modules/cjs/loader:1872:14)
+    at Object..js (node:internal/modules/cjs/loader:2003:10)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: [Object],
+  expected: [Object],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}

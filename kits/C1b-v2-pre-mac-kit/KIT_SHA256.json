@@ -1,0 +1,14 @@
+{
+  "README.md": "f560088f610bc7e5f0acf80a5c0f7be09816e8852960a85c1b67564a9d27a9ad",
+  "approved-harness-adaptations.json": "a0a814721a8a8fc6eb3f1808652b8f38eaf74663abc67e16cad2e13eee065a09",
+  "capture-host-check.json": "51e0b94517638fb9383c17b6dbd6780f0df84056fecb332e2a9e4102fd2204ff",
+  "capture-v2-launch.cjs": "02f14a7fe96c4c9aee0ab30d23b276375db6b1ba7aea4d472ce7a22b106658bb",
+  "expected-identities.json": "5a943314bbd5ce87365ff012aa6966dbb770a0e1b7864afb83642e0d5ad2267d",
+  "green-gate-comparison-result.json": "196a6f01dd80619afaed6f540fbeb9925b672251a211396a131415f074616dc3",
+  "green-gate-vs-frozen-B.patch": "0ce7dd60764f57763f47a5b9d8177491eb6d4482fcfeb1185f343d23743bd516",
+  "native-input-identities.json": "3239fdddbfaaec353877f1147ecd61b989e68369953404ffd6a5fa2dc8807f38",
+  "project-reader-vs-reviewed-C1a.patch": "3c985ead1f123a11d9311fbc854bb90b62f81b03365534179bd7bebf001b6fd1",
+  "read-policy-header-vs-reviewed-C1a.patch": "6dc4540118bee87e367885eaea465564b36a0df0970ef169e9a412aef48e2176",
+  "references/frozen-B-green-gate.cjs": "a1c599efc9859812486462c91102c0dbcc55583dd33e79c5e17c4f825e8f4d4c",
+  "verify-b-harness.cjs": "2fc15592000f5d5b653c8783af37657809e1b0f73d45390fedd88a95995e2f3f"
+}

@@ -1,4 +1,5 @@
 'use strict';
+const { performance } = require('node:perf_hooks');
 const { validateNative } = require('./read-support.cjs');
 const failure = code => Object.assign(new Error(code), { code });
 const LIMIT = 2 * 1024 * 1024 + 4096;
@@ -12,10 +13,11 @@ class ReaderSession {
     this.done = new Promise(resolve => { this.resolveDone = resolve; });
     this.abort = () => this.stop(job.reason || 'CANCELLED');
     job.controller.signal.addEventListener('abort', this.abort, { once: true });
-    this.timer = setTimeout(() => this.stop('TIMEOUT'), Math.max(1, job.deadline - Date.now()));
+    this.timer = setTimeout(() => this.stop('TIMEOUT'), Math.max(1, job.deadline - performance.now()));
     child.stdin.on('error', () => {});
     child.stderr.on('data', () => {});
-    child.stdout.on('data', data => this.receive(data));
+    child.once('spawn', () => { job.spawnAt = performance.now(); });
+    child.stdout.on('data', data => { if (job.firstByteAt === undefined) job.firstByteAt = performance.now(); this.receive(data); });
     child.on('error', () => this.stop('BOUNDARY_UNSUPPORTED'));
     child.on('close', (code, signal) => {
       service.children.delete(child); service.abandoned.delete(child); this.closed = true;
@@ -49,6 +51,7 @@ class ReaderSession {
   stop(code) {
     if (this.closed || this.abandoned) return;
     this.stopped ||= code;
+    if (this.stopped === 'TIMEOUT' && !this.ending) this.service.reportTimeout(this.job);
     try { this.child.kill('SIGKILL'); } catch {}
     if (!this.grace) this.grace = setTimeout(() => {
       if (this.closed) return;

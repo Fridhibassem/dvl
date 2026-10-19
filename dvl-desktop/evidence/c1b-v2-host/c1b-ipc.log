@@ -1,0 +1,15 @@
+PASS Helper is outside asar and matches platform, architecture and startup digest
+PASS Reject foreign webContents, child frames, wrong origin and detached frames
+PASS Own main frame receives bounded context without root or rebinding capability
+PASS Exact IPC schemas reject root injection, missing/unknown keys, bad query and extra args
+PASS Wrong generation/project cannot reach the service
+PASS Exception mapping never reveals exception text or helper payload
+PASS Per-renderer pending ceiling and duplicate ownership do not overwrite a request
+PASS A -> B fences an in-flight completion even when backend ignored cancellation
+PASS Reload same URL fences old document, preserves rate budget and rebinds fresh generation
+PASS Cancellation requires exact sender/frame/context ownership and code-maps throws
+PASS Navigation/webviews/popups are blocked and renderer loss revokes binding
+PASS Old-window destruction cannot clear a newer window binding
+PASS Helper modification after startup is refused before spawning
+PASS Close is idempotent, rejects reads and surfaces exact cleanup counts without content logs
+C1b IPC CONTROL CHECKS PASSED: 14 (simulated completion; not native/Electron qualification)

@@ -1,0 +1,26 @@
+--- reviewed-C1a/native/project-reader.c
++++ C1b-V2/native/project-reader.c
+@@ -1,5 +1,5 @@
+ /* DVL C1 boundary prototype. No provider, mutation or shell API.
+- * One request per short-lived process. All output is buffered until identity
++ * One immutable root per serial persistent session. All output is buffered until identity
+  * checks pass. OS confinement is mandatory, never a path-only fallback.
+  * macOS Seatbelt branch MUST be qualified on the target Mac before acceptance.
+  */
+@@ -55,6 +55,8 @@
+  for(size_t i=0;i<n;i+=2){if(!isxdigit((unsigned char)s[i])||!isxdigit((unsigned char)s[i+1]))return -1;unsigned x;sscanf(s+i,"%2x",&x);if(!x)return -1;out[i/2]=(char)x;}out[n/2]=0;return 0;
+ }
+ static int denied(const char *s) {
++ /* Conservatively deny stored names containing long-s, Kelvin or sharp-s. */
++ if(strstr(s,"\xC5\xBF")||strstr(s,"\xE2\x84\xAA")||strstr(s,"\xC3\x9F")||strstr(s,"\xE1\xBA\x9E"))return 1;
+  char b[4096];size_t n=strlen(s);if(n>=sizeof b)return 1;for(size_t i=0;i<=n;i++)b[i]=(char)tolower((unsigned char)s[i]);
+  for(int i=0;policy_deniedNames[i];i++)if(!strcmp(b,policy_deniedNames[i]))return 1;
+  for(int i=0;policy_deniedPrefixes[i];i++)if(!strncmp(b,policy_deniedPrefixes[i],strlen(policy_deniedPrefixes[i])))return 1;
+@@ -169,6 +171,7 @@
+   if(!S_ISREG(before.st_mode))return fail("NOT_REGULAR_FILE");if(before.st_nlink!=1)return fail("HARDLINK_DENIED");if(before.st_size>MAX_READ)return fail("FILE_TOO_LARGE");
+   static unsigned char bytes[MAX_READ+1];size_t n=0;while(n<sizeof bytes){ssize_t r=read(fd,bytes+n,sizeof bytes-n);if(r<0){if(errno==EINTR)continue;return fail(ioerr());}if(!r)break;n+=(size_t)r;}if(n>MAX_READ)return fail("FILE_TOO_LARGE");
+   struct stat after;if(fstat(fd,&after)||!unchanged(before,after)||after.st_nlink!=1)return fail("FILE_CHANGED");
++  if(memchr(bytes,0,n))return fail("UNSUPPORTED_ENCODING");
+   used=0;append("{\"ok\":true,\"mode\":\"%s\",\"hex\":\"",mode);hex(bytes,n);append("\",\"bytes\":%zu,\"dev\":\"%llu\",\"ino\":\"%llu\"}",n,(unsigned long long)before.st_dev,(unsigned long long)before.st_ino);
+  }else{
+  int scanfd=dup(fd);DIR *d=scanfd<0?NULL:fdopendir(scanfd);if(!d){if(scanfd>=0)close(scanfd);return fail(ioerr());}unsigned seen=0,count=0,skipped=0;int more=0,limited=0;

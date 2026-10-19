@@ -42,7 +42,8 @@ async function test(name, fn) { await fn(); console.log('PASS', name); passed++;
   });
   await test('Search reports partial reason and counts without dropping semantics', async () => {
     elements.get('filesQuery').value = 'needle'; elements.get('filesSearchForm').events.submit({ preventDefault() {} });
-    const search = requests.shift(); search.finish({ matches: [{ relativePath: 'a.txt', line: 1, column: 1, snippet: '<b>needle</b>' }], filesScanned: 1, complete: false, partialReason: 'DIRECTORIES_EXCLUDED', excludedDirectories: 1, skipped: { FILE_TOO_LARGE: 2 } }); await tick();
+    const search = requests.shift(); search.finish({ matches: [{ relativePath: 'a.txt', line: 1, column: 1, snippet: '<b>needle</b>' }], filesScanned: 1, bytesScanned: 5, bytesRead: 10, elapsedMs: 12, complete: false, partialReason: 'DIRECTORIES_EXCLUDED', excludedDirectories: 1, skipped: { FILE_TOO_LARGE: 2 } }); await tick();
+    assert.match(elements.get('filesStatus').textContent, /5 text bytes; 10 read-budget bytes \(estimate\); 12 ms/);
     assert.match(elements.get('filesStatus').textContent, /Partial: DIRECTORIES_EXCLUDED; excluded directories: 1; skipped: 2/);
     assert.match(elements.get('searchResults').children[0].textContent, /<b>needle<\/b>/);
   });

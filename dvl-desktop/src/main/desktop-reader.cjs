@@ -35,7 +35,8 @@ class DesktopReader {
     this.integrityError = verifyHelper(this.binary, this.manifest) ? null : 'HELPER_INTEGRITY_FAILED';
     this.service = new ProjectReadService(resolveProject, {
       userDataPath: app.getPath('userData'), binary: this.binary,
-      verifyBinary: () => verifyHelper(this.binary, this.manifest)
+      verifyBinary: () => verifyHelper(this.binary, this.manifest),
+      onTimeout: metadata => this.logEvent('warn', 'reader.timeout', metadata)
     });
     this.project = null; this.binding = null; this.bindingError = null;
     this.epoch = 0; this.documentEpoch = 0; this.owners = new Map(); this.rates = new Map(); this.closing = false; this.closeResult = null;
@@ -67,8 +68,11 @@ class DesktopReader {
     return ++bucket.count <= limit;
   }
   resetDocument(sender) {
-    this.epoch++; this.documentEpoch++; this.binding = null; this.service.invalidate();
     for (const owner of this.owners.values()) if (owner.sender === sender) owner.revoked = true;
+    // A late event from a replaced window must not revoke the current window.
+    const current = this.getWindow()?.webContents;
+    if (current && current !== sender) return;
+    this.epoch++; this.documentEpoch++; this.binding = null; this.service.invalidate();
     // Do not reset rate buckets on reload: reload cannot replenish capacity.
   }
   attach(win) {

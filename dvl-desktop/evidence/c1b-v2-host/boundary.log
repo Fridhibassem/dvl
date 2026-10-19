@@ -1,0 +1,8 @@
+Error: OS boundary probe failed: UNSUPPORTED
+
+    at ChildProcess.<anonymous> (/workspace/scratch/6b74a90de945/work/c1b-v2/dvl-desktop-C1b-v2/tests/c1-boundary.cjs:48:106)
+    at ChildProcess.emit (node:events:509:28)
+    at maybeClose (node:internal/child_process:1141:16)
+    at Socket.<anonymous> (node:internal/child_process:498:11)
+    at Socket.emit (node:events:509:28)
+    at Pipe.<anonymous> (node:net:355:12)

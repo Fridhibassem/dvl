@@ -1,0 +1,10 @@
+{
+  "native/project-reader.c": {
+    "reviewedC1a": "a9705e7d024616eae7b96529285ecdb7a5d36f428d8cc5129877658c8072a3f8",
+    "v2": "d5c7b8a6c1899660440057c98cd0977d6815d8d0c255cc6e72d88b7eb366a878"
+  },
+  "native/read-policy.h": {
+    "reviewedC1a": "07ffc0b67f60016e4983f9ca45c27fac05d392396cce1abaf97c1cdf0a055da6",
+    "v2": "0eee7bc85ae1712fa0370caf98e0101e61ea2d38594891743ed41ae1d90248d0"
+  }
+}

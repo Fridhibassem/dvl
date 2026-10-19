@@ -1,0 +1,25 @@
+PASS Schema and integrity before all schema/journal writes
+PASS Mock picker IPC cancellation leaves last project empty
+PASS Open-project IPC and same canonical path reuse ID
+PASS Canonical alias reuses ID
+PASS Settings IPC round trip and invalid inputs
+PASS Secrets IPC verifies persisted ciphertext with status only
+PASS Recent IPC selects older project and persists selection
+PASS Missing recent returns null and unavailable; restored folder keeps ID
+PASS BrowserWindow security flags
+PASS Second instance restores minimized window; closed window recreated
+PASS Before-quit checkpoints and closes database
+PASS Restart preserves project, setting and decryptable secret via IPC
+PASS Unreadable ciphertext returns boolean failure; row retained
+PASS Unavailable encryption and mismatched round trip reject without write
+PASS Delete-secret IPC removes row and reports status only
+PASS Regular-file replacement not restored or registered
+PASS Canonical path replaced by symlink cannot impersonate original project
+PASS Legacy import executes on boot and is idempotent across restart
+PASS Legacy regular-file path is rejected safely
+PASS Rejected single-instance lock never opens or changes database
+PASS Corrupt database handled, retained and never migrated
+PASS Project content unchanged; logs contain no test secret values
+PASS Failed round trip preserves existing ciphertext
+PASS Renderer handles unreadable secret, IPC failure and stale recent
+TOTAL CHECKS PASSED: 24

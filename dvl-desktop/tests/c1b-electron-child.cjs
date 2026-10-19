@@ -6,6 +6,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
 const assert = require('node:assert/strict');
+console.log('ELECTRON_RUNTIME', process.versions.electron, 'NODE', process.versions.node, process.platform, process.arch);
 const data = process.argv[2];
 if (!data || !fs.realpathSync(data).startsWith(fs.realpathSync(os.tmpdir()) + path.sep)) throw new Error('Disposable OS temp directory required');
 const project = path.join(data, 'fixture-project'), other = path.join(data, 'fixture-other');
@@ -14,6 +15,8 @@ fs.writeFileSync(path.join(project, 'known.txt'), '<script>window.C1B_EXECUTED=t
 fs.writeFileSync(path.join(project, '.env'), 'C1B_HIDDEN_SECRET');
 fs.mkdirSync(path.join(project, 'dist')); fs.writeFileSync(path.join(project, 'dist/ignored.txt'), 'C1B_QUERY_SENTINEL');
 fs.writeFileSync(path.join(other, 'other.txt'), 'OTHER_PROJECT_CONTENT');
+fs.mkdirSync(path.join(other, 'paging'));
+for (let i = 0; i < 201; i++) fs.writeFileSync(path.join(other, 'paging', 'page' + String(i).padStart(3, '0') + '.txt'), 'PAGE_CONTENT_' + i + '\n' + 'line\n'.repeat(100));
 const inventory = () => [fs.readFileSync(path.join(project, 'known.txt'), 'hex'), fs.readFileSync(path.join(project, '.env'), 'hex'), fs.readFileSync(path.join(other, 'other.txt'), 'hex')];
 const before = inventory();
 app.setPath('userData', path.join(data, 'state'));

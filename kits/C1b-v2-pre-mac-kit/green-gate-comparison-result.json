@@ -1,0 +1,22 @@
+{
+  "result": "PASS",
+  "frozenGateSha256": "a1c599efc9859812486462c91102c0dbcc55583dd33e79c5e17c4f825e8f4d4c",
+  "v2GateSha256": "f951f0faf6f8a65828aa0a9ef401ceb80a1b0a2cac7eb7a8dd14d8116913dd4f",
+  "testNames": 24,
+  "testNameDifferences": 0,
+  "assertionBearingSuffixLines": 39,
+  "assertionSuffixDifferences": 0,
+  "assertionCalls": 68,
+  "approvedHarnessChanges": [
+    "URL helper import for authenticated mock frame",
+    "Window mock webContents/mainFrame",
+    "Authenticated mock IPC sender/frame",
+    "Await real asynchronous shutdown and provide mock event",
+    "DOM mock textContent clearing"
+  ],
+  "fullFileDifferencesAfterOnlyApprovedHarnessReversal": 0,
+  "normalizedSha256": "a1c599efc9859812486462c91102c0dbcc55583dd33e79c5e17c4f825e8f4d4c",
+  "rawAssertionBearingPhysicalLineDifferences": 1,
+  "physicalLineExplanation": "One mixed setup/assertion line adds async/await and a mock before-quit event; its complete assertion suffix is byte-identical.",
+  "evidenceClass": "Static automated source comparison, not frozen B runtime qualification"
+}
