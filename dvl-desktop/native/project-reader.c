@@ -1,5 +1,5 @@
 /* DVL C1 boundary prototype. No provider, mutation or shell API.
- * One request per short-lived process. All output is buffered until identity
+ * One immutable root per serial persistent session. All output is buffered until identity
  * checks pass. OS confinement is mandatory, never a path-only fallback.
  * macOS Seatbelt branch MUST be qualified on the target Mac before acceptance.
  */
@@ -55,6 +55,8 @@ static int decode(const char *s,char *out,size_t cap) {
  for(size_t i=0;i<n;i+=2){if(!isxdigit((unsigned char)s[i])||!isxdigit((unsigned char)s[i+1]))return -1;unsigned x;sscanf(s+i,"%2x",&x);if(!x)return -1;out[i/2]=(char)x;}out[n/2]=0;return 0;
 }
 static int denied(const char *s) {
+ /* Conservatively deny stored names containing long-s, Kelvin or sharp-s. */
+ if(strstr(s,"\xC5\xBF")||strstr(s,"\xE2\x84\xAA")||strstr(s,"\xC3\x9F")||strstr(s,"\xE1\xBA\x9E"))return 1;
  char b[4096];size_t n=strlen(s);if(n>=sizeof b)return 1;for(size_t i=0;i<=n;i++)b[i]=(char)tolower((unsigned char)s[i]);
  for(int i=0;policy_deniedNames[i];i++)if(!strcmp(b,policy_deniedNames[i]))return 1;
  for(int i=0;policy_deniedPrefixes[i];i++)if(!strncmp(b,policy_deniedPrefixes[i],strlen(policy_deniedPrefixes[i])))return 1;

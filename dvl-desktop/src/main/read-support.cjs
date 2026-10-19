@@ -21,13 +21,14 @@ function ancestor(a, b) {
     if (path.dirname(p) === p) break;
   } return false;
 }
+const protectedHomeTrees = [...new Set([...policy.homeTrees, ...policy.deniedNames.filter(n => n.startsWith('.'))])].sort();
 function rootAllowed(root, userDataPath) {
   const home = canonical(os.homedir());
   if (policy.rootExact.some(x => canonical(x) === root || (fs.existsSync(x) && ancestor(root, canonical(x)) && ancestor(canonical(x), root)))) return false;
   if (policy.rootTrees.some(x => ancestor(canonical(x), root))) return false;
   if (ancestor(root, home)) return false;
   const userData = canonical(userDataPath || path.join(home, process.platform === 'darwin' ? 'Library/Application Support/dvl-desktop' : '.config/dvl-desktop'));
-  const protectedTrees = [...policy.homeTrees.map(p => canonical(path.join(home, p))), userData];
+  const protectedTrees = [...protectedHomeTrees.map(p => canonical(path.join(home, p))), userData];
   return !protectedTrees.some(p => ancestor(root, p) || ancestor(p, root));
 }
 function validateNative(out, op) {
@@ -76,4 +77,4 @@ async function matchText(text, query, relativePath, matches, check) {
     lineStart = end + 1; lineNumber++;
   } check(); return null;
 }
-module.exports = { policy, rootAllowed, validateNative, matchText, yieldLoop };
+module.exports = { protectedHomeTrees, policy, rootAllowed, validateNative, matchText, yieldLoop };

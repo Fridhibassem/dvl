@@ -8,6 +8,19 @@ let db = null;
 let mainWindow = null;
 
 let logFile = null;
+let desktopReader = null;
+let shutdownStarted = false;
+let shutdownComplete = false;
+
+function handleIpc(channel, handler) {
+  ipcMain.handle(channel, async (event, ...args) => {
+    if (!desktopReader || !desktopReader.isTrusted(event)) throw new Error('SENDER_DENIED');
+    const documentEpoch = desktopReader.documentEpoch;
+    const result = await handler(event, ...args);
+    if (!desktopReader.isTrusted(event) || desktopReader.documentEpoch !== documentEpoch) throw new Error('STALE_CONTEXT');
+    return result;
+  });
+}
 
 function logsDirectory() {
   return path.join(app.getPath('userData'), 'logs');
@@ -232,6 +245,7 @@ function upsertProject(folderPath) {
 
   const project = getProjectById(projectId);
   logEvent('info', 'project.opened', { projectId: project.projectId, path: project.path });
+  if (desktopReader) desktopReader.select(project);
   return project;
 }
 
@@ -315,6 +329,7 @@ function touchProject(projectId) {
 
   const selected = getProjectById(projectId);
   logEvent('info', 'project.recent_selected', { projectId: selected.projectId, path: selected.path });
+  if (desktopReader) desktopReader.select(selected);
   return selected;
 }
 
@@ -455,6 +470,7 @@ function createWindow() {
   });
 
   mainWindow = win;
+  desktopReader.attach(win);
   win.on('closed', () => {
     if (mainWindow === win) mainWindow = null;
   });
@@ -462,7 +478,7 @@ function createWindow() {
   win.loadFile(path.join(__dirname, '../renderer/index.html'));
 }
 
-ipcMain.handle('dvl:get-last-project', async () => {
+handleIpc('dvl:get-last-project', async () => {
   try {
     return getLastProject();
   } catch (_) {
@@ -471,7 +487,7 @@ ipcMain.handle('dvl:get-last-project', async () => {
   }
 });
 
-ipcMain.handle('dvl:list-recent-projects', async () => {
+handleIpc('dvl:list-recent-projects', async () => {
   try {
     return listRecentProjects();
   } catch (_) {
@@ -480,7 +496,7 @@ ipcMain.handle('dvl:list-recent-projects', async () => {
   }
 });
 
-ipcMain.handle('dvl:open-recent-project', async (_event, projectId) => {
+handleIpc('dvl:open-recent-project', async (_event, projectId) => {
   try {
     return touchProject(projectId);
   } catch (_) {
@@ -489,7 +505,7 @@ ipcMain.handle('dvl:open-recent-project', async (_event, projectId) => {
   }
 });
 
-ipcMain.handle('dvl:open-project', async () => {
+handleIpc('dvl:open-project', async () => {
   try {
     const result = await dialog.showOpenDialog({
       title: 'Open Project',
@@ -510,7 +526,7 @@ ipcMain.handle('dvl:open-project', async () => {
 });
 
 
-ipcMain.handle('dvl:set-setting', async (_event, name, value) => {
+handleIpc('dvl:set-setting', async (_event, name, value) => {
   try {
     return setSetting(name, value);
   } catch (error) {
@@ -519,7 +535,7 @@ ipcMain.handle('dvl:set-setting', async (_event, name, value) => {
   }
 });
 
-ipcMain.handle('dvl:get-setting', async (_event, name) => {
+handleIpc('dvl:get-setting', async (_event, name) => {
   try {
     return getSetting(name);
   } catch (error) {
@@ -528,7 +544,7 @@ ipcMain.handle('dvl:get-setting', async (_event, name) => {
   }
 });
 
-ipcMain.handle('dvl:set-secret', async (_event, name, value) => {
+handleIpc('dvl:set-secret', async (_event, name, value) => {
   try {
     return setSecret(name, value);
   } catch (error) {
@@ -537,7 +553,7 @@ ipcMain.handle('dvl:set-secret', async (_event, name, value) => {
   }
 });
 
-ipcMain.handle('dvl:has-secret', async (_event, name) => {
+handleIpc('dvl:has-secret', async (_event, name) => {
   try {
     return hasSecret(name);
   } catch (error) {
@@ -546,7 +562,7 @@ ipcMain.handle('dvl:has-secret', async (_event, name) => {
   }
 });
 
-ipcMain.handle('dvl:delete-secret', async (_event, name) => {
+handleIpc('dvl:delete-secret', async (_event, name) => {
   try {
     return deleteSecret(name);
   } catch (error) {
@@ -579,6 +595,9 @@ if (!gotSingleInstanceLock) {
         platform: process.platform
       });
       openDatabase();
+      const { DesktopReader } = require(path.join(__dirname, 'desktop-reader.cjs'));
+      desktopReader = new DesktopReader({ app, ipcMain, resolveProject: getProjectById, getWindow: () => mainWindow, logEvent });
+      desktopReader.select(getLastProject());
       createWindow();
 
       app.on('activate', () => {
@@ -597,9 +616,24 @@ if (!gotSingleInstanceLock) {
   });
 }
 
-app.on('before-quit', () => {
+app.on('before-quit', event => {
+  if (shutdownComplete) return;
+  if (!desktopReader) { closeDatabase(); return; }
+  event.preventDefault();
+  if (shutdownStarted) return;
+  shutdownStarted = true;
   logEvent('info', 'app.shutdown');
-  closeDatabase();
+  return desktopReader.close().then(counts => {
+    if (counts.pendingRequests || counts.abandonedHelpers || counts.liveHelpers) {
+      dialog.showErrorBox('Reader shutdown incomplete',
+        `Pending requests: ${counts.pendingRequests}; live helpers: ${counts.liveHelpers}; abandoned helpers: ${counts.abandonedHelpers}.`);
+    }
+  }).catch(() => {
+    logEvent('error', 'reader.shutdown_failed');
+    dialog.showErrorBox('Reader shutdown failed', 'Reader cleanup could not be confirmed.');
+  }).finally(() => {
+    closeDatabase(); shutdownComplete = true; app.quit();
+  });
 });
 
 app.on('window-all-closed', () => {

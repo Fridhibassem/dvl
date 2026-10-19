@@ -1,5 +1,5 @@
 'use strict';
-// Host-internal boundary prototype. NOT exposed to Electron/IPC in C1a.
+// Root-bound read service; C1b exposure is mediated by DesktopReader.
 // Root comes from a trusted registry resolver, never from request arguments.
 const fs = require('node:fs');
 const path = require('node:path');
@@ -20,6 +20,9 @@ function identity(root) {
   return { dev: String(st.dev), ino: String(st.ino) };
 }
 function denyName(name) {
+  // Conservative refusal of the three reviewed filesystem-folding hazards.
+  // This is intentionally not a claim of universal Unicode case folding.
+  if (/[\u017f\u212a\u00df\u1e9e]/.test(name)) return true;
   const n = name.toLowerCase();
   return policy.deniedNames.includes(n) || policy.deniedPrefixes.some(x => n.startsWith(x)) || policy.deniedExtensions.some(x => n.endsWith(x));
 }
@@ -44,6 +47,7 @@ class ProjectReadService {
     this.binary = options.binary || path.join(__dirname, '../../bin/project-reader');
     this.timeoutMs = options.timeoutMs || 5000;
     this.killGraceMs = options.killGraceMs || 2000;
+    this.verifyBinary = options.verifyBinary || null;
     this.spawn = options.spawn || spawn; // trusted test seam, never a request option
     this.userDataPath = path.resolve(options.userDataPath || path.join(os.homedir(), process.platform === 'darwin' ? 'Library/Application Support/dvl-desktop' : '.config/dvl-desktop'));
     this.children = new Set(); this.abandoned = new Set();
@@ -134,6 +138,7 @@ class ProjectReadService {
     if (!fs.existsSync(this.binary)) throw fail('BOUNDARY_UNSUPPORTED');
     if (!job.session) {
       if (this.children.size >= 2) throw fail('BUSY');
+      if (this.verifyBinary && !this.verifyBinary()) throw fail('HELPER_INTEGRITY_FAILED');
       job.session = new ReaderSession(this, ctx, job);
     }
     const result = await job.session.call(op, rel, offset);

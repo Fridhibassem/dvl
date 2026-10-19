@@ -3,7 +3,8 @@ const path = require('node:path');
 const root = path.join(__dirname, '..');
 const p = require('../read-policy.json');
 let result = '/* Generated from read-policy.json; do not hand-edit. */\n';
-for (const [key, values] of Object.entries(p)) {
+const table = { ...p, homeTrees: [...new Set([...p.homeTrees, ...p.deniedNames.filter(n => n.startsWith('.'))])].sort() };
+for (const [key, values] of Object.entries(table)) {
   if (key === 'searchExclusions') continue;
   if (!Array.isArray(values) || values.some(s => typeof s !== 'string' || !/^[\x20-\x7e]+$/.test(s))) throw new Error('Invalid policy table');
   result += `static const char *policy_${key}[]={${values.map(s => JSON.stringify(s)).join(',')},NULL};\n`;

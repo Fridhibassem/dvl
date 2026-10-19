@@ -168,6 +168,15 @@
       color: #999;
       font-size: 12px;
     }
+    button:disabled { opacity: .45; cursor: default; }
+    button:focus-visible, input:focus-visible { outline: 2px solid #c4a6ff; outline-offset: 2px; }
+    .files-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0; }
+    .files-toolbar input { min-width: 70px; flex: 1; color: #eee; background: #111; border: 1px solid #555; padding: 7px; }
+    .file-path { margin: 8px 0; overflow-wrap: anywhere; font-family: monospace; }
+    #filesStatus { font-size: 12px; color: #ccc; margin: 8px 0; overflow-wrap: anywhere; }
+    .file-entry, .search-match { display: block; width: 100%; text-align: left; border-radius: 3px; margin: 3px 0; overflow-wrap: anywhere; }
+    #fileText { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; line-height: 1.5; max-height: 400px; overflow: auto; }
+    @media (max-width: 850px) { .app { grid-template-columns: 185px 1fr; } .workspace { grid-template-columns: 1fr; grid-template-rows: auto; overflow: auto; } }
   </style>
 </head>
 <body>
@@ -215,10 +224,25 @@
         </section>
 
         <section class="panel" id="filesPanel">
-          <h2>Files / Activity</h2>
-          <div class="placeholder">
-            Static shell only. Real filesystem/runtime activity comes in Phase C.
+          <h2>Files — read only</h2>
+          <div class="files-toolbar">
+            <button id="filesRefresh" type="button">Refresh</button>
+            <button id="filesUp" type="button">Up</button>
+            <button id="filesStop" type="button" disabled>Stop</button>
           </div>
+          <div id="directoryName" class="file-path">.</div>
+          <form id="filesSearchForm" class="files-toolbar">
+            <label for="filesQuery">Literal search</label>
+            <input id="filesQuery" type="text" autocomplete="off" />
+            <button id="filesSearch" type="submit">Search</button>
+          </form>
+          <div id="filesStatus" role="status" aria-live="polite">Open a project to inspect permitted files.</div>
+          <div id="fileEntries" aria-label="Permitted files and directories"></div>
+          <button id="filesMore" type="button" hidden>Load next page</button>
+          <div id="searchResults" aria-label="Search matches"></div>
+          <div id="fileTitle" class="file-path"></div>
+          <pre id="fileText" tabindex="0" aria-label="File contents"></pre>
+          <p class="placeholder">Completeness covers permitted files. Reads are observations, not a project snapshot.</p>
         </section>
 
         <section class="panel" id="terminalPanel">
@@ -238,6 +262,7 @@
     </main>
   </div>
 
+  <script src="./files.js"></script>
   <script src="./renderer.js"></script>
 </body>
 </html>

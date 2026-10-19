@@ -1,0 +1,7 @@
+$ node tests/c1b-policy.cjs
+PASS N-1 all derived protected home entries are rejected by the host
+PASS N-1 native independently refuses protected credential roots before sandbox setup
+PASS N-2 stored long-s/Kelvin/sharp-s names are denied by host and direct native
+C1b POLICY CHECKS PASSED: 3 (pre-confinement; not OS qualification)
+
+EXIT_CODE=0

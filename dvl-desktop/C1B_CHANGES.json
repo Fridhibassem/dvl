@@ -1,0 +1,94 @@
+[
+  {
+    "path": "C1B_STATUS_AND_REVIEW_REQUEST.md",
+    "status": "added"
+  },
+  {
+    "path": "README_C1B_START_HERE.md",
+    "status": "added"
+  },
+  {
+    "path": "native/project-reader.c",
+    "status": "modified"
+  },
+  {
+    "path": "native/read-policy.h",
+    "status": "modified"
+  },
+  {
+    "path": "package.json",
+    "status": "modified"
+  },
+  {
+    "path": "read-policy.json",
+    "status": "modified"
+  },
+  {
+    "path": "scripts/build-reader.cjs",
+    "status": "modified"
+  },
+  {
+    "path": "scripts/generate-policy.cjs",
+    "status": "modified"
+  },
+  {
+    "path": "scripts/verify-source.cjs",
+    "status": "added"
+  },
+  {
+    "path": "src/main/desktop-reader.cjs",
+    "status": "added"
+  },
+  {
+    "path": "src/main/main.js",
+    "status": "modified"
+  },
+  {
+    "path": "src/main/project-read-service.cjs",
+    "status": "modified"
+  },
+  {
+    "path": "src/main/read-support.cjs",
+    "status": "modified"
+  },
+  {
+    "path": "src/preload/preload.js",
+    "status": "modified"
+  },
+  {
+    "path": "src/renderer/files.js",
+    "status": "added"
+  },
+  {
+    "path": "src/renderer/index.html",
+    "status": "modified"
+  },
+  {
+    "path": "src/renderer/renderer.js",
+    "status": "modified"
+  },
+  {
+    "path": "tests/c1b-electron-child.cjs",
+    "status": "added"
+  },
+  {
+    "path": "tests/c1b-electron.cjs",
+    "status": "added"
+  },
+  {
+    "path": "tests/c1b-ipc.cjs",
+    "status": "added"
+  },
+  {
+    "path": "tests/c1b-policy.cjs",
+    "status": "added"
+  },
+  {
+    "path": "tests/c1b-renderer.cjs",
+    "status": "added"
+  },
+  {
+    "path": "tests/green-gate.cjs",
+    "status": "modified"
+  }
+]

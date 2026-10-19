@@ -1,0 +1,62 @@
+{
+  "environment": "Linux-6.18.55-x86_64-with-glibc2.39",
+  "node": "v24.19.0",
+  "tests": [
+    {
+      "label": "build",
+      "command": [
+        "node",
+        "scripts/build-reader.cjs"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "b-regression",
+      "command": [
+        "node",
+        "tests/green-gate.cjs"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "c1a-control",
+      "command": [
+        "node",
+        "tests/c1-unit.cjs"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "c1a-repair-control",
+      "command": [
+        "node",
+        "tests/c1-repair.cjs"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "c1b-ipc",
+      "command": [
+        "node",
+        "tests/c1b-ipc.cjs"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "c1b-policy",
+      "command": [
+        "node",
+        "tests/c1b-policy.cjs"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "c1b-renderer",
+      "command": [
+        "node",
+        "tests/c1b-renderer.cjs"
+      ],
+      "exit_code": 0
+    }
+  ]
+}

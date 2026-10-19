@@ -8,6 +8,7 @@ const deleteSecretButton = document.getElementById('deleteSecret');
 const secretStatus = document.getElementById('secretStatus');
 
 function renderActiveProject(project) {
+  window.dvlFiles?.showProject(project?.projectId || null);
   if (!project) {
     projectPath.textContent = 'No project selected';
     projectId.textContent = '';
@@ -20,7 +21,7 @@ function renderActiveProject(project) {
 
 async function renderRecentProjects() {
   const projects = await window.dvl.listRecentProjects();
-  recentProjects.innerHTML = '';
+  recentProjects.textContent = '';
 
   if (!projects || projects.length === 0) {
     const empty = document.createElement('div');

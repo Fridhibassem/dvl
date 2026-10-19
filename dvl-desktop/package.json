@@ -11,7 +11,11 @@
     "test:c1:unit": "node tests/c1-unit.cjs",
     "test:c1:native": "node tests/c1-boundary.cjs && node tests/c1-native-repair.cjs",
     "test:c1": "npm run build:reader && npm run test:c1:unit && npm run test:c1:repair && npm run test:c1:native",
-    "test:c1:repair": "node tests/c1-repair.cjs"
+    "test:c1:repair": "node tests/c1-repair.cjs",
+    "test:c1b:control": "node tests/c1b-ipc.cjs && node tests/c1b-policy.cjs && node tests/c1b-renderer.cjs",
+    "test:c1b:electron": "node tests/c1b-electron.cjs",
+    "qualify:c1b": "npm run verify:source && npm run test:c1 && npm test && npm run test:c1b:control && npm run test:native-secret && npm run test:c1b:electron",
+    "verify:source": "node scripts/verify-source.cjs"
   },
   "devDependencies": {
     "electron": "44.7.2"

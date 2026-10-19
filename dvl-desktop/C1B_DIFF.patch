@@ -1,0 +1,1377 @@
+--- /dev/null
++++ c1b/C1B_STATUS_AND_REVIEW_REQUEST.md
+@@ -0,0 +1,51 @@
++# DVL C1b v1 — implementation and review request
++
++Date: 2026-10-19. Status: CANDIDATE / MAC AND ELECTRON RUNTIME UNTESTED / INDEPENDENT REVIEW PENDING.
++
++## Goal
++
++Expose the reviewed read-only project reader to the desktop's own main frame, preserving project selection, local state and secret handling while denying root injection and stale/cross-document disclosure. Scope is C1b only.
++
++## Executed on this host
++
++Linux 6.18.55 x86_64; Node v24.19.0; cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0. Exact command results are in `evidence/c1b-host/results.json` and individual logs, including numeric exit codes.
++
++| Command | Observed result | Evidence class |
++|---|---|---|
++| `node scripts/build-reader.cjs` | exit 0, strict compilation and deterministic policy generation | Real compiler/build |
++| `node tests/green-gate.cjs` | 24/24 | B logic with authenticated Electron mocks |
++| `node tests/c1-unit.cjs` | 16/16; support probe BOUNDARY_UNSUPPORTED | Control, not confinement |
++| `node tests/c1-repair.cjs` | 16/16 | Real pre-confinement checks plus simulated session cases |
++| `node tests/c1b-ipc.cjs` | 13/13 | Controller with simulated request completion |
++| `node tests/c1b-policy.cjs` | 3/3 | Host and direct production native pre-confinement refusal |
++| `node tests/c1b-renderer.cjs` | 6/6 | DOM simulation, not browser rendering |
++| `node --check` on changed/new JS and CJS | exit 0 | Syntax only |
++
++Total: 78 checks. They do **not** qualify native confinement or Electron.
++
++Earlier executed attempt: `node tests/c1-boundary.cjs` failed with `OS boundary probe failed: UNSUPPORTED` (exit 1). A separate ABI probe returned `result=-1 errno=38 (Function not implemented)`. No ABI threshold was lowered. Native isolation is BLOCKED on this host.
++
++Attempted dependency install in the candidate: `npm ci --ignore-scripts --no-audit --no-fund --fetch-retries=0 --fetch-timeout=15000`, exit 1, HTTP 403 for `undici-types-7.24.6.tgz` from the npm registry. That is an environment/dependency-download failure, not Electron runtime evidence. An earlier install attempt from the scratch root had no lockfile and failed with EUSAGE; it changed no source and was retried from the candidate folder. There is no local Electron executable or Chromium browser for runtime/visual qualification here.
++
++## Verification still required
++
++1. Run `npm ci` and `npm run qualify:c1b` on the target Mac; retain complete stdout/stderr, numeric pipeline exit status, source verification, environment and all four native denial booleans.
++2. Real app list/read/search/Stop/switch/reload; confirm no stale content, actual text-only markup display, paging and explicit partial outcomes.
++3. Source review of lifecycle relationships, not just individual fixes: project restore/selection → bind, navigation/crash → revoke, new document → new generation, before-quit → bounded close → counts → DB checkpoint/close.
++4. Verify source identity and helper hash behavior on the installed/package layout before claiming packaged support. Source mode and unpacked-path enforcement are implemented; packaged distribution is not delivered.
++5. Independent review of the exact candidate and new tests. Do not transfer C1a's verdict to these changes.
++
++## Review targets
++
++- Confirm one production service instance per app even after closing/recreating a window. Native/live/abandoned helpers remain app-budgeted.
++- Try foreign webContents, child/navigated/detached frames, forged URLs and frame reuse after same-URL reload. Try completing an old request after project switch, crash and close.
++- Try malformed payloads, caller root, wrong project/generation, duplicate IDs, queue/rate exhaustion, stealing cancellation and rapid reloads. Verify failures contain only bounded codes.
++- Recheck N-1 derived host/native policy, N-2 stored spelling restrictions and legitimate Unicode compatibility. No `DVL_HOME` production override was added. The policy regression temporarily creates missing empty credential directories and removes only directories it created; it never writes into existing credential directories.
++- Attack startup and pre-spawn helper verification, packaged placement, missing helper/manifest, symlink helper, wrong architecture and tampered bytes. Note documented local-attacker/TOCTOU limits; this is not code signing.
++- Recheck text rendering and stale UI responses using actual Electron. Native suites run in Electron embedded Node in addition to the real app integration tests; those evidence classes must remain distinct.
++- Validate close counts remain honest under stuck-helper simulation and real workloads; verify no reader paths/queries/content are logged. Legacy B project-selection path logs are unchanged and are not reader payload logs.
++- Review the minimal B harness changes in the diff. Do not weaken an assertion merely to get a green count.
++
++## Independent reviewer prompt
++
++Review this DVL C1b candidate independently. Read README_C1B_START_HERE.md, the full source diff, the C1a v1 §6 and v2 C-2 to C-5 conditions, and actual evidence. C1a was PASS scoped and C-1 was met on the owner's Mac; C1b has new source and is not accepted. Preserve the frozen B reference and original Landlock ABI>=3/Seatbelt requirements. No Arena remediation is approved. Check security and behavior across modules/lifecycles, including regressions from each fix. Execute appropriate tests where possible; label simulations, unsupported environments, unexecuted tests and owner evidence separately. Return concrete reproducible findings with severity, affected relationships, smallest coherent correction and targeted regression. Do not rewrite architecture or activate later-stage workers/providers. If you find no blocker, state exactly which source/platform/evidence scope your verdict covers. Never infer full C1 PASS or freeze from control tests.
+--- /dev/null
++++ c1b/README_C1B_START_HERE.md
+@@ -0,0 +1,87 @@
++# DVL C1b — candidate v1, 2026-10-19
++
++**Status: implementation candidate; NOT C1b PASS, NOT frozen, NOT full C1 acceptance.**
++
++## ابدأ من هنا
++
++هذي نسخة منفصلة لاختبار C1b: عرض الملفات، قراءة النصوص والبحث الحرفي داخل المشروع المختار. نسخة B المجمّدة ونسخة C1a الأصلية ما تبدّلوش. ما تخلطش المجلّد هذا مع النسخ القديمة.
++
++نجحت هنا 78 check تحكّمية/سياسة، والبناء الأصلي نجح على Linux. اختبار العزل الحقيقي ما نجحش على هذا المضيف: Landlock رجع `ENOSYS`. تشغيل Electron واختبارات الماك للنسخة الجديدة **UNTESTED**. نتائج الماك السابقة تخص C1a، وما تنتقلش تلقائيًا إلى C1b.
++
++الخطوة التالية: اختبار هذه النسخة على الماك ثم مراجعة مستقلة. ما نمرّوش للمرحلة التالية قبل الأدلة.
++
++## Run on the target Mac
++
++Use a new folder; keep B and the accepted-scope C1a copy intact. Close the app before qualification. Open Terminal in this folder (the one containing `package.json`).
++
++```bash
++npm ci
++set -o pipefail
++npm run qualify:c1b 2>&1 | tee C1B_MAC_QUALIFICATION.log
++```
++
++Record `sw_vers`, `node --version`, `xcode-select -p`, `cc --version`, and the shell exit status immediately after the qualification pipeline. The qualification command verifies source hashes before building the platform-specific helper. It requires strict native success; unsupported confinement fails the gate.
++
++This includes:
++
++1. Source verification and C1a Node/native suites, with the four negative confinement assertions and prefix sibling test.
++2. B 24 regression assertions with an authenticated window/frame mock and awaited asynchronous shutdown.
++3. C1b controller, root/name policy and DOM control tests.
++4. Unchanged B real Electron secret/restart regression.
++5. C1a native suites in Electron's embedded Node runtime, then a real production Electron window/preload/IPC/UI integration test, including regular-file and symlink replacement regressions and clean shutdown counts.
++
++After successful qualification, inspect the real UI:
++
++```bash
++npm start
++```
++
++Open a disposable project under a normal local directory; check listing, Up, Refresh, paging, literal Search, file display, Stop, A→B switching and reload. File text must stay inert. Partial/skipped results must remain visible. Run on the exact target Mac, including the post-change native policy tests.
++
++## Scope and implementation
++
++- `src/main/desktop-reader.cjs`: one app-lifetime service; actual `app.getPath('userData')`; exact own-window/main-frame/file-URL checks; strict IPC schemas; no renderer bind/root API; four pending requests and 30 request admissions per one-second window; separate bounded context/cancel budgets; per-document/per-request ownership and late-response fencing.
++- `src/main/main.js`: narrow reader lifecycle integration, selection hooks, validation before/after B IPC responses, navigation safeguards and bounded reader shutdown before database close. Cleanup counts go to the live UI and numeric shutdown log; nonzero counts also produce an explicit shutdown dialog.
++- `src/preload/preload.js`: explicit read/context/cancel methods; state callbacks never receive the Electron event object.
++- `src/renderer/files.js` and the existing Files panel: permitted listing with pagination, text-only file display, literal search, Stop, stale-response suppression and clearing on switch. Existing B controls remain.
++- `ProjectReadService`: helper verification before every new session; the reviewed root-bound session, queue, timeouts, generation fencing and confinement baseline remain.
++- Build creates a per-platform helper digest; missing/modified/wrong-platform helpers fail closed. Rebuild on the target platform before launching. Startup failure stays confined to Files so existing desktop state remains accessible.
++
++## Review conditions
++
++| Condition | Candidate treatment | Evidence remaining |
++|---|---|---|
++| C-1 | Prior C1a Mac gate retained as historical evidence | Changed C1b needs its own Mac qualification |
++| C-2 / N-1 | Protected home entries derived from `homeTrees` union dot-prefixed denied names, in host and generated C; `.password-store` added | Host/direct-native pre-confinement regression passed here; run on Mac too |
++| N-2 | Conservatively refuse U+017F, U+212A, U+00DF and U+1E9E in every component, in host and native | Stored-name regressions passed here; Mac checks remain |
++| C-3 | Exactly one production `DesktopReader` / `ProjectReadService`, reused across window recreation | Actual Electron lifetime qualification pending |
++| C-4 | Sender/frame/URL checks, exact payloads, text rendering, quotas, cancellation ownership, helper digest, no reader payload logging | Real Electron and packaged distribution checks pending |
++| C-5 | Cleanup counts surfaced; completeness explicitly limited to permitted files; partial reasons/counts displayed | Real UI checks pending |
++
++## Historical source and regression identity
++
++Input: owner-uploaded `dvl-desktop-C1a-repair-v2.zip`. Its 40 listed source entries all matched before editing. The manifest itself accounts for the additional manifest file in the reviewer’s 41-file description. The original B manifest differs only in `package.json`, as expected from the C1a scripts additions. This check did not certify unlisted binary/log bytes.
++
++`review-history/C1A_SOURCE_SHA256.json` preserves the original C1a manifest. `review-history/c1a/main.js` and `green-gate.cjs` preserve those original files. `review-history/C1A_INDEPENDENT_REVIEW_V2.md` is the retrieved review, not a new review of C1b. `C1A_MAC_RETEST.log` is the owner's uploaded prior run.
++
++New-candidate B harness changes add realistic sender/frame state, await reader shutdown and implement DOM `textContent` clearing in the mock. The original 24 assertions remain. No B database schema, secret encryption behavior, dependency lockfile, native-secret test or security flags were changed. See `C1B_CHANGES.json` and `C1B_DIFF.patch` for the complete diff.
++
++## Evidence and limits
++
++See `C1B_STATUS_AND_REVIEW_REQUEST.md` and `evidence/c1b-host/`. Control results are not OS qualification. Policy tests refuse selected roots/names before confinement, so they do not prove filesystem isolation. Real Electron tests have syntax checks only here and are **UNTESTED at runtime**.
++
++No workers, providers, AI execution, shell tools, project writing, `.dvl` activation, RootLock, Kernel authority or Arena ABI2/seccomp changes are introduced.
++
++The four Unicode code points above are conservatively denied even in otherwise ordinary names. This is a deliberate compatibility restriction, not a general Unicode folding solution. Existing iCloud/Library/TCC/external/network-volume limitations remain unqualified. Reads are observations, not Project Truth or atomic snapshots; a name policy is not universal secret detection.
++
++I-1 is covered by keeping boundary and repair suites coupled. I-2 (missing private macOS SPI diagnostics), I-3 (broader system-root exclusions), I-5/I-6/I-7 remain open/deferred as in the review. The stale persistent-session comment I-8 is corrected. No broad `/var`/`/private/var` prohibition is added without a policy decision about temporary/project locations.
++
++## Packaged distribution boundary
++
++This deliverable is a source candidate, not a signed or packaged desktop release. In packaged mode the controller resolves the helper only at `resources/app.asar.unpacked/bin/project-reader`; it never executes inside `app.asar`. Keep `bin/reader-integrity.json` in the application source/asar and place the platform/architecture-specific helper at that unpacked path with executable permissions. The release pipeline must explicitly unpack it and run the same checks against the installed app. No packaging tool or signed distribution was added or tested here. A local digest detects missing/changed helper bytes; it is not a defense against an attacker who can replace both code and manifest, nor an OS sandbox substitute.
++
++Technical references: [Electron IPC sender validation](https://www.electronjs.org/docs/latest/tutorial/security/#17-validate-the-sender-of-all-ipc-messages), [webContents lifecycle and mainFrame](https://www.electronjs.org/docs/latest/api/web-contents).
++
++## STATE
++
++Goal: integrate the read-only project reader into desktop, one gate at a time. Decisions: B frozen baseline retained separately; C1a scoped PASS remains historical; C1b candidate implemented with N-1/N-2 changes; original ABI>=3/Seatbelt baseline unchanged; Arena excluded. Open: target Mac run, actual Electron runtime, packaging qualification and independent review. Next: run this candidate's qualification, inspect the UI, then review the exact source/diff/evidence. No later stage is authorized by these local control results.
+--- c1a/native/project-reader.c
++++ c1b/native/project-reader.c
+@@ -1,5 +1,5 @@
+ /* DVL C1 boundary prototype. No provider, mutation or shell API.
+- * One request per short-lived process. All output is buffered until identity
++ * One immutable root per serial persistent session. All output is buffered until identity
+  * checks pass. OS confinement is mandatory, never a path-only fallback.
+  * macOS Seatbelt branch MUST be qualified on the target Mac before acceptance.
+  */
+@@ -55,6 +55,8 @@
+  for(size_t i=0;i<n;i+=2){if(!isxdigit((unsigned char)s[i])||!isxdigit((unsigned char)s[i+1]))return -1;unsigned x;sscanf(s+i,"%2x",&x);if(!x)return -1;out[i/2]=(char)x;}out[n/2]=0;return 0;
+ }
+ static int denied(const char *s) {
++ /* Conservatively deny stored names containing long-s, Kelvin or sharp-s. */
++ if(strstr(s,"\xC5\xBF")||strstr(s,"\xE2\x84\xAA")||strstr(s,"\xC3\x9F")||strstr(s,"\xE1\xBA\x9E"))return 1;
+  char b[4096];size_t n=strlen(s);if(n>=sizeof b)return 1;for(size_t i=0;i<=n;i++)b[i]=(char)tolower((unsigned char)s[i]);
+  for(int i=0;policy_deniedNames[i];i++)if(!strcmp(b,policy_deniedNames[i]))return 1;
+  for(int i=0;policy_deniedPrefixes[i];i++)if(!strncmp(b,policy_deniedPrefixes[i],strlen(policy_deniedPrefixes[i])))return 1;
+--- c1a/native/read-policy.h
++++ c1b/native/read-policy.h
+@@ -1,7 +1,7 @@
+ /* Generated from read-policy.json; do not hand-edit. */
+-static const char *policy_deniedNames[]={".git",".dvl",".ssh",".gnupg",".aws",".azure",".kube",".docker",".config",".env",".npmrc",".pypirc",".netrc","credentials","credentials.json",".git-credentials",".pgpass",".vault-token","kubeconfig",".htpasswd",NULL};
++static const char *policy_deniedNames[]={".git",".dvl",".ssh",".gnupg",".aws",".azure",".kube",".docker",".config",".env",".npmrc",".pypirc",".netrc","credentials","credentials.json",".git-credentials",".pgpass",".vault-token","kubeconfig",".htpasswd",".password-store",NULL};
+ static const char *policy_deniedPrefixes[]={".env.","id_rsa","id_ed25519","id_ecdsa","id_dsa",NULL};
+ static const char *policy_deniedExtensions[]={".pem",".key",".p12",".pfx",".tfstate",".keystore",".jks",NULL};
+ static const char *policy_rootExact[]={"/","/Users","/home","/private","/Volumes","/Library",NULL};
+ static const char *policy_rootTrees[]={"/etc","/private/etc","/System","/usr","/bin","/sbin","/dev","/proc","/sys",NULL};
+-static const char *policy_homeTrees[]={"Library",".config",".local/share",".ssh",".aws",".docker",NULL};
++static const char *policy_homeTrees[]={".aws",".azure",".config",".docker",".dvl",".env",".git",".git-credentials",".gnupg",".htpasswd",".kube",".local/share",".netrc",".npmrc",".password-store",".pgpass",".pypirc",".ssh",".vault-token","Library",NULL};
+--- c1a/package.json
++++ c1b/package.json
+@@ -11,7 +11,11 @@
+     "test:c1:unit": "node tests/c1-unit.cjs",
+     "test:c1:native": "node tests/c1-boundary.cjs && node tests/c1-native-repair.cjs",
+     "test:c1": "npm run build:reader && npm run test:c1:unit && npm run test:c1:repair && npm run test:c1:native",
+-    "test:c1:repair": "node tests/c1-repair.cjs"
++    "test:c1:repair": "node tests/c1-repair.cjs",
++    "test:c1b:control": "node tests/c1b-ipc.cjs && node tests/c1b-policy.cjs && node tests/c1b-renderer.cjs",
++    "test:c1b:electron": "node tests/c1b-electron.cjs",
++    "qualify:c1b": "npm run verify:source && npm run test:c1 && npm test && npm run test:c1b:control && npm run test:native-secret && npm run test:c1b:electron",
++    "verify:source": "node scripts/verify-source.cjs"
+   },
+   "devDependencies": {
+     "electron": "44.7.2"
+--- c1a/read-policy.json
++++ c1b/read-policy.json
+@@ -1,9 +1,75 @@
+ {
+-  "deniedNames": [".git", ".dvl", ".ssh", ".gnupg", ".aws", ".azure", ".kube", ".docker", ".config", ".env", ".npmrc", ".pypirc", ".netrc", "credentials", "credentials.json", ".git-credentials", ".pgpass", ".vault-token", "kubeconfig", ".htpasswd"],
+-  "deniedPrefixes": [".env.", "id_rsa", "id_ed25519", "id_ecdsa", "id_dsa"],
+-  "deniedExtensions": [".pem", ".key", ".p12", ".pfx", ".tfstate", ".keystore", ".jks"],
+-  "rootExact": ["/", "/Users", "/home", "/private", "/Volumes", "/Library"],
+-  "rootTrees": ["/etc", "/private/etc", "/System", "/usr", "/bin", "/sbin", "/dev", "/proc", "/sys"],
+-  "homeTrees": ["Library", ".config", ".local/share", ".ssh", ".aws", ".docker"],
+-  "searchExclusions": ["node_modules", "vendor", "dist", "build", "coverage"]
++  "deniedNames": [
++    ".git",
++    ".dvl",
++    ".ssh",
++    ".gnupg",
++    ".aws",
++    ".azure",
++    ".kube",
++    ".docker",
++    ".config",
++    ".env",
++    ".npmrc",
++    ".pypirc",
++    ".netrc",
++    "credentials",
++    "credentials.json",
++    ".git-credentials",
++    ".pgpass",
++    ".vault-token",
++    "kubeconfig",
++    ".htpasswd",
++    ".password-store"
++  ],
++  "deniedPrefixes": [
++    ".env.",
++    "id_rsa",
++    "id_ed25519",
++    "id_ecdsa",
++    "id_dsa"
++  ],
++  "deniedExtensions": [
++    ".pem",
++    ".key",
++    ".p12",
++    ".pfx",
++    ".tfstate",
++    ".keystore",
++    ".jks"
++  ],
++  "rootExact": [
++    "/",
++    "/Users",
++    "/home",
++    "/private",
++    "/Volumes",
++    "/Library"
++  ],
++  "rootTrees": [
++    "/etc",
++    "/private/etc",
++    "/System",
++    "/usr",
++    "/bin",
++    "/sbin",
++    "/dev",
++    "/proc",
++    "/sys"
++  ],
++  "homeTrees": [
++    "Library",
++    ".config",
++    ".local/share",
++    ".ssh",
++    ".aws",
++    ".docker"
++  ],
++  "searchExclusions": [
++    "node_modules",
++    "vendor",
++    "dist",
++    "build",
++    "coverage"
++  ]
+ }
+--- c1a/scripts/build-reader.cjs
++++ c1b/scripts/build-reader.cjs
+@@ -1,11 +1,18 @@
+ const { spawnSync } = require('node:child_process');
+ const path = require('node:path');
+ const fs = require('node:fs');
++const crypto = require('node:crypto');
+ const root = path.join(__dirname, '..');
+ require('./generate-policy.cjs');
+ if (!['darwin', 'linux'].includes(process.platform)) throw new Error('BOUNDARY_UNSUPPORTED');
+ fs.mkdirSync(path.join(root, 'bin'), { recursive: true });
+ const args = ['-std=c11', '-O2', '-Wall', '-Wextra', '-Werror', '-Wno-misleading-indentation', path.join(root, 'native/project-reader.c'), '-o', path.join(root, 'bin/project-reader')];
+ if (process.platform === 'darwin') args.push('-Wno-deprecated-declarations', '-lsandbox');
++const manifest = path.join(root, 'bin/reader-integrity.json');
++fs.rmSync(manifest, { force: true });
+ const result = spawnSync('cc', args, { stdio: 'inherit', shell: false, timeout: 30000 });
+ if (result.error || result.status !== 0) { console.error('Native reader build failed; no fallback is enabled.'); process.exitCode = 1; }
++
++if (!result.error && result.status === 0) {
++  fs.writeFileSync(manifest, JSON.stringify({ platform: process.platform, arch: process.arch, sha256: crypto.createHash('sha256').update(fs.readFileSync(path.join(root, 'bin/project-reader'))).digest('hex') }, null, 2) + '\n');
++}
+--- c1a/scripts/generate-policy.cjs
++++ c1b/scripts/generate-policy.cjs
+@@ -3,7 +3,8 @@
+ const root = path.join(__dirname, '..');
+ const p = require('../read-policy.json');
+ let result = '/* Generated from read-policy.json; do not hand-edit. */\n';
+-for (const [key, values] of Object.entries(p)) {
++const table = { ...p, homeTrees: [...new Set([...p.homeTrees, ...p.deniedNames.filter(n => n.startsWith('.'))])].sort() };
++for (const [key, values] of Object.entries(table)) {
+   if (key === 'searchExclusions') continue;
+   if (!Array.isArray(values) || values.some(s => typeof s !== 'string' || !/^[\x20-\x7e]+$/.test(s))) throw new Error('Invalid policy table');
+   result += `static const char *policy_${key}[]={${values.map(s => JSON.stringify(s)).join(',')},NULL};\n`;
+--- /dev/null
++++ c1b/scripts/verify-source.cjs
+@@ -0,0 +1,16 @@
++'use strict';
++const fs = require('node:fs');
++const path = require('node:path');
++const crypto = require('node:crypto');
++const root = path.join(__dirname, '..');
++try {
++  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'SOURCE_SHA256.json'), 'utf8'));
++  let checked = 0;
++  for (const [name, expected] of Object.entries(manifest)) {
++    if (!name || path.isAbsolute(name) || name.split('/').some(p => p === '..' || p === '') || !/^[a-f0-9]{64}$/.test(expected)) throw new Error('Invalid source manifest');
++    const file = path.join(root, name), st = fs.lstatSync(file);
++    if (!st.isFile() || st.isSymbolicLink() || crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex') !== expected) throw new Error('SOURCE_MISMATCH: ' + name);
++    checked++;
++  }
++  console.log('C1B SOURCE MATCH PASS:', checked, 'entries');
++} catch (e) { console.error(e.message); process.exitCode = 1; }
+--- /dev/null
++++ c1b/src/main/desktop-reader.cjs
+@@ -0,0 +1,159 @@
++'use strict';
++const fs = require('node:fs');
++const path = require('node:path');
++const crypto = require('node:crypto');
++const { pathToFileURL } = require('node:url');
++const { ProjectReadService, validPath } = require('./project-read-service.cjs');
++const id = value => typeof value === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(value);
++const error = code => ({ ok: false, error: { code } });
++const knownErrors = new Set(['INVALID_REQUEST', 'PATH_DENIED', 'POLICY_DENIED', 'PROJECT_UNAVAILABLE', 'STALE_CONTEXT', 'BOUNDARY_UNSUPPORTED', 'HELPER_INTEGRITY_FAILED', 'BUSY', 'CANCELLED', 'TIMEOUT', 'NOT_FOUND', 'PERMISSION_DENIED', 'SYMLINK_DENIED', 'HARDLINK_DENIED', 'NOT_REGULAR_FILE', 'FILE_TOO_LARGE', 'FILE_CHANGED', 'DIRECTORY_CHANGED', 'INVALID_CURSOR', 'RESPONSE_TOO_LARGE', 'UNSUPPORTED_ENCODING', 'RUNTIME_FAILED']);
++const safeCode = e => knownErrors.has(e?.code) ? e.code : 'RUNTIME_FAILED';
++function exact(value, required, optional = []) {
++  return value && typeof value === 'object' && !Array.isArray(value) &&
++    required.every(k => Object.hasOwn(value, k)) &&
++    Object.keys(value).every(k => required.includes(k) || optional.includes(k));
++}
++function verifyHelper(binary, manifestPath) {
++  try {
++    if (binary.split(path.sep).some(p => p.endsWith('.asar'))) return false;
++    const st = fs.lstatSync(binary);
++    if (!st.isFile() || st.isSymbolicLink() || st.size > 20 * 1024 * 1024 || st.size === 0 || !(st.mode & 0o111)) return false;
++    if (fs.statSync(manifestPath).size > 1024) return false;
++    const m = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
++    return exact(m, ['platform', 'arch', 'sha256']) && m.platform === process.platform && m.arch === process.arch &&
++      typeof m.sha256 === 'string' && /^[a-f0-9]{64}$/.test(m.sha256) &&
++      crypto.createHash('sha256').update(fs.readFileSync(binary)).digest('hex') === m.sha256;
++  } catch { return false; }
++}
++// One controller, one service for the app lifetime. No renderer-chosen binding.
++class DesktopReader {
++  constructor({ app, ipcMain, resolveProject, getWindow, logEvent }) {
++    this.getWindow = getWindow; this.logEvent = logEvent;
++    this.url = pathToFileURL(path.join(__dirname, '../renderer/index.html')).href;
++    this.binary = app.isPackaged ? path.join(process.resourcesPath, 'app.asar.unpacked/bin/project-reader') : path.join(__dirname, '../../bin/project-reader');
++    this.manifest = path.join(__dirname, '../../bin/reader-integrity.json');
++    this.integrityError = verifyHelper(this.binary, this.manifest) ? null : 'HELPER_INTEGRITY_FAILED';
++    this.service = new ProjectReadService(resolveProject, {
++      userDataPath: app.getPath('userData'), binary: this.binary,
++      verifyBinary: () => verifyHelper(this.binary, this.manifest)
++    });
++    this.project = null; this.binding = null; this.bindingError = null;
++    this.epoch = 0; this.documentEpoch = 0; this.owners = new Map(); this.rates = new Map(); this.closing = false; this.closeResult = null;
++    for (const op of ['listDirectory', 'readTextFile', 'searchText']) {
++      ipcMain.handle('dvl:reader:' + op, (event, ...args) => this.request(event, op, args));
++    }
++    ipcMain.handle('dvl:reader:context', (event, ...args) => {
++      if (!this.isTrusted(event)) return error('SENDER_DENIED');
++      if (args.length) return error('INVALID_REQUEST');
++      if (!this.rate(event.sender, 'context')) return error('BUSY');
++      return this.status();
++    });
++    ipcMain.handle('dvl:reader:cancel', (event, ...args) => this.cancel(event, args));
++  }
++  isTrusted(event) {
++    try {
++      const win = this.getWindow(), sender = event?.sender, frame = event?.senderFrame;
++      return !!win && !!sender && !sender.isDestroyed() && sender === win.webContents &&
++        !!frame && frame === sender.mainFrame && frame.url === this.url && sender.getURL() === this.url;
++    } catch { return false; }
++  }
++  rate(sender, kind) {
++    const now = performance.now();
++    let state = this.rates.get(sender);
++    if (!state) { state = {}; this.rates.set(sender, state); }
++    const limit = kind === 'request' ? 30 : 20;
++    let bucket = state[kind];
++    if (!bucket || now - bucket.start >= 1000) bucket = state[kind] = { start: now, count: 0 };
++    return ++bucket.count <= limit;
++  }
++  resetDocument(sender) {
++    this.epoch++; this.documentEpoch++; this.binding = null; this.service.invalidate();
++    for (const owner of this.owners.values()) if (owner.sender === sender) owner.revoked = true;
++    // Do not reset rate buckets on reload: reload cannot replenish capacity.
++  }
++  attach(win) {
++    const sender = win.webContents;
++    sender.setWindowOpenHandler(() => ({ action: 'deny' }));
++    sender.on('will-navigate', event => event.preventDefault());
++    sender.on('will-attach-webview', event => event.preventDefault());
++    sender.on('did-start-navigation', (_event, _url, _inPlace, isMainFrame) => {
++      if (isMainFrame) this.resetDocument(sender);
++    });
++    sender.on('did-finish-load', () => {
++      if (sender === this.getWindow()?.webContents && sender.getURL() === this.url && !this.closing) this.select(this.project);
++    });
++    sender.on('render-process-gone', () => this.resetDocument(sender));
++    sender.on('destroyed', () => { this.resetDocument(sender); this.rates.delete(sender); });
++  }
++  select(project) {
++    this.epoch++; this.service.invalidate(); this.binding = null; this.project = project;
++    this.bindingError = this.integrityError;
++    if (this.closing) return;
++    if (!this.bindingError && project) {
++      try { this.binding = this.service.bind(project.projectId); }
++      catch (e) { this.bindingError = safeCode(e); }
++    }
++    this.publish();
++  }
++  status() {
++    return { ok: true, context: this.binding, error: this.bindingError ? { code: this.bindingError } : null,
++      closing: this.closing, shutdown: this.closeResult,
++      completeness: 'over permitted files only; best-effort observation, not a project snapshot' };
++  }
++  publish() {
++    try {
++      const sender = this.getWindow()?.webContents;
++      if (sender && !sender.isDestroyed() && sender.getURL() === this.url) sender.send('dvl:reader:state', this.status());
++    } catch { /* No payload, path, query or content is logged. */ }
++  }
++  validRequest(op, req) {
++    const extra = op === 'searchText' ? ['query'] : [];
++    if (!exact(req, ['requestId', 'projectId', 'contextGeneration', 'relativePath', ...extra], op === 'listDirectory' ? ['cursor'] : [])) return false;
++    if (![req.requestId, req.projectId, req.contextGeneration].every(id)) return false;
++    if (req.cursor !== undefined && !id(req.cursor)) return false;
++    if (op === 'searchText' && (typeof req.query !== 'string' || !req.query || /[\0\r\n]/.test(req.query) || Buffer.byteLength(req.query) > 256 || Buffer.from(req.query).toString() !== req.query)) return false;
++    validPath(req.relativePath, op !== 'readTextFile');
++    return true;
++  }
++  async request(event, op, args) {
++    if (!this.isTrusted(event)) return error('SENDER_DENIED');
++    let req, owner;
++    try {
++      if (args.length !== 1 || !this.validRequest(op, args[0])) return error('INVALID_REQUEST');
++      req = args[0];
++      if (this.closing) return error('STALE_CONTEXT');
++      if (this.integrityError) return error(this.integrityError);
++      if (!this.binding || req.projectId !== this.binding.projectId || req.contextGeneration !== this.binding.contextGeneration) return error('STALE_CONTEXT');
++      if (!this.rate(event.sender, 'request') || this.owners.size >= 4) return error('BUSY');
++      if (this.owners.has(req.requestId)) return error('INVALID_REQUEST');
++      owner = { sender: event.sender, frame: event.senderFrame, epoch: this.epoch, context: this.binding, revoked: false };
++      this.owners.set(req.requestId, owner);
++      const result = await this.service.request(op, req);
++      if (owner.revoked || this.closing || owner.epoch !== this.epoch || owner.context !== this.binding || !this.isTrusted(event) || event.senderFrame !== owner.frame) return error('STALE_CONTEXT');
++      if (!result.ok) return { ...result, error: { code: safeCode(result.error) } };
++      return result;
++    } catch (e) { return error(safeCode(e)); }
++    finally { if (owner && this.owners.get(req.requestId) === owner) this.owners.delete(req.requestId); }
++  }
++  cancel(event, args) {
++    if (!this.isTrusted(event)) return error('SENDER_DENIED');
++    const req = args[0];
++    if (args.length !== 1 || !exact(req, ['projectId', 'contextGeneration', 'requestId']) || ![req.projectId, req.contextGeneration, req.requestId].every(id)) return error('INVALID_REQUEST');
++    if (!this.rate(event.sender, 'cancel')) return error('BUSY');
++    const owner = this.owners.get(req.requestId);
++    if (!owner || owner.revoked || owner.sender !== event.sender || owner.frame !== event.senderFrame || owner.epoch !== this.epoch || owner.context.projectId !== req.projectId || owner.context.contextGeneration !== req.contextGeneration) return { ok: true, acknowledged: false };
++    try { return { ok: true, ...this.service.cancel(req, req.requestId) }; }
++    catch (e) { return error(safeCode(e)); }
++  }
++  async close() {
++    if (this.closePromise) return this.closePromise;
++    this.closing = true; this.binding = null; this.epoch++;
++    this.closePromise = this.service.close().then(counts => {
++      this.closeResult = counts;
++      this.logEvent('info', 'reader.shutdown', counts); this.publish();
++      return counts;
++    });
++    return this.closePromise;
++  }
++}
++module.exports = { DesktopReader, verifyHelper };
+--- c1a/src/main/main.js
++++ c1b/src/main/main.js
+@@ -8,6 +8,19 @@
+ let mainWindow = null;
+ 
+ let logFile = null;
++let desktopReader = null;
++let shutdownStarted = false;
++let shutdownComplete = false;
++
++function handleIpc(channel, handler) {
++  ipcMain.handle(channel, async (event, ...args) => {
++    if (!desktopReader || !desktopReader.isTrusted(event)) throw new Error('SENDER_DENIED');
++    const documentEpoch = desktopReader.documentEpoch;
++    const result = await handler(event, ...args);
++    if (!desktopReader.isTrusted(event) || desktopReader.documentEpoch !== documentEpoch) throw new Error('STALE_CONTEXT');
++    return result;
++  });
++}
+ 
+ function logsDirectory() {
+   return path.join(app.getPath('userData'), 'logs');
+@@ -232,6 +245,7 @@
+ 
+   const project = getProjectById(projectId);
+   logEvent('info', 'project.opened', { projectId: project.projectId, path: project.path });
++  if (desktopReader) desktopReader.select(project);
+   return project;
+ }
+ 
+@@ -315,6 +329,7 @@
+ 
+   const selected = getProjectById(projectId);
+   logEvent('info', 'project.recent_selected', { projectId: selected.projectId, path: selected.path });
++  if (desktopReader) desktopReader.select(selected);
+   return selected;
+ }
+ 
+@@ -455,6 +470,7 @@
+   });
+ 
+   mainWindow = win;
++  desktopReader.attach(win);
+   win.on('closed', () => {
+     if (mainWindow === win) mainWindow = null;
+   });
+@@ -462,7 +478,7 @@
+   win.loadFile(path.join(__dirname, '../renderer/index.html'));
+ }
+ 
+-ipcMain.handle('dvl:get-last-project', async () => {
++handleIpc('dvl:get-last-project', async () => {
+   try {
+     return getLastProject();
+   } catch (_) {
+@@ -471,7 +487,7 @@
+   }
+ });
+ 
+-ipcMain.handle('dvl:list-recent-projects', async () => {
++handleIpc('dvl:list-recent-projects', async () => {
+   try {
+     return listRecentProjects();
+   } catch (_) {
+@@ -480,7 +496,7 @@
+   }
+ });
+ 
+-ipcMain.handle('dvl:open-recent-project', async (_event, projectId) => {
++handleIpc('dvl:open-recent-project', async (_event, projectId) => {
+   try {
+     return touchProject(projectId);
+   } catch (_) {
+@@ -489,7 +505,7 @@
+   }
+ });
+ 
+-ipcMain.handle('dvl:open-project', async () => {
++handleIpc('dvl:open-project', async () => {
+   try {
+     const result = await dialog.showOpenDialog({
+       title: 'Open Project',
+@@ -510,7 +526,7 @@
+ });
+ 
+ 
+-ipcMain.handle('dvl:set-setting', async (_event, name, value) => {
++handleIpc('dvl:set-setting', async (_event, name, value) => {
+   try {
+     return setSetting(name, value);
+   } catch (error) {
+@@ -519,7 +535,7 @@
+   }
+ });
+ 
+-ipcMain.handle('dvl:get-setting', async (_event, name) => {
++handleIpc('dvl:get-setting', async (_event, name) => {
+   try {
+     return getSetting(name);
+   } catch (error) {
+@@ -528,7 +544,7 @@
+   }
+ });
+ 
+-ipcMain.handle('dvl:set-secret', async (_event, name, value) => {
++handleIpc('dvl:set-secret', async (_event, name, value) => {
+   try {
+     return setSecret(name, value);
+   } catch (error) {
+@@ -537,7 +553,7 @@
+   }
+ });
+ 
+-ipcMain.handle('dvl:has-secret', async (_event, name) => {
++handleIpc('dvl:has-secret', async (_event, name) => {
+   try {
+     return hasSecret(name);
+   } catch (error) {
+@@ -546,7 +562,7 @@
+   }
+ });
+ 
+-ipcMain.handle('dvl:delete-secret', async (_event, name) => {
++handleIpc('dvl:delete-secret', async (_event, name) => {
+   try {
+     return deleteSecret(name);
+   } catch (error) {
+@@ -579,6 +595,9 @@
+         platform: process.platform
+       });
+       openDatabase();
++      const { DesktopReader } = require(path.join(__dirname, 'desktop-reader.cjs'));
++      desktopReader = new DesktopReader({ app, ipcMain, resolveProject: getProjectById, getWindow: () => mainWindow, logEvent });
++      desktopReader.select(getLastProject());
+       createWindow();
+ 
+       app.on('activate', () => {
+@@ -597,9 +616,24 @@
+   });
+ }
+ 
+-app.on('before-quit', () => {
++app.on('before-quit', event => {
++  if (shutdownComplete) return;
++  if (!desktopReader) { closeDatabase(); return; }
++  event.preventDefault();
++  if (shutdownStarted) return;
++  shutdownStarted = true;
+   logEvent('info', 'app.shutdown');
+-  closeDatabase();
++  return desktopReader.close().then(counts => {
++    if (counts.pendingRequests || counts.abandonedHelpers || counts.liveHelpers) {
++      dialog.showErrorBox('Reader shutdown incomplete',
++        `Pending requests: ${counts.pendingRequests}; live helpers: ${counts.liveHelpers}; abandoned helpers: ${counts.abandonedHelpers}.`);
++    }
++  }).catch(() => {
++    logEvent('error', 'reader.shutdown_failed');
++    dialog.showErrorBox('Reader shutdown failed', 'Reader cleanup could not be confirmed.');
++  }).finally(() => {
++    closeDatabase(); shutdownComplete = true; app.quit();
++  });
+ });
+ 
+ app.on('window-all-closed', () => {
+--- c1a/src/main/project-read-service.cjs
++++ c1b/src/main/project-read-service.cjs
+@@ -1,5 +1,5 @@
+ 'use strict';
+-// Host-internal boundary prototype. NOT exposed to Electron/IPC in C1a.
++// Root-bound read service; C1b exposure is mediated by DesktopReader.
+ // Root comes from a trusted registry resolver, never from request arguments.
+ const fs = require('node:fs');
+ const path = require('node:path');
+@@ -20,6 +20,9 @@
+   return { dev: String(st.dev), ino: String(st.ino) };
+ }
+ function denyName(name) {
++  // Conservative refusal of the three reviewed filesystem-folding hazards.
++  // This is intentionally not a claim of universal Unicode case folding.
++  if (/[\u017f\u212a\u00df\u1e9e]/.test(name)) return true;
+   const n = name.toLowerCase();
+   return policy.deniedNames.includes(n) || policy.deniedPrefixes.some(x => n.startsWith(x)) || policy.deniedExtensions.some(x => n.endsWith(x));
+ }
+@@ -44,6 +47,7 @@
+     this.binary = options.binary || path.join(__dirname, '../../bin/project-reader');
+     this.timeoutMs = options.timeoutMs || 5000;
+     this.killGraceMs = options.killGraceMs || 2000;
++    this.verifyBinary = options.verifyBinary || null;
+     this.spawn = options.spawn || spawn; // trusted test seam, never a request option
+     this.userDataPath = path.resolve(options.userDataPath || path.join(os.homedir(), process.platform === 'darwin' ? 'Library/Application Support/dvl-desktop' : '.config/dvl-desktop'));
+     this.children = new Set(); this.abandoned = new Set();
+@@ -134,6 +138,7 @@
+     if (!fs.existsSync(this.binary)) throw fail('BOUNDARY_UNSUPPORTED');
+     if (!job.session) {
+       if (this.children.size >= 2) throw fail('BUSY');
++      if (this.verifyBinary && !this.verifyBinary()) throw fail('HELPER_INTEGRITY_FAILED');
+       job.session = new ReaderSession(this, ctx, job);
+     }
+     const result = await job.session.call(op, rel, offset);
+--- c1a/src/main/read-support.cjs
++++ c1b/src/main/read-support.cjs
+@@ -21,13 +21,14 @@
+     if (path.dirname(p) === p) break;
+   } return false;
+ }
++const protectedHomeTrees = [...new Set([...policy.homeTrees, ...policy.deniedNames.filter(n => n.startsWith('.'))])].sort();
+ function rootAllowed(root, userDataPath) {
+   const home = canonical(os.homedir());
+   if (policy.rootExact.some(x => canonical(x) === root || (fs.existsSync(x) && ancestor(root, canonical(x)) && ancestor(canonical(x), root)))) return false;
+   if (policy.rootTrees.some(x => ancestor(canonical(x), root))) return false;
+   if (ancestor(root, home)) return false;
+   const userData = canonical(userDataPath || path.join(home, process.platform === 'darwin' ? 'Library/Application Support/dvl-desktop' : '.config/dvl-desktop'));
+-  const protectedTrees = [...policy.homeTrees.map(p => canonical(path.join(home, p))), userData];
++  const protectedTrees = [...protectedHomeTrees.map(p => canonical(path.join(home, p))), userData];
+   return !protectedTrees.some(p => ancestor(root, p) || ancestor(p, root));
+ }
+ function validateNative(out, op) {
+@@ -76,4 +77,4 @@
+     lineStart = end + 1; lineNumber++;
+   } check(); return null;
+ }
+-module.exports = { policy, rootAllowed, validateNative, matchText, yieldLoop };
++module.exports = { protectedHomeTrees, policy, rootAllowed, validateNative, matchText, yieldLoop };
+--- c1a/src/preload/preload.js
++++ c1b/src/preload/preload.js
+@@ -10,5 +10,16 @@
+   getSetting: (name) => ipcRenderer.invoke('dvl:get-setting', name),
+   setSecret: (name, value) => ipcRenderer.invoke('dvl:set-secret', name, value),
+   hasSecret: (name) => ipcRenderer.invoke('dvl:has-secret', name),
+-  deleteSecret: (name) => ipcRenderer.invoke('dvl:delete-secret', name)
++  deleteSecret: (name) => ipcRenderer.invoke('dvl:delete-secret', name),
++  getReadContext: () => ipcRenderer.invoke('dvl:reader:context'),
++  listDirectory: request => ipcRenderer.invoke('dvl:reader:listDirectory', request),
++  readTextFile: request => ipcRenderer.invoke('dvl:reader:readTextFile', request),
++  searchText: request => ipcRenderer.invoke('dvl:reader:searchText', request),
++  cancelRead: request => ipcRenderer.invoke('dvl:reader:cancel', request),
++  onReaderState: callback => {
++    if (typeof callback !== 'function') throw new TypeError('Callback required');
++    const listener = (_event, state) => callback(state);
++    ipcRenderer.on('dvl:reader:state', listener);
++    return () => ipcRenderer.removeListener('dvl:reader:state', listener);
++  }
+ });
+--- /dev/null
++++ c1b/src/renderer/files.js
+@@ -0,0 +1,116 @@
++'use strict';
++(() => {
++  const el = name => document.getElementById(name);
++  let selected = null, context = null, directory = '.', cursor = null;
++  let revision = 0, action = 0, contextFetch = 0;
++  const pending = new Map();
++  const status = text => { el('filesStatus').textContent = text; };
++  function clear() {
++    el('fileEntries').textContent = ''; el('fileText').textContent = '';
++    el('fileTitle').textContent = ''; el('searchResults').textContent = '';
++    el('directoryName').textContent = '.'; cursor = null;
++    el('filesMore').hidden = true;
++  }
++  function controls() {
++    const disabled = !context;
++    for (const name of ['filesRefresh', 'filesUp', 'filesSearch', 'filesQuery', 'filesMore']) el(name).disabled = disabled;
++    el('filesUp').disabled = disabled || directory === '.';
++    el('filesStop').disabled = pending.size === 0;
++  }
++  function cancelPending() {
++    for (const req of pending.values()) {
++      window.dvl.cancelRead({ projectId: req.projectId, contextGeneration: req.contextGeneration, requestId: req.requestId }).catch(() => {});
++    }
++  }
++  function stop() { action++; cancelPending(); controls(); status('Stopped.'); }
++  async function request(op, values, ticket) {
++    const bound = context, generation = revision;
++    if (!bound) return null;
++    const req = { ...bound, ...values, requestId: crypto.randomUUID() };
++    pending.set(req.requestId, req); controls();
++    try {
++      const result = await window.dvl[op](req);
++      if (generation !== revision || context !== bound || ticket !== action) return null;
++      if (!result?.ok) { status('Reader: ' + (result?.error?.code || 'RUNTIME_FAILED')); return null; }
++      if (result.requestId !== req.requestId || result.projectId !== bound.projectId || result.contextGeneration !== bound.contextGeneration) { status('Reader: STALE_CONTEXT'); return null; }
++      return result.data;
++    } catch { if (generation === revision && ticket === action) status('Reader request failed.'); return null; }
++    finally { pending.delete(req.requestId); controls(); }
++  }
++  function button(text, run) {
++    const b = document.createElement('button'); b.type = 'button'; b.textContent = text;
++    b.addEventListener('click', run); return b;
++  }
++  async function list(rel, next) {
++    cancelPending(); const ticket = ++action;
++    el('searchResults').textContent = ''; el('fileText').textContent = ''; el('fileTitle').textContent = '';
++    if (!next) { el('fileEntries').textContent = ''; cursor = null; el('filesMore').hidden = true; }
++    status('Loading permitted entries…');
++    const data = await request('listDirectory', { relativePath: rel, ...(next ? { cursor: next } : {}) }, ticket);
++    if (!data) return;
++    directory = rel; cursor = data.nextCursor;
++    el('directoryName').textContent = rel;
++    for (const entry of data.entries) {
++      const b = button((entry.kind === 'directory' ? '▸ ' : '') + entry.name,
++        () => entry.kind === 'directory' ? list(entry.relativePath) : read(entry.relativePath));
++      b.className = 'file-entry'; el('fileEntries').appendChild(b);
++    }
++    el('filesMore').hidden = !cursor; controls();
++    status(data.complete ? 'Complete over permitted entries on this page.' :
++      `Partial: ${data.partialReason}; skipped: ${data.skipped}.`);
++  }
++  async function read(rel) {
++    cancelPending(); const ticket = ++action;
++    el('fileText').textContent = ''; el('fileTitle').textContent = rel; status('Reading…');
++    const data = await request('readTextFile', { relativePath: rel }, ticket);
++    if (!data) return;
++    el('fileText').textContent = data.text;
++    status(`Read ${data.byteLength} bytes. Observation only; not a project snapshot.`);
++  }
++  async function search() {
++    cancelPending(); const ticket = ++action;
++    el('searchResults').textContent = ''; el('fileText').textContent = ''; el('fileTitle').textContent = '';
++    status('Searching permitted files…');
++    const data = await request('searchText', { relativePath: directory, query: el('filesQuery').value }, ticket);
++    if (!data) return;
++    for (const match of data.matches) {
++      const b = button(`${match.relativePath}:${match.line}:${match.column} — ${match.snippet}`, () => read(match.relativePath));
++      b.className = 'search-match'; el('searchResults').appendChild(b);
++    }
++    const skips = Object.values(data.skipped).reduce((a, b) => a + b, 0);
++    status(`${data.matches.length} matches; ${data.filesScanned} files scanned. ` +
++      (data.complete ? 'Complete over permitted files.' : `Partial: ${data.partialReason}; excluded directories: ${data.excludedDirectories}; skipped: ${skips}.`));
++  }
++  function applyState(state) {
++    revision++; action++; cancelPending(); context = null; clear();
++    if (state?.shutdown) {
++      const c = state.shutdown;
++      status(`Shutdown: pending ${c.pendingRequests}; live ${c.liveHelpers}; abandoned ${c.abandonedHelpers}.`);
++    } else if (state?.error) status('Reader: ' + state.error.code);
++    else if (state?.context?.projectId === selected && !state.closing) {
++      context = state.context; directory = '.'; status('Ready.');
++    } else status(selected ? 'Reader unavailable for this project.' : 'Open a project to inspect permitted files.');
++    controls(); if (context) list('.');
++  }
++  window.dvl.onReaderState(state => {
++    contextFetch++; applyState(state);
++  });
++  window.dvlFiles = {
++    async showProject(projectId) {
++      selected = projectId; revision++; action++; cancelPending(); context = null; clear(); controls();
++      const fetch = ++contextFetch;
++      if (!selected) { status('Open a project to inspect permitted files.'); return; }
++      status('Checking reader…');
++      try {
++        const state = await window.dvl.getReadContext();
++        if (fetch === contextFetch) applyState(state);
++      } catch { if (fetch === contextFetch) status('Reader unavailable.'); }
++    }
++  };
++  el('filesRefresh').addEventListener('click', () => list(directory));
++  el('filesUp').addEventListener('click', () => list(directory.includes('/') ? directory.slice(0, directory.lastIndexOf('/')) : '.'));
++  el('filesMore').addEventListener('click', () => { if (cursor) list(directory, cursor); });
++  el('filesStop').addEventListener('click', stop);
++  el('filesSearchForm').addEventListener('submit', event => { event.preventDefault(); search(); });
++  controls();
++})();
+--- c1a/src/renderer/index.html
++++ c1b/src/renderer/index.html
+@@ -168,6 +168,15 @@
+       color: #999;
+       font-size: 12px;
+     }
++    button:disabled { opacity: .45; cursor: default; }
++    button:focus-visible, input:focus-visible { outline: 2px solid #c4a6ff; outline-offset: 2px; }
++    .files-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0; }
++    .files-toolbar input { min-width: 70px; flex: 1; color: #eee; background: #111; border: 1px solid #555; padding: 7px; }
++    .file-path { margin: 8px 0; overflow-wrap: anywhere; font-family: monospace; }
++    #filesStatus { font-size: 12px; color: #ccc; margin: 8px 0; overflow-wrap: anywhere; }
++    .file-entry, .search-match { display: block; width: 100%; text-align: left; border-radius: 3px; margin: 3px 0; overflow-wrap: anywhere; }
++    #fileText { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; line-height: 1.5; max-height: 400px; overflow: auto; }
++    @media (max-width: 850px) { .app { grid-template-columns: 185px 1fr; } .workspace { grid-template-columns: 1fr; grid-template-rows: auto; overflow: auto; } }
+   </style>
+ </head>
+ <body>
+@@ -215,10 +224,25 @@
+         </section>
+ 
+         <section class="panel" id="filesPanel">
+-          <h2>Files / Activity</h2>
+-          <div class="placeholder">
+-            Static shell only. Real filesystem/runtime activity comes in Phase C.
+-          </div>
++          <h2>Files — read only</h2>
++          <div class="files-toolbar">
++            <button id="filesRefresh" type="button">Refresh</button>
++            <button id="filesUp" type="button">Up</button>
++            <button id="filesStop" type="button" disabled>Stop</button>
++          </div>
++          <div id="directoryName" class="file-path">.</div>
++          <form id="filesSearchForm" class="files-toolbar">
++            <label for="filesQuery">Literal search</label>
++            <input id="filesQuery" type="text" autocomplete="off" />
++            <button id="filesSearch" type="submit">Search</button>
++          </form>
++          <div id="filesStatus" role="status" aria-live="polite">Open a project to inspect permitted files.</div>
++          <div id="fileEntries" aria-label="Permitted files and directories"></div>
++          <button id="filesMore" type="button" hidden>Load next page</button>
++          <div id="searchResults" aria-label="Search matches"></div>
++          <div id="fileTitle" class="file-path"></div>
++          <pre id="fileText" tabindex="0" aria-label="File contents"></pre>
++          <p class="placeholder">Completeness covers permitted files. Reads are observations, not a project snapshot.</p>
+         </section>
+ 
+         <section class="panel" id="terminalPanel">
+@@ -238,6 +262,7 @@
+     </main>
+   </div>
+ 
++  <script src="./files.js"></script>
+   <script src="./renderer.js"></script>
+ </body>
+ </html>
+--- c1a/src/renderer/renderer.js
++++ c1b/src/renderer/renderer.js
+@@ -8,6 +8,7 @@
+ const secretStatus = document.getElementById('secretStatus');
+ 
+ function renderActiveProject(project) {
++  window.dvlFiles?.showProject(project?.projectId || null);
+   if (!project) {
+     projectPath.textContent = 'No project selected';
+     projectId.textContent = '';
+@@ -20,7 +21,7 @@
+ 
+ async function renderRecentProjects() {
+   const projects = await window.dvl.listRecentProjects();
+-  recentProjects.innerHTML = '';
++  recentProjects.textContent = '';
+ 
+   if (!projects || projects.length === 0) {
+     const empty = document.createElement('div');
+--- /dev/null
++++ c1b/tests/c1b-electron-child.cjs
+@@ -0,0 +1,108 @@
++'use strict';
++// Actual production Electron window, preload, main IPC and native reader.
++// Fixtures and state are disposable; no production testing hooks are enabled.
++const { app, BrowserWindow, dialog } = require('electron');
++const path = require('node:path');
++const fs = require('node:fs');
++const os = require('node:os');
++const assert = require('node:assert/strict');
++const data = process.argv[2];
++if (!data || !fs.realpathSync(data).startsWith(fs.realpathSync(os.tmpdir()) + path.sep)) throw new Error('Disposable OS temp directory required');
++const project = path.join(data, 'fixture-project'), other = path.join(data, 'fixture-other');
++fs.mkdirSync(project); fs.mkdirSync(other);
++fs.writeFileSync(path.join(project, 'known.txt'), '<script>window.C1B_EXECUTED=true</script> C1B_QUERY_SENTINEL');
++fs.writeFileSync(path.join(project, '.env'), 'C1B_HIDDEN_SECRET');
++fs.mkdirSync(path.join(project, 'dist')); fs.writeFileSync(path.join(project, 'dist/ignored.txt'), 'C1B_QUERY_SENTINEL');
++fs.writeFileSync(path.join(other, 'other.txt'), 'OTHER_PROJECT_CONTENT');
++const inventory = () => [fs.readFileSync(path.join(project, 'known.txt'), 'hex'), fs.readFileSync(path.join(project, '.env'), 'hex'), fs.readFileSync(path.join(other, 'other.txt'), 'hex')];
++const before = inventory();
++app.setPath('userData', path.join(data, 'state'));
++let chosen = project;
++dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [chosen] });
++const timer = setTimeout(() => { console.error('C1b Electron integration timed out'); app.exit(1); }, 45000);
++require('../src/main/main.js');
++app.whenReady().then(async () => {
++  let passes = 0;
++  const check = async (name, f) => { await f(); passes++; console.log('PASS', name); };
++  try {
++    const win = BrowserWindow.getAllWindows()[0]; assert.ok(win);
++    if (win.webContents.isLoadingMainFrame()) await new Promise((resolve, reject) => {
++      win.webContents.once('did-finish-load', resolve); win.webContents.once('did-fail-load', () => reject(new Error('Production page failed to load')));
++    });
++    const js = source => win.webContents.executeJavaScript(source);
++    const opened = await js('window.dvl.openProject()');
++    let context = (await js('window.dvl.getReadContext()')).context; assert.ok(context);
++    const request = (extra = {}) => ({ ...context, requestId: require('node:crypto').randomUUID(), relativePath: 'known.txt', ...extra });
++    const invoke = (op, r) => js(`window.dvl.${op}(${JSON.stringify(r)})`);
++    await check('Real Electron preload has narrow methods and no renderer binding/root API', async () => {
++      assert.equal(await js('typeof require'), 'undefined'); assert.equal(await js('typeof window.dvl.bind'), 'undefined');
++      assert.equal(context.projectId, opened.project.projectId);
++    });
++    await check('Actual native list/read/search through production IPC', async () => {
++      const list = await invoke('listDirectory', request({ relativePath: '.' })); assert.equal(list.ok, true, JSON.stringify(list));
++      assert.ok(list.data.entries.some(e => e.name === 'known.txt')); assert.ok(!list.data.entries.some(e => e.name === '.env'));
++      const read = await invoke('readTextFile', request()); assert.equal(read.ok, true, JSON.stringify(read)); assert.match(read.data.text, /C1B_QUERY_SENTINEL/);
++      assert.ok(['seatbelt', 'landlock'].includes(read.data.boundaryMode));
++      const search = await invoke('searchText', request({ relativePath: '.', query: 'C1B_QUERY_SENTINEL' }));
++      assert.equal(search.ok, true, JSON.stringify(search)); assert.equal(search.data.complete, false); assert.equal(search.data.partialReason, 'DIRECTORIES_EXCLUDED'); assert.equal(search.data.excludedDirectories, 1);
++    });
++    await check('Live UI displays markup as text and does not execute it', async () => {
++      await js(`window.dvlFiles.showProject(${JSON.stringify(context.projectId)})`);
++      await js(`new Promise((resolve, reject) => {
++        const start = Date.now(); const t = setInterval(() => {
++          const b = Array.from(document.querySelectorAll('.file-entry')).find(b => b.textContent === 'known.txt');
++          if (b) { clearInterval(t); b.click(); resolve(); }
++          else if (Date.now() - start > 8000) { clearInterval(t); reject(new Error('No file entry')); }
++        }, 20);
++      })`);
++      const text = await js(`new Promise((resolve, reject) => {
++        const start = Date.now(); const t = setInterval(() => {
++          const value = document.getElementById('fileText').textContent;
++          if (value) { clearInterval(t); resolve(value); }
++          else if (Date.now() - start > 8000) { clearInterval(t); reject(new Error('No file text')); }
++        }, 20);
++      })`);
++      assert.match(text, /<script>/); assert.equal(await js('window.C1B_EXECUTED === undefined'), true);
++    });
++    await check('Production IPC refuses caller root, traversal, denied file and extra query keys', async () => {
++      for (const r of [request({ root: other }), request({ relativePath: '../outside' }), request({ relativePath: '.env' }), request({ query: 'extra' })]) {
++        const out = await invoke('readTextFile', r); assert.equal(out.ok, false); assert.doesNotMatch(JSON.stringify(out), /C1B_HIDDEN_SECRET/);
++      }
++    });
++    await check('Native B regression: regular-file and symlink replacements cannot impersonate a registered project', async () => {
++      for (const kind of ['file', 'symlink']) {
++        fs.renameSync(project, project + '-away');
++        try {
++          if (kind === 'file') fs.writeFileSync(project, 'replacement'); else fs.symlinkSync(other, project);
++          assert.equal(await js('window.dvl.getLastProject()'), null);
++          const refused = await invoke('readTextFile', request());
++          assert.equal(refused.ok, false); assert.doesNotMatch(JSON.stringify(refused), /OTHER_PROJECT_CONTENT/);
++        } finally { fs.unlinkSync(project); fs.renameSync(project + '-away', project); }
++        const restored = await js('window.dvl.openProject()'); assert.equal(restored.project.projectId, opened.project.projectId);
++        context = (await js('window.dvl.getReadContext()')).context;
++      }
++    });
++    await check('Project A -> B rejects old context; new context reads only B', async () => {
++      chosen = other; await js('window.dvl.openProject()');
++      const stale = await invoke('readTextFile', request()); assert.equal(stale.error.code, 'STALE_CONTEXT');
++      const next = (await js('window.dvl.getReadContext()')).context;
++      assert.notEqual(next.contextGeneration, context.contextGeneration);
++      const out = await invoke('readTextFile', { ...next, requestId: 'other_read', relativePath: 'other.txt' });
++      assert.equal(out.ok, true); assert.equal(out.data.text, 'OTHER_PROJECT_CONTENT');
++    });
++    await check('Reload obtains a fresh generation and clears previous visible bytes', async () => {
++      const old = (await js('window.dvl.getReadContext()')).context;
++      const loaded = new Promise(resolve => win.webContents.once('did-finish-load', resolve)); win.webContents.reload(); await loaded;
++      const fresh = (await js('window.dvl.getReadContext()')).context;
++      assert.ok(fresh); assert.notEqual(fresh.contextGeneration, old.contextGeneration);
++      const out = await invoke('readTextFile', { ...old, requestId: 'old_document', relativePath: 'other.txt' }); assert.equal(out.error.code, 'STALE_CONTEXT');
++      assert.equal(await js("document.getElementById('fileText').textContent.includes('C1B_QUERY_SENTINEL')"), false);
++    });
++    await check('Fixture bytes unchanged, .dvl absent, no query/contents in logs', () => {
++      assert.deepEqual(inventory(), before); assert.equal(fs.existsSync(path.join(project, '.dvl')), false);
++      const logs = fs.readFileSync(path.join(data, 'state/logs/dvl.log'), 'utf8'); assert.doesNotMatch(logs, /C1B_QUERY_SENTINEL|C1B_HIDDEN_SECRET|OTHER_PROJECT_CONTENT|C1B_EXECUTED/);
++    });
++    console.log('C1B_ELECTRON_INTEGRATION_PASS', passes, process.platform, process.arch);
++    clearTimeout(timer); app.quit();
++  } catch (e) { clearTimeout(timer); console.error('C1b Electron integration failed:', e.message); app.exit(1); }
++});
+--- /dev/null
++++ c1b/tests/c1b-electron.cjs
+@@ -0,0 +1,39 @@
++'use strict';
++const { spawn } = require('node:child_process');
++const path = require('node:path');
++const fs = require('node:fs');
++const os = require('node:os');
++const assert = require('node:assert/strict');
++const base = fs.mkdtempSync(path.join(os.tmpdir(), 'dvl-c1b-electron-'));
++function run(script, { embeddedNode = false, marker, args = [] } = {}) {
++  return new Promise((resolve, reject) => {
++    const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE;
++    if (embeddedNode) env.ELECTRON_RUN_AS_NODE = '1';
++    const child = spawn(require('electron'), [path.join(__dirname, script), ...args], { env, shell: false });
++    let output = '';
++    const timer = setTimeout(() => child.kill('SIGKILL'), 90000);
++    child.stdout.on('data', bytes => { output += bytes; process.stdout.write(bytes); });
++    child.stderr.on('data', bytes => process.stderr.write(bytes));
++    child.on('error', e => { clearTimeout(timer); reject(e); });
++    child.on('close', code => {
++      clearTimeout(timer);
++      if (code !== 0 || !output.includes(marker)) reject(new Error(script + ' failed; exit ' + code)); else resolve();
++    });
++  });
++}
++(async () => {
++  try {
++    // Both native suites are coupled: repair-only is not confinement evidence.
++    for (const [script, marker] of [['c1-boundary.cjs', 'C1a CHECKS PASSED: 17'], ['c1-native-repair.cjs', 'C1a REPAIR NATIVE CHECKS PASSED: 10'], ['c1b-policy.cjs', 'C1b POLICY CHECKS PASSED: 3']]) {
++      await run(script, { embeddedNode: true, marker });
++    }
++    console.log('PASS Native suites in Electron embedded Node (not UI tests)');
++    await run('c1b-electron-child.cjs', { marker: 'C1B_ELECTRON_INTEGRATION_PASS', args: [base] });
++    const logs = fs.readFileSync(path.join(base, 'state/logs/dvl.log'), 'utf8');
++    const rows = logs.trim().split('\n').map(line => JSON.parse(line));
++    const close = rows.find(row => row.event === 'reader.shutdown'); assert.ok(close);
++    assert.equal(close.pendingRequests, 0); assert.equal(close.abandonedHelpers, 0); assert.equal(close.liveHelpers, 0);
++    assert.ok(rows.some(row => row.event === 'db.closed'));
++    console.log('C1B_ELECTRON_GATE_PASS (includes clean shutdown counts; independent review still required)');
++  } finally { fs.rmSync(base, { recursive: true, force: true }); }
++})().catch(e => { console.error(e.message); process.exitCode = 1; });
+--- /dev/null
++++ c1b/tests/c1b-ipc.cjs
+@@ -0,0 +1,134 @@
++'use strict';
++// Controller tests use real policy/binding and a simulated request completion.
++// These assertions are NOT native confinement or Electron runtime evidence.
++const assert = require('node:assert/strict');
++const fs = require('node:fs');
++const path = require('node:path');
++const os = require('node:os');
++const { EventEmitter } = require('node:events');
++const { DesktopReader, verifyHelper } = require('../src/main/desktop-reader.cjs');
++const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'dvl-c1b-ipc-')));
++const project = path.join(base, 'project'), other = path.join(base, 'other');
++fs.mkdirSync(project); fs.mkdirSync(other);
++const controllers = []; let count = 0, number = 0;
++async function test(name, fn) { await fn(); console.log('PASS', name); count++; }
++function setup() {
++  const handlers = new Map(), logs = [], sender = new EventEmitter();
++  let url;
++  Object.assign(sender, { mainFrame: {}, getURL: () => url, isDestroyed: () => false, send: (channel, state) => { sender.lastState = state; }, setWindowOpenHandler: fn => { sender.open = fn; } });
++  const win = { webContents: sender };
++  const c = new DesktopReader({ app: { isPackaged: false, getPath: () => path.join(base, 'userData') }, ipcMain: { handle: (name, fn) => handlers.set(name, fn) },
++    getWindow: () => win, resolveProject: projectId => ({ projectId, path: projectId === 'A' ? project : other, available: true }), logEvent: (...args) => logs.push(args) });
++  controllers.push(c); url = c.url; sender.mainFrame.url = url; c.attach(win); c.select({ projectId: 'A' });
++  const event = { sender, senderFrame: sender.mainFrame };
++  return { c, sender, event, logs, setURL: value => { url = value; },
++    invoke: (name, ...args) => handlers.get('dvl:reader:' + name)(event, ...args), handlers };
++}
++function req(c, extra = {}) { return { ...c.binding, requestId: 'ipc_' + ++number, relativePath: 'known.txt', ...extra }; }
++function immediate(c) { c.service.request = async (_op, r) => ({ ...r, ok: true, data: { text: 'INERT_CONTENT' } }); }
++async function main() {
++  await test('Helper is outside asar and matches platform, architecture and startup digest', () => {
++    const { c } = setup(); assert.equal(c.integrityError, null);
++    assert.equal(c.service.userDataPath, path.join(base, 'userData')); assert.equal(verifyHelper(c.binary, c.manifest), true);
++    const helper = path.join(base, 'helper'), manifest = path.join(base, 'manifest');
++    fs.copyFileSync(c.binary, helper); fs.chmodSync(helper, 0o700); fs.copyFileSync(c.manifest, manifest);
++    assert.equal(verifyHelper(helper, manifest), true); fs.appendFileSync(helper, 'modified'); assert.equal(verifyHelper(helper, manifest), false);
++    fs.rmSync(helper); assert.equal(verifyHelper(helper, manifest), false);
++    assert.equal(verifyHelper('/app.asar/bin/project-reader', manifest), false);
++    const m = JSON.parse(fs.readFileSync(c.manifest)); m.arch = 'wrong'; fs.writeFileSync(manifest, JSON.stringify(m)); assert.equal(verifyHelper(c.binary, manifest), false);
++  });
++  await test('Reject foreign webContents, child frames, wrong origin and detached frames', async () => {
++    const { c, event, sender, setURL } = setup(); immediate(c);
++    for (const e of [{}, { ...event, sender: { ...sender } }, { ...event, senderFrame: { url: c.url } }, { ...event, senderFrame: null }]) {
++      assert.equal((await c.request(e, 'readTextFile', [req(c)])).error.code, 'SENDER_DENIED');
++    }
++    sender.mainFrame.url = c.url + '?fake'; assert.equal(c.isTrusted(event), false);
++    sender.mainFrame.url = c.url; setURL('https://example.invalid/'); assert.equal(c.isTrusted(event), false);
++  });
++  await test('Own main frame receives bounded context without root or rebinding capability', async () => {
++    const x = setup(); const status = await x.invoke('context');
++    assert.equal(status.context.projectId, 'A'); assert.deepEqual(Object.keys(status.context).sort(), ['contextGeneration', 'projectId']);
++    assert.match(status.completeness, /permitted files/);
++    assert.equal((await x.invoke('context', {})).error.code, 'INVALID_REQUEST');
++    assert.equal(x.handlers.has('dvl:reader:bind'), false);
++  });
++  await test('Exact IPC schemas reject root injection, missing/unknown keys, bad query and extra args', async () => {
++    const { c, invoke } = setup(); immediate(c);
++    for (const extra of [{ root: other }, { relativePath: '../outside' }, { relativePath: '/outside' }, { contextGeneration: undefined }, { requestId: '' }, { relativePath: '.env' }]) {
++      assert.equal((await invoke('readTextFile', req(c, extra))).ok, false);
++    }
++    assert.equal((await invoke('searchText', req(c, { relativePath: '.', query: 'a\nb' }))).error.code, 'INVALID_REQUEST');
++    assert.equal((await invoke('readTextFile', req(c), 'extra')).error.code, 'INVALID_REQUEST');
++    assert.equal((await invoke('readTextFile', null)).error.code, 'INVALID_REQUEST');
++    assert.equal((await invoke('cancel', { ...c.binding, requestId: 'x', root: other })).error.code, 'INVALID_REQUEST');
++  });
++  await test('Wrong generation/project cannot reach the service', async () => {
++    const { c, invoke } = setup(); c.service.request = () => { throw new Error('must not run'); };
++    assert.equal((await invoke('readTextFile', req(c, { projectId: 'B' }))).error.code, 'STALE_CONTEXT');
++    assert.equal((await invoke('readTextFile', req(c, { contextGeneration: 'old' }))).error.code, 'STALE_CONTEXT');
++  });
++  await test('Exception mapping never reveals exception text or helper payload', async () => {
++    const { c, invoke } = setup(); c.service.request = async () => { throw Object.assign(new Error('PRIVATE_SECRET /private/path'), { code: 'PRIVATE_SECRET' }); };
++    const result = await invoke('readTextFile', req(c)); assert.equal(result.error.code, 'RUNTIME_FAILED'); assert.doesNotMatch(JSON.stringify(result), /PRIVATE_SECRET|private\/path/);
++  });
++  await test('Per-renderer pending ceiling and duplicate ownership do not overwrite a request', async () => {
++    const { c, invoke } = setup(); const finish = []; c.service.request = (_op, r) => new Promise(resolve => finish.push(() => resolve({ ...r, ok: true, data: {} })));
++    const request = req(c), first = invoke('readTextFile', request);
++    assert.equal((await invoke('readTextFile', request)).error.code, 'INVALID_REQUEST');
++    const rest = Array.from({ length: 3 }, () => invoke('readTextFile', req(c)));
++    assert.equal((await invoke('readTextFile', req(c))).error.code, 'BUSY');
++    finish.forEach(f => f()); await Promise.all([first, ...rest]); assert.equal(c.owners.size, 0);
++  });
++  await test('A -> B fences an in-flight completion even when backend ignored cancellation', async () => {
++    const { c, invoke } = setup(); let finish;
++    c.service.request = (_op, r) => new Promise(resolve => { finish = () => resolve({ ...r, ok: true, data: { text: 'OLD_PROJECT' } }); });
++    const result = invoke('readTextFile', req(c)); c.select({ projectId: 'B' }); finish();
++    const out = await result; assert.equal(out.error.code, 'STALE_CONTEXT'); assert.doesNotMatch(JSON.stringify(out), /OLD_PROJECT/);
++  });
++  await test('Reload same URL fences old document, preserves rate budget and rebinds fresh generation', async () => {
++    const { c, sender, invoke } = setup(); let finish; const old = c.binding;
++    c.service.request = (_op, r) => new Promise(resolve => { finish = () => resolve({ ...r, ok: true, data: { text: 'OLD_DOCUMENT' } }); });
++    const result = invoke('readTextFile', req(c)); sender.emit('did-start-navigation', {}, c.url, false, true);
++    finish(); assert.equal((await result).error.code, 'STALE_CONTEXT');
++    sender.emit('did-finish-load'); assert.notEqual(c.binding.contextGeneration, old.contextGeneration);
++    immediate(c); let busy = false;
++    for (let i = 0; i < 35; i++) { const r = await invoke('readTextFile', req(c)); busy ||= r.error?.code === 'BUSY'; }
++    assert.equal(busy, true);
++  });
++  await test('Cancellation requires exact sender/frame/context ownership and code-maps throws', async () => {
++    const { c, invoke, event } = setup(); let finish;
++    c.service.request = (_op, r) => new Promise(resolve => { finish = () => resolve({ ...r, ok: true, data: {} }); });
++    const request = req(c), result = invoke('readTextFile', request);
++    const cancel = { ...c.binding, requestId: request.requestId };
++    let called = 0; c.service.cancel = () => { called++; return { acknowledged: true }; };
++    assert.equal(c.cancel({ ...event, senderFrame: { url: c.url } }, [cancel]).error.code, 'SENDER_DENIED');
++    assert.equal((await invoke('cancel', { ...cancel, contextGeneration: 'old' })).acknowledged, false);
++    assert.equal((await invoke('cancel', cancel)).acknowledged, true); assert.equal(called, 1);
++    c.service.cancel = () => { throw Object.assign(new Error('sensitive'), { code: 'STALE_CONTEXT' }); };
++    assert.equal((await invoke('cancel', cancel)).error.code, 'STALE_CONTEXT'); finish(); await result;
++  });
++  await test('Navigation/webviews/popups are blocked and renderer loss revokes binding', () => {
++    const { c, sender } = setup(); let blocked = 0;
++    sender.emit('will-navigate', { preventDefault: () => blocked++ }); sender.emit('will-attach-webview', { preventDefault: () => blocked++ });
++    assert.equal(blocked, 2); assert.equal(sender.open().action, 'deny');
++    sender.emit('render-process-gone'); assert.equal(c.binding, null); assert.equal(c.service.context, null);
++  });
++  await test('Helper modification after startup is refused before spawning', async () => {
++    const { c } = setup(); const local = path.join(base, 'modified-helper'); fs.copyFileSync(c.binary, local); fs.chmodSync(local, 0o700); fs.appendFileSync(local, 'modified');
++    c.service.binary = local; c.service.verifyBinary = () => verifyHelper(local, c.manifest);
++    let spawns = 0; c.service.spawn = () => { spawns++; throw new Error('must not run'); };
++    const result = await c.service.request('readTextFile', req(c)); assert.equal(result.error.code, 'HELPER_INTEGRITY_FAILED'); assert.equal(spawns, 0);
++  });
++  await test('Close is idempotent, rejects reads and surfaces exact cleanup counts without content logs', async () => {
++    const { c, sender, logs, invoke } = setup(); const expected = { pendingRequests: 1, abandonedHelpers: 1, liveHelpers: 1 };
++    let closes = 0; c.service.close = async () => { closes++; return expected; };
++    assert.deepEqual(await c.close(), expected); assert.deepEqual(await c.close(), expected); assert.equal(closes, 1);
++    assert.deepEqual(sender.lastState.shutdown, expected); assert.deepEqual(logs[0], ['info', 'reader.shutdown', expected]);
++    assert.equal((await invoke('readTextFile', { projectId: 'A', contextGeneration: 'old', requestId: 'x', relativePath: 'a' })).error.code, 'STALE_CONTEXT');
++    assert.doesNotMatch(JSON.stringify(logs), /INERT_CONTENT|known.txt|query/);
++  });
++  console.log('C1b IPC CONTROL CHECKS PASSED:', count, '(simulated completion; not native/Electron qualification)');
++}
++main().catch(e => { console.error(e); process.exitCode = 1; }).finally(async () => {
++  for (const c of controllers) await c.close(); fs.rmSync(base, { recursive: true, force: true });
++});
+--- /dev/null
++++ c1b/tests/c1b-policy.cjs
+@@ -0,0 +1,50 @@
++'use strict';
++// Pre-confinement policy checks. Passing does not qualify the OS boundary.
++const fs = require('node:fs');
++const path = require('node:path');
++const os = require('node:os');
++const assert = require('node:assert/strict');
++const { spawnSync } = require('node:child_process');
++const { protectedHomeTrees, rootAllowed } = require('../src/main/read-support.cjs');
++const { ProjectReadService, validPath } = require('../src/main/project-read-service.cjs');
++const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'dvl-c1b-policy-')));
++const helper = path.join(__dirname, '../bin/project-reader');
++const service = new ProjectReadService(projectId => ({ projectId, path: base, available: true }));
++let count = 0;
++function raw(root, rel) {
++  const st = fs.statSync(root, { bigint: true });
++  const run = spawnSync(helper, { input: `read\n${Buffer.from(root).toString('hex')}\n${Buffer.from(rel).toString('hex')}\n0 ${st.dev} ${st.ino}\n`, encoding: 'utf8', timeout: 5000 });
++  assert.equal(run.error, undefined); return JSON.parse(run.stdout);
++}
++async function test(name, fn) { await fn(); console.log('PASS', name); count++; }
++(async () => {
++  await test('N-1 all derived protected home entries are rejected by the host', () => {
++    for (const tree of protectedHomeTrees) assert.equal(rootAllowed(path.join(os.homedir(), tree), path.join(base, 'userData')), false, tree);
++    for (const name of ['.kube', '.gnupg', '.azure', '.password-store']) assert.ok(protectedHomeTrees.includes(name));
++  });
++  await test('N-1 native independently refuses protected credential roots before sandbox setup', () => {
++    // No production HOME override. Create empty directories only when absent,
++    // never write into an existing credential directory, remove only our own.
++    const created = [];
++    try {
++      for (const tree of ['.kube', '.gnupg', '.azure', '.password-store']) {
++        const p = path.join(os.userInfo().homedir, tree);
++        try { fs.mkdirSync(p, { mode: 0o700 }); created.push(p); }
++        catch (e) { if (e.code !== 'EEXIST') throw e; }
++        const root = fs.realpathSync(p);
++        assert.equal(raw(root, 'ordinary.txt').error, 'PROJECT_UNAVAILABLE', tree);
++      }
++    } finally { for (const p of created.reverse()) fs.rmdirSync(p); }
++  });
++  await test('N-2 stored long-s/Kelvin/sharp-s names are denied by host and direct native', async () => {
++    const c = service.bind('A'); let n = 0;
++    for (const name of ['credentialſ.json', 'srv.Key', '.ſsh', '.ßh', 'ẞ.txt']) {
++      fs.writeFileSync(path.join(base, name), 'STORED_FOLD_SECRET');
++      assert.throws(() => validPath(name, false), e => e.code === 'POLICY_DENIED');
++      assert.equal(raw(base, name).error, 'POLICY_DENIED');
++      const result = await service.request('readTextFile', { ...c, requestId: 'fold_' + ++n, relativePath: name });
++      assert.equal(result.error.code, 'POLICY_DENIED'); assert.doesNotMatch(JSON.stringify(result), /STORED_FOLD_SECRET/);
++    }
++  });
++  console.log('C1b POLICY CHECKS PASSED:', count, '(pre-confinement; not OS qualification)');
++})().catch(e => { console.error(e); process.exitCode = 1; }).finally(async () => { await service.close(); fs.rmSync(base, { recursive: true, force: true }); });
+--- /dev/null
++++ c1b/tests/c1b-renderer.cjs
+@@ -0,0 +1,60 @@
++'use strict';
++const fs = require('node:fs');
++const path = require('node:path');
++const vm = require('node:vm');
++const assert = require('node:assert/strict');
++const crypto = require('node:crypto');
++const names = ['filesStatus', 'fileEntries', 'fileText', 'fileTitle', 'searchResults', 'directoryName', 'filesMore', 'filesRefresh', 'filesUp', 'filesSearch', 'filesQuery', 'filesStop', 'filesSearchForm'];
++const elements = new Map();
++function element() { return { _text: '', children: [], events: {}, hidden: false, disabled: false, value: '',
++  get textContent() { return this._text; }, set textContent(t) { this._text = t; this.children = []; },
++  set innerHTML(_v) { throw new Error('HTML rendering forbidden'); },
++  appendChild(c) { this.children.push(c); }, addEventListener(n, f) { this.events[n] = f; } }; }
++for (const n of names) elements.set(n, element());
++const requests = [], cancels = []; let listener, state = { ok: true, context: { projectId: 'A', contextGeneration: 'ga' } };
++const dvl = { onReaderState: cb => { listener = cb; }, getReadContext: async () => state, cancelRead: async r => { cancels.push(r); return { ok: true }; } };
++for (const op of ['readTextFile', 'listDirectory', 'searchText']) dvl[op] = req => new Promise(resolve => requests.push({ op, req, finish: data => resolve({ ...req, ok: true, data }) }));
++const window = { dvl };
++vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../src/renderer/files.js'), 'utf8'), {
++  window, document: { getElementById: n => elements.get(n), createElement: element }, crypto
++});
++const tick = () => new Promise(resolve => setImmediate(resolve));
++let passed = 0;
++async function test(name, fn) { await fn(); console.log('PASS', name); passed++; }
++(async () => {
++  await test('Initial project obtains main-chosen generation and lists permitted entries as text', async () => {
++    await window.dvlFiles.showProject('A'); const list = requests.shift();
++    assert.equal(list.op, 'listDirectory'); assert.equal(list.req.projectId, 'A');
++    list.finish({ entries: [{ name: '<img src=x onerror=alert(1)>', relativePath: 'markup.txt', kind: 'file' }], complete: true, nextCursor: null }); await tick();
++    assert.equal(elements.get('fileEntries').children[0].textContent, '<img src=x onerror=alert(1)>');
++  });
++  await test('Markup contents remain inert text', async () => {
++    const done = elements.get('fileEntries').children[0].events.click(); const read = requests.shift();
++    read.finish({ text: '<script>window.LEAK=true</script>', byteLength: 38 }); await done;
++    assert.equal(elements.get('fileText').textContent, '<script>window.LEAK=true</script>'); assert.equal(window.LEAK, undefined);
++  });
++  await test('Project switch clears visible content and fences a late result', async () => {
++    const done = elements.get('fileEntries').children[0].events.click(); const old = requests.shift();
++    state = { ok: true, context: { projectId: 'B', contextGeneration: 'gb' } }; await window.dvlFiles.showProject('B');
++    assert.equal(elements.get('fileText').textContent, ''); old.finish({ text: 'OLD_SECRET', byteLength: 10 }); await done;
++    assert.equal(elements.get('fileText').textContent, ''); assert.ok(cancels.some(r => r.requestId === old.req.requestId));
++    const list = requests.shift(); list.finish({ entries: [], complete: true, nextCursor: null }); await tick();
++  });
++  await test('Search reports partial reason and counts without dropping semantics', async () => {
++    elements.get('filesQuery').value = 'needle'; elements.get('filesSearchForm').events.submit({ preventDefault() {} });
++    const search = requests.shift(); search.finish({ matches: [{ relativePath: 'a.txt', line: 1, column: 1, snippet: '<b>needle</b>' }], filesScanned: 1, complete: false, partialReason: 'DIRECTORIES_EXCLUDED', excludedDirectories: 1, skipped: { FILE_TOO_LARGE: 2 } }); await tick();
++    assert.match(elements.get('filesStatus').textContent, /Partial: DIRECTORIES_EXCLUDED; excluded directories: 1; skipped: 2/);
++    assert.match(elements.get('searchResults').children[0].textContent, /<b>needle<\/b>/);
++  });
++  await test('Stop fences late completion and invokes owned cancellation', async () => {
++    elements.get('filesSearchForm').events.submit({ preventDefault() {} }); const pending = requests.shift();
++    elements.get('filesStop').events.click(); pending.finish({ matches: [], filesScanned: 999, complete: true, skipped: {}, excludedDirectories: 0 }); await tick();
++    assert.equal(elements.get('filesStatus').textContent, 'Stopped.'); assert.ok(cancels.some(r => r.requestId === pending.req.requestId));
++  });
++  await test('Shutdown shows exact pending/live/abandoned counts and disables reading', () => {
++    listener({ ok: true, context: null, closing: true, shutdown: { pendingRequests: 2, liveHelpers: 1, abandonedHelpers: 1 } });
++    assert.equal(elements.get('filesStatus').textContent, 'Shutdown: pending 2; live 1; abandoned 1.');
++    assert.equal(elements.get('filesRefresh').disabled, true); assert.equal(elements.get('fileText').textContent, '');
++  });
++  console.log('C1b RENDERER CONTROL CHECKS PASSED:', passed, '(DOM simulation; not browser qualification)');
++})().catch(e => { console.error(e); process.exitCode = 1; });
+--- c1a/tests/green-gate.cjs
++++ c1b/tests/green-gate.cjs
+@@ -2,6 +2,7 @@
+ const os = require('node:os');
+ const path = require('node:path');
+ const vm = require('node:vm');
++const { pathToFileURL } = require('node:url');
+ const assert = require('node:assert/strict');
+ const { DatabaseSync } = require('node:sqlite');
+ const source = fs.readFileSync(path.join(__dirname, '../src/main/main.js'), 'utf8');
+@@ -14,7 +15,7 @@
+   const state = { quit: false, errorShown: false, sql: [] };
+   let start;
+   class Window {
+-    constructor(config) { this.options = config; this.events = new Map(); this.minimized = false; windows.push(this); }
++    constructor(config) { this.options = config; this.events = new Map(); this.minimized = false; windows.push(this); const url = pathToFileURL(path.join(__dirname, '../src/renderer/index.html')).href; this.webContents = { mainFrame: { url }, getURL: () => url, isDestroyed: () => false, on() {}, setWindowOpenHandler() {}, send() {} }; }
+     on(name, fn) { this.events.set(name, fn); }
+     loadFile() {}
+     isMinimized() { return this.minimized; }
+@@ -48,7 +49,7 @@
+     __dirname: path.join(__dirname, '../src/main'), process, Buffer, console });
+   vm.runInContext(source, ctx); if (start) start();
+   const result = { ctx, handlers, events, windows, state, electron,
+-    invoke: (name, ...args) => handlers.get('dvl:' + name)({}, ...args) };
++    invoke: (name, ...args) => handlers.get('dvl:' + name)({ sender: windows[0].webContents, senderFrame: windows[0].webContents.mainFrame }, ...args) };
+   boots.push(result); return result;
+ }
+ function inspect(data, fn) {
+@@ -95,7 +96,7 @@
+     r.windows[0].minimized = true; r.events.get('second-instance')(); assert.equal(r.windows[0].restored, true); assert.equal(r.windows[0].focused, true);
+     r.windows[0].close(); r.events.get('second-instance')(); assert.equal(r.windows.length, 1);
+   });
+-  await test('Before-quit checkpoints and closes database', () => { r.events.get('before-quit')(); const logs = fs.readFileSync(path.join(data, 'logs/dvl.log'), 'utf8'); assert.match(logs, /app.shutdown/); assert.match(logs, /db.wal_checkpoint/); assert.match(logs, /db.closed/); assert.throws(() => c.getSetting('test')); });
++  await test('Before-quit checkpoints and closes database', async () => { await r.events.get('before-quit')({ preventDefault() {} }); const logs = fs.readFileSync(path.join(data, 'logs/dvl.log'), 'utf8'); assert.match(logs, /app.shutdown/); assert.match(logs, /db.wal_checkpoint/); assert.match(logs, /db.closed/); assert.throws(() => c.getSetting('test')); });
+   const reopened = boot(data);
+   await test('Restart preserves project, setting and decryptable secret via IPC', async () => { assert.equal((await reopened.invoke('get-last-project')).projectId, id); assert.equal((await reopened.invoke('get-setting', 'test')).n, 1); assert.equal((await reopened.invoke('has-secret', 'test')).decryptable, true); });
+   await test('Unreadable ciphertext returns boolean failure; row retained', async () => {
+@@ -154,7 +155,7 @@
+   });
+   await test('Renderer handles unreadable secret, IPC failure and stale recent', async () => {
+     const elements = new Map();
+-    function element() { return { textContent: '', children: [], events: {}, appendChild(c) { this.children.push(c); }, addEventListener(n, f) { this.events[n] = f; }, set innerHTML(v) { this.children = []; } }; }
++    function element() { return { _text: '', get textContent() { return this._text; }, set textContent(v) { this._text = v; this.children = []; }, children: [], events: {}, appendChild(c) { this.children.push(c); }, addEventListener(n, f) { this.events[n] = f; }, set innerHTML(v) { this.children = []; } }; }
+     for (const n of ['openProject', 'projectPath', 'projectId', 'recentProjects', 'saveSetting', 'saveSecret', 'deleteSecret', 'secretStatus', 'appStatus']) elements.set(n, element());
+     let missing = false;
+     const dvl = { getLastProject: async () => null, listRecentProjects: async () => [{ projectId: 'p', displayName: 'Project', path: '/fixture', available: !missing }], openRecentProject: async () => null, hasSecret: async () => ({ configured: true, decryptable: false }), setSecret: async () => { throw new Error('unavailable'); } };
