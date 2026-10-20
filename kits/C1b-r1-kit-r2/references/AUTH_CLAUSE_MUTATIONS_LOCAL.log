@@ -1,0 +1,9 @@
+AUTH_CLAUSE_MUTATION {"clause":"!!win","childExit":0,"outcome":"EQUIVALENT_GUARD_UNDER_FAIL_CLOSED_CATCH","diagnostic":null}
+AUTH_CLAUSE_MUTATION {"clause":"!!sender","childExit":0,"outcome":"EQUIVALENT_GUARD_UNDER_FAIL_CLOSED_CATCH","diagnostic":null}
+AUTH_CLAUSE_MUTATION {"clause":"!sender.isDestroyed()","childExit":1,"outcome":"KILLED_BY_NEGATIVE_TEST","diagnostic":"AssertionError [ERR_ASSERTION]: Missing expected rejection: destroyed_sender:get-last-project"}
+AUTH_CLAUSE_MUTATION {"clause":"sender === win.webContents","childExit":1,"outcome":"KILLED_BY_NEGATIVE_TEST","diagnostic":"AssertionError [ERR_ASSERTION]: Missing expected rejection: foreign_sender:get-last-project"}
+AUTH_CLAUSE_MUTATION {"clause":"!!frame","childExit":0,"outcome":"EQUIVALENT_GUARD_UNDER_FAIL_CLOSED_CATCH","diagnostic":null}
+AUTH_CLAUSE_MUTATION {"clause":"frame === sender.mainFrame","childExit":1,"outcome":"KILLED_BY_NEGATIVE_TEST","diagnostic":"AssertionError [ERR_ASSERTION]: Missing expected rejection: foreign_frame:get-last-project"}
+AUTH_CLAUSE_MUTATION {"clause":"frame.url === this.url","childExit":1,"outcome":"KILLED_BY_NEGATIVE_TEST","diagnostic":"AssertionError [ERR_ASSERTION]: Missing expected rejection: frame_url_mismatch:get-last-project"}
+AUTH_CLAUSE_MUTATION {"clause":"sender.getURL() === this.url","childExit":1,"outcome":"KILLED_BY_NEGATIVE_TEST","diagnostic":"AssertionError [ERR_ASSERTION]: Missing expected rejection: navigated_sender:get-last-project"}
+C1B_AUTH_MUTATIONS_PASS {"clauses":8,"killed":5,"equivalentPresenceGuards":3,"alwaysDenyControlKilled":true,"scope":"mock-level; equivalent survivors are reported, not counted as killed"}

@@ -1,0 +1,3437 @@
+{
+  "macOSVersion": "13.7.8",
+  "electron": null,
+  "probeRevision": "v3-qualification1",
+  "plannedPairs": 79,
+  "startedAt": "2026-10-20T00:35:37.241Z",
+  "platform": "darwin",
+  "arch": "x64",
+  "node": "v26.8.1",
+  "osRelease": "22.6.0",
+  "targetProject": "/Users/user/Desktop/khedma.tn",
+  "sourceManifestSha256": "9e1183df128a8c96d45bf5b679ddc991becc204c16edc18aeb00191a03156d2a",
+  "caseFoldingData": {
+    "sourceUrl": "https://www.unicode.org/Public/18.0.0/ucd/CaseFolding.txt",
+    "sourceHeader": "# CaseFolding-18.0.0.txt",
+    "webLineCoverage": {
+      "observed": 1702,
+      "total": 1702
+    },
+    "algorithm": "Unicode default full case folding (C+F; S/T excluded)",
+    "asciiInputMappings": 26,
+    "nonAsciiToAscii": [
+      {
+        "codePoint": "U+00DF",
+        "character": "ß",
+        "mapping": "ss",
+        "status": "F"
+      },
+      {
+        "codePoint": "U+017F",
+        "character": "ſ",
+        "mapping": "s",
+        "status": "C"
+      },
+      {
+        "codePoint": "U+1E9E",
+        "character": "ẞ",
+        "mapping": "ss",
+        "status": "F"
+      },
+      {
+        "codePoint": "U+212A",
+        "character": "K",
+        "mapping": "k",
+        "status": "C"
+      },
+      {
+        "codePoint": "U+FB00",
+        "character": "ﬀ",
+        "mapping": "ff",
+        "status": "F"
+      },
+      {
+        "codePoint": "U+FB01",
+        "character": "ﬁ",
+        "mapping": "fi",
+        "status": "F"
+      },
+      {
+        "codePoint": "U+FB02",
+        "character": "ﬂ",
+        "mapping": "fl",
+        "status": "F"
+      },
+      {
+        "codePoint": "U+FB03",
+        "character": "ﬃ",
+        "mapping": "ffi",
+        "status": "F"
+      },
+      {
+        "codePoint": "U+FB04",
+        "character": "ﬄ",
+        "mapping": "ffl",
+        "status": "F"
+      },
+      {
+        "codePoint": "U+FB05",
+        "character": "ﬅ",
+        "mapping": "st",
+        "status": "F"
+      },
+      {
+        "codePoint": "U+FB06",
+        "character": "ﬆ",
+        "mapping": "st",
+        "status": "F"
+      },
+      {
+        "codePoint": "U+1DF95",
+        "character": "𝾕",
+        "mapping": "ss",
+        "status": "F"
+      }
+    ],
+    "turkicOnlyASCII": [
+      {
+        "codePoint": "U+0130",
+        "character": "İ",
+        "mapping": "i",
+        "status": "T"
+      }
+    ],
+    "scope": "All non-ASCII single code points in this pinned data whose default full fold consists entirely of ASCII. Not compatibility normalization, confusable detection, or proof of APFS equivalence.",
+    "retrievedLineCoverage": 1702
+  },
+  "scope": "Single-code-point default full fold to ASCII, plus a separate Turkic-only diagnostic. Not all Unicode/APFS equivalences.",
+  "results": [
+    {
+      "codePoint": "U+00DF",
+      "character": "ß",
+      "mapping": "ss",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": false,
+      "ascii": "probe_ss_end.txt",
+      "unicode": "probe_ß_end.txt",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "70726f62655f73735f656e642e747874"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "70726f62655fc39f5f656e642e747874"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+00DF",
+      "character": "ß",
+      "mapping": "ss",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".ssh",
+      "unicode": ".ßh",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e737368",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2ec39f68",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+00DF",
+      "character": "ß",
+      "mapping": "ss",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".pgpass",
+      "unicode": ".pgpaß",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e706770617373",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e70677061c39f",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+00DF",
+      "character": "ß",
+      "mapping": "ss",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".htpasswd",
+      "unicode": ".htpaßwd",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e6874706173737764",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e68747061c39f7764",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+00DF",
+      "character": "ß",
+      "mapping": "ss",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".password-store",
+      "unicode": ".paßword-store",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e70617373776f72642d73746f7265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e7061c39f776f72642d73746f7265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+017F",
+      "character": "ſ",
+      "mapping": "s",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": false,
+      "ascii": "probe_s_end.txt",
+      "unicode": "probe_ſ_end.txt",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "70726f62655f735f656e642e747874"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "70726f62655fc5bf5f656e642e747874"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+017F",
+      "character": "ſ",
+      "mapping": "s",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".ssh",
+      "unicode": ".ſsh",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e737368",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2ec5bf7368",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+017F",
+      "character": "ſ",
+      "mapping": "s",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".ssh",
+      "unicode": ".sſh",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e737368",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e73c5bf68",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+017F",
+      "character": "ſ",
+      "mapping": "s",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".aws",
+      "unicode": ".awſ",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e617773",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e6177c5bf",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+017F",
+      "character": "ſ",
+      "mapping": "s",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": "credentials",
+      "unicode": "credentialſ",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "63726564656e7469616c73",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "63726564656e7469616cc5bf",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+017F",
+      "character": "ſ",
+      "mapping": "s",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": "credentials.json",
+      "unicode": "credentialſ.json",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "63726564656e7469616c732e6a736f6e",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "63726564656e7469616cc5bf2e6a736f6e",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+017F",
+      "character": "ſ",
+      "mapping": "s",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": "credentials.json",
+      "unicode": "credentials.jſon",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "63726564656e7469616c732e6a736f6e",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "63726564656e7469616c732e6ac5bf6f6e",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+017F",
+      "character": "ſ",
+      "mapping": "s",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".git-credentials",
+      "unicode": ".git-credentialſ",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e6769742d63726564656e7469616c73",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e6769742d63726564656e7469616cc5bf",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+017F",
+      "character": "ſ",
+      "mapping": "s",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".pgpass",
+      "unicode": ".pgpaſs",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e706770617373",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e70677061c5bf73",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+017F",
+      "character": "ſ",
+      "mapping": "s",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".pgpass",
+      "unicode": ".pgpasſ",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e706770617373",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e7067706173c5bf",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+017F",
+      "character": "ſ",
+      "mapping": "s",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".htpasswd",
+      "unicode": ".htpaſswd",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e6874706173737764",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e68747061c5bf737764",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+017F",
+      "character": "ſ",
+      "mapping": "s",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".htpasswd",
+      "unicode": ".htpasſwd",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e6874706173737764",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e6874706173c5bf7764",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+017F",
+      "character": "ſ",
+      "mapping": "s",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".password-store",
+      "unicode": ".paſsword-store",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e70617373776f72642d73746f7265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e7061c5bf73776f72642d73746f7265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+017F",
+      "character": "ſ",
+      "mapping": "s",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".password-store",
+      "unicode": ".pasſword-store",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e70617373776f72642d73746f7265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e706173c5bf776f72642d73746f7265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+017F",
+      "character": "ſ",
+      "mapping": "s",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".password-store",
+      "unicode": ".password-ſtore",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e70617373776f72642d73746f7265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e70617373776f72642dc5bf746f7265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+017F",
+      "character": "ſ",
+      "mapping": "s",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": "id_rsaprobe",
+      "unicode": "id_rſaprobe",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "69645f72736170726f6265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "69645f72c5bf6170726f6265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+017F",
+      "character": "ſ",
+      "mapping": "s",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": "id_ecdsaprobe",
+      "unicode": "id_ecdſaprobe",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "69645f656364736170726f6265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "69645f656364c5bf6170726f6265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+017F",
+      "character": "ſ",
+      "mapping": "s",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": "id_dsaprobe",
+      "unicode": "id_dſaprobe",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "69645f64736170726f6265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "69645f64c5bf6170726f6265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+017F",
+      "character": "ſ",
+      "mapping": "s",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": "ordinary.tfstate",
+      "unicode": "ordinary.tfſtate",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792e74667374617465",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792e7466c5bf74617465",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+017F",
+      "character": "ſ",
+      "mapping": "s",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": "ordinary.keystore",
+      "unicode": "ordinary.keyſtore",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792e6b657973746f7265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792e6b6579c5bf746f7265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+017F",
+      "character": "ſ",
+      "mapping": "s",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": "ordinary.jks",
+      "unicode": "ordinary.jkſ",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792e6a6b73",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792e6a6bc5bf",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+1E9E",
+      "character": "ẞ",
+      "mapping": "ss",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": false,
+      "ascii": "probe_ss_end.txt",
+      "unicode": "probe_ẞ_end.txt",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "70726f62655f73735f656e642e747874"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "70726f62655fe1ba9e5f656e642e747874"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+1E9E",
+      "character": "ẞ",
+      "mapping": "ss",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".ssh",
+      "unicode": ".ẞh",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e737368",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2ee1ba9e68",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+1E9E",
+      "character": "ẞ",
+      "mapping": "ss",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".pgpass",
+      "unicode": ".pgpaẞ",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e706770617373",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e70677061e1ba9e",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+1E9E",
+      "character": "ẞ",
+      "mapping": "ss",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".htpasswd",
+      "unicode": ".htpaẞwd",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e6874706173737764",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e68747061e1ba9e7764",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+1E9E",
+      "character": "ẞ",
+      "mapping": "ss",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".password-store",
+      "unicode": ".paẞword-store",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e70617373776f72642d73746f7265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e7061e1ba9e776f72642d73746f7265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+212A",
+      "character": "K",
+      "mapping": "k",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": false,
+      "ascii": "probe_k_end.txt",
+      "unicode": "probe_K_end.txt",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "70726f62655f6b5f656e642e747874"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "70726f62655fe284aa5f656e642e747874"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+212A",
+      "character": "K",
+      "mapping": "k",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".kube",
+      "unicode": ".Kube",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e6b756265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2ee284aa756265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+212A",
+      "character": "K",
+      "mapping": "k",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".docker",
+      "unicode": ".docKer",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e646f636b6572",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e646f63e284aa6572",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+212A",
+      "character": "K",
+      "mapping": "k",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".vault-token",
+      "unicode": ".vault-toKen",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e7661756c742d746f6b656e",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e7661756c742d746fe284aa656e",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+212A",
+      "character": "K",
+      "mapping": "k",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": "kubeconfig",
+      "unicode": "Kubeconfig",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "6b756265636f6e666967",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "e284aa756265636f6e666967",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+212A",
+      "character": "K",
+      "mapping": "k",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": "ordinary.key",
+      "unicode": "ordinary.Key",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792e6b6579",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792ee284aa6579",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+212A",
+      "character": "K",
+      "mapping": "k",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": "ordinary.keystore",
+      "unicode": "ordinary.Keystore",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792e6b657973746f7265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792ee284aa657973746f7265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+212A",
+      "character": "K",
+      "mapping": "k",
+      "status": "C",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": "ordinary.jks",
+      "unicode": "ordinary.jKs",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792e6a6b73",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792e6ae284aa73",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+FB00",
+      "character": "ﬀ",
+      "mapping": "ff",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": false,
+      "ascii": "probe_ff_end.txt",
+      "unicode": "probe_ﬀ_end.txt",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "70726f62655f66665f656e642e747874"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "70726f62655fefac805f656e642e747874"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+FB01",
+      "character": "ﬁ",
+      "mapping": "fi",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": false,
+      "ascii": "probe_fi_end.txt",
+      "unicode": "probe_ﬁ_end.txt",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "70726f62655f66695f656e642e747874"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "70726f62655fefac815f656e642e747874"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+FB01",
+      "character": "ﬁ",
+      "mapping": "fi",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".config",
+      "unicode": ".conﬁg",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e636f6e666967",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e636f6eefac8167",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+FB01",
+      "character": "ﬁ",
+      "mapping": "fi",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": "kubeconfig",
+      "unicode": "kubeconﬁg",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "6b756265636f6e666967",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "6b756265636f6eefac8167",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+FB02",
+      "character": "ﬂ",
+      "mapping": "fl",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": false,
+      "ascii": "probe_fl_end.txt",
+      "unicode": "probe_ﬂ_end.txt",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "70726f62655f666c5f656e642e747874"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "70726f62655fefac825f656e642e747874"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+FB03",
+      "character": "ﬃ",
+      "mapping": "ffi",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": false,
+      "ascii": "probe_ffi_end.txt",
+      "unicode": "probe_ﬃ_end.txt",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "70726f62655f6666695f656e642e747874"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "70726f62655fefac835f656e642e747874"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+FB04",
+      "character": "ﬄ",
+      "mapping": "ffl",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": false,
+      "ascii": "probe_ffl_end.txt",
+      "unicode": "probe_ﬄ_end.txt",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "70726f62655f66666c5f656e642e747874"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "70726f62655fefac845f656e642e747874"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+FB05",
+      "character": "ﬅ",
+      "mapping": "st",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": false,
+      "ascii": "probe_st_end.txt",
+      "unicode": "probe_ﬅ_end.txt",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "70726f62655f73745f656e642e747874"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "70726f62655fefac855f656e642e747874"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+FB05",
+      "character": "ﬅ",
+      "mapping": "st",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".password-store",
+      "unicode": ".password-ﬅore",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e70617373776f72642d73746f7265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e70617373776f72642defac856f7265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+FB05",
+      "character": "ﬅ",
+      "mapping": "st",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": "ordinary.tfstate",
+      "unicode": "ordinary.tfﬅate",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792e74667374617465",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792e7466efac85617465",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+FB05",
+      "character": "ﬅ",
+      "mapping": "st",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": "ordinary.keystore",
+      "unicode": "ordinary.keyﬅore",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792e6b657973746f7265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792e6b6579efac856f7265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+FB06",
+      "character": "ﬆ",
+      "mapping": "st",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": false,
+      "ascii": "probe_st_end.txt",
+      "unicode": "probe_ﬆ_end.txt",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "70726f62655f73745f656e642e747874"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "70726f62655fefac865f656e642e747874"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+FB06",
+      "character": "ﬆ",
+      "mapping": "st",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".password-store",
+      "unicode": ".password-ﬆore",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e70617373776f72642d73746f7265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "2e70617373776f72642defac866f7265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+FB06",
+      "character": "ﬆ",
+      "mapping": "st",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": "ordinary.tfstate",
+      "unicode": "ordinary.tfﬆate",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792e74667374617465",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792e7466efac86617465",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+FB06",
+      "character": "ﬆ",
+      "mapping": "st",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": "ordinary.keystore",
+      "unicode": "ordinary.keyﬆore",
+      "currentlyBroadRejected": true,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792e6b657973746f7265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": true,
+            "exists": true,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792e6b6579efac866f7265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+1DF95",
+      "character": "𝾕",
+      "mapping": "ss",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": false,
+      "ascii": "probe_ss_end.txt",
+      "unicode": "probe_𝾕_end.txt",
+      "currentlyBroadRejected": false,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "70726f62655f73735f656e642e747874"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": false,
+          "creationRejectedByFilesystem": "EILSEQ",
+          "sameEntry": {
+            "resolves": null,
+            "exists": null,
+            "error": null
+          },
+          "observedStoredNameHex": null,
+          "note": "No Unicode-stored file could be created; this direction is not applicable, not a successful alias lookup."
+        }
+      ]
+    },
+    {
+      "codePoint": "U+1DF95",
+      "character": "𝾕",
+      "mapping": "ss",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".ssh",
+      "unicode": ".𝾕h",
+      "currentlyBroadRejected": false,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "2e737368",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "NOT_FOUND"
+          },
+          "hostPolicyCode": "ALLOWED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": false,
+          "creationRejectedByFilesystem": "EILSEQ",
+          "sameEntry": {
+            "resolves": null,
+            "exists": null,
+            "error": null
+          },
+          "observedStoredNameHex": null,
+          "note": "No Unicode-stored file could be created; this direction is not applicable, not a successful alias lookup."
+        }
+      ]
+    },
+    {
+      "codePoint": "U+1DF95",
+      "character": "𝾕",
+      "mapping": "ss",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".pgpass",
+      "unicode": ".pgpa𝾕",
+      "currentlyBroadRejected": false,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "2e706770617373",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "NOT_FOUND"
+          },
+          "hostPolicyCode": "ALLOWED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": false,
+          "creationRejectedByFilesystem": "EILSEQ",
+          "sameEntry": {
+            "resolves": null,
+            "exists": null,
+            "error": null
+          },
+          "observedStoredNameHex": null,
+          "note": "No Unicode-stored file could be created; this direction is not applicable, not a successful alias lookup."
+        }
+      ]
+    },
+    {
+      "codePoint": "U+1DF95",
+      "character": "𝾕",
+      "mapping": "ss",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".htpasswd",
+      "unicode": ".htpa𝾕wd",
+      "currentlyBroadRejected": false,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "2e6874706173737764",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "NOT_FOUND"
+          },
+          "hostPolicyCode": "ALLOWED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": false,
+          "creationRejectedByFilesystem": "EILSEQ",
+          "sameEntry": {
+            "resolves": null,
+            "exists": null,
+            "error": null
+          },
+          "observedStoredNameHex": null,
+          "note": "No Unicode-stored file could be created; this direction is not applicable, not a successful alias lookup."
+        }
+      ]
+    },
+    {
+      "codePoint": "U+1DF95",
+      "character": "𝾕",
+      "mapping": "ss",
+      "status": "F",
+      "kind": "default-full",
+      "sensitive": true,
+      "ascii": ".password-store",
+      "unicode": ".pa𝾕word-store",
+      "currentlyBroadRejected": false,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "2e70617373776f72642d73746f7265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "NOT_FOUND"
+          },
+          "hostPolicyCode": "ALLOWED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": false,
+          "creationRejectedByFilesystem": "EILSEQ",
+          "sameEntry": {
+            "resolves": null,
+            "exists": null,
+            "error": null
+          },
+          "observedStoredNameHex": null,
+          "note": "No Unicode-stored file could be created; this direction is not applicable, not a successful alias lookup."
+        }
+      ]
+    },
+    {
+      "codePoint": "U+0130",
+      "character": "İ",
+      "mapping": "i",
+      "status": "T",
+      "kind": "turkic-only",
+      "sensitive": false,
+      "ascii": "probe_i_end.txt",
+      "unicode": "probe_İ_end.txt",
+      "currentlyBroadRejected": false,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "70726f62655f695f656e642e747874"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "70726f62655fc4b05f656e642e747874"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+0130",
+      "character": "İ",
+      "mapping": "i",
+      "status": "T",
+      "kind": "turkic-only",
+      "sensitive": true,
+      "ascii": ".git",
+      "unicode": ".gİt",
+      "currentlyBroadRejected": false,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "2e676974",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "NOT_FOUND"
+          },
+          "hostPolicyCode": "ALLOWED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "2e67c4b074",
+          "nativeReadUnicode": {
+            "ok": true,
+            "mode": "seatbelt",
+            "fixtureBytesMatched": true
+          },
+          "hostPolicyCode": "ALLOWED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+0130",
+      "character": "İ",
+      "mapping": "i",
+      "status": "T",
+      "kind": "turkic-only",
+      "sensitive": true,
+      "ascii": ".config",
+      "unicode": ".confİg",
+      "currentlyBroadRejected": false,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "2e636f6e666967",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "NOT_FOUND"
+          },
+          "hostPolicyCode": "ALLOWED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "2e636f6e66c4b067",
+          "nativeReadUnicode": {
+            "ok": true,
+            "mode": "seatbelt",
+            "fixtureBytesMatched": true
+          },
+          "hostPolicyCode": "ALLOWED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+0130",
+      "character": "İ",
+      "mapping": "i",
+      "status": "T",
+      "kind": "turkic-only",
+      "sensitive": true,
+      "ascii": ".pypirc",
+      "unicode": ".pypİrc",
+      "currentlyBroadRejected": false,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "2e707970697263",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "NOT_FOUND"
+          },
+          "hostPolicyCode": "ALLOWED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "2e707970c4b07263",
+          "nativeReadUnicode": {
+            "ok": true,
+            "mode": "seatbelt",
+            "fixtureBytesMatched": true
+          },
+          "hostPolicyCode": "ALLOWED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+0130",
+      "character": "İ",
+      "mapping": "i",
+      "status": "T",
+      "kind": "turkic-only",
+      "sensitive": true,
+      "ascii": "credentials",
+      "unicode": "credentİals",
+      "currentlyBroadRejected": false,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "63726564656e7469616c73",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "NOT_FOUND"
+          },
+          "hostPolicyCode": "ALLOWED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "63726564656e74c4b0616c73",
+          "nativeReadUnicode": {
+            "ok": true,
+            "mode": "seatbelt",
+            "fixtureBytesMatched": true
+          },
+          "hostPolicyCode": "ALLOWED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+0130",
+      "character": "İ",
+      "mapping": "i",
+      "status": "T",
+      "kind": "turkic-only",
+      "sensitive": true,
+      "ascii": "credentials.json",
+      "unicode": "credentİals.json",
+      "currentlyBroadRejected": false,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "63726564656e7469616c732e6a736f6e",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "NOT_FOUND"
+          },
+          "hostPolicyCode": "ALLOWED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "63726564656e74c4b0616c732e6a736f6e",
+          "nativeReadUnicode": {
+            "ok": true,
+            "mode": "seatbelt",
+            "fixtureBytesMatched": true
+          },
+          "hostPolicyCode": "ALLOWED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+0130",
+      "character": "İ",
+      "mapping": "i",
+      "status": "T",
+      "kind": "turkic-only",
+      "sensitive": true,
+      "ascii": ".git-credentials",
+      "unicode": ".gİt-credentials",
+      "currentlyBroadRejected": false,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "2e6769742d63726564656e7469616c73",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "NOT_FOUND"
+          },
+          "hostPolicyCode": "ALLOWED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "2e67c4b0742d63726564656e7469616c73",
+          "nativeReadUnicode": {
+            "ok": true,
+            "mode": "seatbelt",
+            "fixtureBytesMatched": true
+          },
+          "hostPolicyCode": "ALLOWED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+0130",
+      "character": "İ",
+      "mapping": "i",
+      "status": "T",
+      "kind": "turkic-only",
+      "sensitive": true,
+      "ascii": ".git-credentials",
+      "unicode": ".git-credentİals",
+      "currentlyBroadRejected": false,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "2e6769742d63726564656e7469616c73",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "NOT_FOUND"
+          },
+          "hostPolicyCode": "ALLOWED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "2e6769742d63726564656e74c4b0616c73",
+          "nativeReadUnicode": {
+            "ok": true,
+            "mode": "seatbelt",
+            "fixtureBytesMatched": true
+          },
+          "hostPolicyCode": "ALLOWED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+0130",
+      "character": "İ",
+      "mapping": "i",
+      "status": "T",
+      "kind": "turkic-only",
+      "sensitive": true,
+      "ascii": "kubeconfig",
+      "unicode": "kubeconfİg",
+      "currentlyBroadRejected": false,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "6b756265636f6e666967",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "NOT_FOUND"
+          },
+          "hostPolicyCode": "ALLOWED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "6b756265636f6e66c4b067",
+          "nativeReadUnicode": {
+            "ok": true,
+            "mode": "seatbelt",
+            "fixtureBytesMatched": true
+          },
+          "hostPolicyCode": "ALLOWED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+0130",
+      "character": "İ",
+      "mapping": "i",
+      "status": "T",
+      "kind": "turkic-only",
+      "sensitive": true,
+      "ascii": "id_rsaprobe",
+      "unicode": "İd_rsaprobe",
+      "currentlyBroadRejected": false,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "69645f72736170726f6265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "NOT_FOUND"
+          },
+          "hostPolicyCode": "ALLOWED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "c4b0645f72736170726f6265",
+          "nativeReadUnicode": {
+            "ok": true,
+            "mode": "seatbelt",
+            "fixtureBytesMatched": true
+          },
+          "hostPolicyCode": "ALLOWED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+0130",
+      "character": "İ",
+      "mapping": "i",
+      "status": "T",
+      "kind": "turkic-only",
+      "sensitive": true,
+      "ascii": "id_ed25519probe",
+      "unicode": "İd_ed25519probe",
+      "currentlyBroadRejected": false,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "69645f6564323535313970726f6265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "NOT_FOUND"
+          },
+          "hostPolicyCode": "ALLOWED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "c4b0645f6564323535313970726f6265",
+          "nativeReadUnicode": {
+            "ok": true,
+            "mode": "seatbelt",
+            "fixtureBytesMatched": true
+          },
+          "hostPolicyCode": "ALLOWED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+0130",
+      "character": "İ",
+      "mapping": "i",
+      "status": "T",
+      "kind": "turkic-only",
+      "sensitive": true,
+      "ascii": "id_ecdsaprobe",
+      "unicode": "İd_ecdsaprobe",
+      "currentlyBroadRejected": false,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "69645f656364736170726f6265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "NOT_FOUND"
+          },
+          "hostPolicyCode": "ALLOWED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "c4b0645f656364736170726f6265",
+          "nativeReadUnicode": {
+            "ok": true,
+            "mode": "seatbelt",
+            "fixtureBytesMatched": true
+          },
+          "hostPolicyCode": "ALLOWED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+0130",
+      "character": "İ",
+      "mapping": "i",
+      "status": "T",
+      "kind": "turkic-only",
+      "sensitive": true,
+      "ascii": "id_dsaprobe",
+      "unicode": "İd_dsaprobe",
+      "currentlyBroadRejected": false,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "69645f64736170726f6265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "NOT_FOUND"
+          },
+          "hostPolicyCode": "ALLOWED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "c4b0645f64736170726f6265",
+          "nativeReadUnicode": {
+            "ok": true,
+            "mode": "seatbelt",
+            "fixtureBytesMatched": true
+          },
+          "hostPolicyCode": "ALLOWED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+0130",
+      "character": "İ",
+      "mapping": "i",
+      "status": "T",
+      "kind": "turkic-only",
+      "sensitive": true,
+      "ascii": "ordinary.pem",
+      "unicode": "ordİnary.pem",
+      "currentlyBroadRejected": false,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792e70656d",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264c4b06e6172792e70656d",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+0130",
+      "character": "İ",
+      "mapping": "i",
+      "status": "T",
+      "kind": "turkic-only",
+      "sensitive": true,
+      "ascii": "ordinary.key",
+      "unicode": "ordİnary.key",
+      "currentlyBroadRejected": false,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792e6b6579",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264c4b06e6172792e6b6579",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+0130",
+      "character": "İ",
+      "mapping": "i",
+      "status": "T",
+      "kind": "turkic-only",
+      "sensitive": true,
+      "ascii": "ordinary.p12",
+      "unicode": "ordİnary.p12",
+      "currentlyBroadRejected": false,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792e703132",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264c4b06e6172792e703132",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+0130",
+      "character": "İ",
+      "mapping": "i",
+      "status": "T",
+      "kind": "turkic-only",
+      "sensitive": true,
+      "ascii": "ordinary.pfx",
+      "unicode": "ordİnary.pfx",
+      "currentlyBroadRejected": false,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792e706678",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264c4b06e6172792e706678",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+0130",
+      "character": "İ",
+      "mapping": "i",
+      "status": "T",
+      "kind": "turkic-only",
+      "sensitive": true,
+      "ascii": "ordinary.tfstate",
+      "unicode": "ordİnary.tfstate",
+      "currentlyBroadRejected": false,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792e74667374617465",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264c4b06e6172792e74667374617465",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+0130",
+      "character": "İ",
+      "mapping": "i",
+      "status": "T",
+      "kind": "turkic-only",
+      "sensitive": true,
+      "ascii": "ordinary.keystore",
+      "unicode": "ordİnary.keystore",
+      "currentlyBroadRejected": false,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792e6b657973746f7265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264c4b06e6172792e6b657973746f7265",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    },
+    {
+      "codePoint": "U+0130",
+      "character": "İ",
+      "mapping": "i",
+      "status": "T",
+      "kind": "turkic-only",
+      "sensitive": true,
+      "ascii": "ordinary.jks",
+      "unicode": "ordİnary.jks",
+      "currentlyBroadRejected": false,
+      "observations": [
+        {
+          "direction": "ascii-stored_unicode-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264696e6172792e6a6b73",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        },
+        {
+          "direction": "unicode-stored_ascii-request",
+          "fixtureCreated": true,
+          "sameEntry": {
+            "resolves": false,
+            "exists": false,
+            "error": null
+          },
+          "observedStoredNameHex": "6f7264c4b06e6172792e6a6b73",
+          "nativeReadUnicode": {
+            "ok": false,
+            "code": "POLICY_DENIED"
+          },
+          "hostPolicyCode": "POLICY_DENIED"
+        }
+      ]
+    }
+  ],
+  "sameDeviceAsProject": true,
+  "filesystem": {
+    "statfsType": "26",
+    "device": "/dev/disk1s1",
+    "diskutilFields": {
+      "FilesystemName": "APFS",
+      "FilesystemType": "apfs"
+    },
+    "diskutilSucceeded": true,
+    "apfsReported": true
+  },
+  "asciiCaseAlias": {
+    "resolves": true,
+    "exists": true,
+    "error": null
+  },
+  "additionalSensitiveAliasCharacters": [],
+  "genericOnlyAdditionalAliases": [],
+  "nativeReadsAllowedForResolvingSensitiveAliases": [],
+  "lookupErrors": [],
+  "nativeProbeErrors": [],
+  "completedPairs": 79,
+  "filesystemRejections": [
+    {
+      "codePoint": "U+1DF95",
+      "direction": "unicode-stored_ascii-request",
+      "creation": "EILSEQ",
+      "lookup": null
+    },
+    {
+      "codePoint": "U+1DF95",
+      "direction": "unicode-stored_ascii-request",
+      "creation": "EILSEQ",
+      "lookup": null
+    },
+    {
+      "codePoint": "U+1DF95",
+      "direction": "unicode-stored_ascii-request",
+      "creation": "EILSEQ",
+      "lookup": null
+    },
+    {
+      "codePoint": "U+1DF95",
+      "direction": "unicode-stored_ascii-request",
+      "creation": "EILSEQ",
+      "lookup": null
+    },
+    {
+      "codePoint": "U+1DF95",
+      "direction": "unicode-stored_ascii-request",
+      "creation": "EILSEQ",
+      "lookup": null
+    }
+  ],
+  "gateFailures": [],
+  "result": "UNICODE_ALIAS_GATE_PASS",
+  "fixturesRemoved": true,
+  "finishedAt": "2026-10-20T00:35:39.082Z"
+}

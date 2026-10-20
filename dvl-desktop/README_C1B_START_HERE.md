@@ -1,15 +1,9 @@
-# DVL C1b V3 — Mac qualification candidate
+# C1b V3 auth-tests r1 — new candidate identity
 
-Read `C1B_STATUS_AND_REVIEW_REQUEST.md` and `review-v3/C1B_UNICODE_01_REOPENED.md` first. V2 is preserved; V3 does not inherit its qualification or acceptance. The new ligature finding explicitly reopens C1a F1/N-2 privacy closure for review.
+Wait for these new tests; do not qualify the earlier V3 with its 18-case B-auth suite as complete IPC-auth evidence. Keep the old V3 source/ZIP and the old kit intact. This revision changes test coverage and the control-test command, with no production src/native/scripts bytes changed. Its manifest and ZIP identities are NEW. Source verifier, package-lock, B gate, native code, alias probe and app code remain byte-identical original V3. See review-v3-auth-r1/ for per-file identities and full test diff.
 
-Extract into a NEW Desktop folder `dvl-desktop-C1b-v3`; do not overlay V2. The companion `DVL_C1B_V3_PRE_MAC_KIT` supplies identity verification and the five-run capture procedure. Follow its `MAC_STEP_BY_STEP.md` one step at a time. The five manual launches remain paused until the complete V3 gate passes.
+Use the NEW companion DVL_C1B_V3_AUTH_TESTS_R1_KIT; the old kit pins the previous source manifest and must not be used for this source. npm ci in the new source directory, verify identities, then run the new capture-qualification.zsh. It captures full sw_vers/arch and hashes qualification.log plus unicode-aliases-v3.json AFTER tee completes. Do not overwrite previous evidence.
 
-The required alias gate writes only disposable sibling fixtures on the target project's filesystem, removes its own fixtures, never reads or edits project contents, and saves a new JSON outside source/project. Explicitly set DVL_ALIAS_PROJECT and DVL_ALIAS_REPORT before qualification. Missing settings are a failed/not-run gate, never a skip. macOS APFS identity must be confirmed by the probe.
+90 B-channel negative cases + authenticated positive read/write controls are included in qualify:c1b through test:c1b:control. Eight one-at-a-time clause deletions are run in separate test processes: five security-bearing mutations must be killed; three equivalent presence-guard survivors are explicitly recorded, not counted as killed. An always-deny mutation must be caught by positive controls. A missing alias target is tested as exit1/ENOENT with no zero-alias PASS. No test changes production code on disk or introduces an IPC runtime test hook.
 
-Source identity:
-
-```bash
-node scripts/verify-source.cjs
-```
-
-No binaries/node_modules are shipped. Build uses the actual platform SDK and produces its own integrity manifest. No Linux ABI downgrade or Arena change is approved.
+V3 remains CANDIDATE. Owner Mac results so far apply to original V3 static identity/harness comparison and install only. New revision Mac/OS/APFS/Electron qualification and five manual restored-project launches remain pending. All prior C1B-UNICODE-01 reopening, broad-name-refusal limits, TCC risk and no-Arena-change restrictions remain in force. See C1B_STATUS_AND_REVIEW_REQUEST.md.

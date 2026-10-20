@@ -1,0 +1,171 @@
+--- delivered-V3/tests/c1b-b-auth.cjs
++++ V3-auth-tests-r1/tests/c1b-b-auth.cjs
+@@ -1,5 +1,5 @@
+ 'use strict';
+-// Production B handlers, authenticated mock frames, real disposable SQLite.
++// Real production B handlers/isTrusted; mock Electron identities + disposable SQLite.
+ const fs = require('node:fs');
+ const path = require('node:path');
+ const os = require('node:os');
+@@ -12,9 +12,10 @@
+ class Window {
+   constructor() {
+     const url = pathToFileURL(path.join(__dirname, '../src/renderer/index.html')).href;
+-    this.webContents = { mainFrame: { url }, getURL: () => url, isDestroyed: () => false, on() {}, send() {}, setWindowOpenHandler() {} }; windows.push(this);
++    this.events = new Map(); this.pageURL = url; this.destroyed = false;
++    this.webContents = { mainFrame: { url }, getURL: () => this.pageURL, isDestroyed: () => this.destroyed, on() {}, send() {}, setWindowOpenHandler() {} }; windows.push(this);
+   }
+-  on() {} loadFile() {} static getAllWindows() { return windows; }
++  on(name, fn) { this.events.set(name, fn); } loadFile() {} static getAllWindows() { return windows; }
+ }
+ const electron = {
+   app: { getPath: () => base, getVersion: () => '0.6.0', isReady: () => true, requestSingleInstanceLock: () => true,
+@@ -24,21 +25,50 @@
+   safeStorage: { isEncryptionAvailable: () => false }
+ };
+ const context = vm.createContext({ require: name => name === 'electron' ? electron : require(name), __dirname: path.join(__dirname, '../src/main'), process, Buffer, console });
++function setWindow(value) {
++  // Trusted fixture control of the registry, never a production IPC capability.
++  context.__authFixtureWindow = value;
++  vm.runInContext('mainWindow = __authFixtureWindow', context); delete context.__authFixtureWindow;
++}
+ (async () => {
+   vm.runInContext(fs.readFileSync(path.join(__dirname, '../src/main/main.js'), 'utf8'), context); ready();
+-  const sender = windows[0].webContents;
++  const win = windows[0], sender = win.webContents, frame = sender.mainFrame, url = sender.getURL();
++  const owned = () => ({ sender, senderFrame: frame });
++  // Positive controls prevent an always-reject implementation passing vacuously.
++  assert.equal(await handlers.get('dvl:get-setting')(owned(), 'positive-only'), null);
++  await handlers.get('dvl:set-setting')(owned(), 'positive-only', 7);
++  assert.equal(context.getSetting('positive-only'), 7);
+   const calls = new Map([
+     ['get-last-project', []], ['list-recent-projects', []], ['open-recent-project', ['missing']], ['open-project', []],
+     ['set-setting', ['probe', 1]], ['get-setting', ['probe']], ['set-secret', ['probe', 'PRIVATE_VALUE']], ['has-secret', ['probe']], ['delete-secret', ['probe']]
+   ]);
++  const cases = [
++    ['foreign_sender', () => ({ sender: { ...sender }, senderFrame: frame })],
++    ['foreign_frame', () => ({ sender, senderFrame: { url } })],
++    ['navigated_sender', () => { win.pageURL = 'https://untrusted.invalid/'; return owned(); }],
++    ['frame_url_mismatch', () => { frame.url = 'https://untrusted.invalid/'; return owned(); }],
++    ['destroyed_sender', () => { win.destroyed = true; return owned(); }],
++    ['missing_window', () => { setWindow(null); return owned(); }],
++    ['closed_window', () => { win.events.get('closed')(); assert.equal(vm.runInContext('mainWindow', context), null); return owned(); }],
++    ['missing_sender', () => ({ senderFrame: frame })],
++    ['missing_frame', () => ({ sender })],
++    ['missing_event', () => undefined]
++  ];
+   let count = 0;
+-  for (const [name, args] of calls) for (const event of [
+-    { sender: { ...sender }, senderFrame: sender.mainFrame },
+-    { sender, senderFrame: { url: sender.getURL() } }
+-  ]) {
+-    await assert.rejects(handlers.get('dvl:' + name)(event, ...args), /SENDER_DENIED/); count++;
++  const totalChanges = () => vm.runInContext("Number(db.prepare('SELECT total_changes() AS n').get().n)", context);
++  const beforeChanges = totalChanges();
++  for (const [scenario, makeEvent] of cases) {
++    for (const [name, args] of calls) {
++      try {
++        const event = makeEvent();
++        await assert.rejects(() => handlers.get('dvl:' + name)(event, ...args), /SENDER_DENIED/, scenario + ':' + name);
++        assert.equal(totalChanges(), beforeChanges, scenario + ': unexpected database mutation');
++        assert.equal(dialogs, 0); assert.equal(context.getSetting('probe'), null);
++        assert.equal(context.listRecentProjects().length, 0); assert.equal(context.hasSecret('probe').configured, false);
++        count++;
++      } finally { setWindow(win); win.pageURL = url; frame.url = url; win.destroyed = false; }
++    }
++    console.log('AUTH_SCENARIO_PASS', scenario, calls.size);
+   }
+-  assert.equal(dialogs, 0); assert.equal(context.getSetting('probe'), null);
+-  assert.equal(context.listRecentProjects().length, 0); assert.equal(context.hasSecret('probe').configured, false);
+-  console.log('C1B_B_AUTH_PASS', count, '(9 B channels x foreign sender/non-main frame; mock-level)');
++  console.log('C1B_B_AUTH_PASS', count, '(9 B channels x 10 negative scenarios; authenticated read/write controls; mock-level)');
+ })().catch(e => { console.error(e); process.exitCode = 1; }).finally(() => { context.closeDatabase(); fs.rmSync(base, { recursive: true, force: true }); });
+--- delivered-V3/tests/c1b-auth-mutation-child.cjs
++++ V3-auth-tests-r1/tests/c1b-auth-mutation-child.cjs
+@@ -0,0 +1,18 @@
++'use strict';
++// Test-only process-local mutation. Never writes/imports a replacement source file.
++const assert = require('node:assert/strict');
++const vm = require('node:vm');
++const { DesktopReader } = require('../src/main/desktop-reader.cjs');
++const original = DesktopReader.prototype.isTrusted.toString();
++const match = original.match(/return (!!win[\s\S]*?);/); assert.ok(match);
++const clauses = match[1].split('&&').map(x => x.trim()); assert.equal(clauses.length, 8);
++const mutation = process.argv[2];
++let expression;
++if (mutation === 'always-deny') expression = 'false';
++else {
++  const index = Number(mutation); assert.ok(Number.isInteger(index) && index >= 0 && index < clauses.length);
++  expression = clauses.filter((_c, i) => i !== index).join(' && ');
++}
++const changed = original.replace(match[0], 'return ' + expression + ';');
++DesktopReader.prototype.isTrusted = vm.runInNewContext('({' + changed + '}).isTrusted');
++require('./c1b-b-auth.cjs');
+--- delivered-V3/tests/c1b-auth-mutations.cjs
++++ V3-auth-tests-r1/tests/c1b-auth-mutations.cjs
+@@ -0,0 +1,30 @@
++'use strict';
++const fs = require('node:fs');
++const path = require('node:path');
++const assert = require('node:assert/strict');
++const { spawnSync } = require('node:child_process');
++const { DesktopReader } = require('../src/main/desktop-reader.cjs');
++const expected = ['!!win', '!!sender', '!sender.isDestroyed()', 'sender === win.webContents', '!!frame', 'frame === sender.mainFrame', 'frame.url === this.url', 'sender.getURL() === this.url'];
++const clauses = DesktopReader.prototype.isTrusted.toString().match(/return (!!win[\s\S]*?);/)[1].split('&&').map(c => c.trim());
++assert.deepEqual(clauses, expected, 'Review the clause inventory if production authentication changes');
++const source = path.join(__dirname, '../src/main/desktop-reader.cjs'), before = fs.readFileSync(source);
++const rows = [];
++function run(script, args = []) {
++  const r = spawnSync(process.execPath, [path.join(__dirname, script), ...args], { encoding: 'utf8', timeout: 15000, maxBuffer: 1000000 });
++  assert.equal(r.error, undefined); return { exit: r.status, signal: r.signal, output: r.stdout + r.stderr };
++}
++const baseline = run('c1b-b-auth.cjs'); assert.equal(baseline.exit, 0, baseline.output); assert.match(baseline.output, /C1B_B_AUTH_PASS 90/);
++for (const [i, clause] of clauses.entries()) {
++  const result = run('c1b-auth-mutation-child.cjs', [String(i)]), redundant = [0, 1, 4].includes(i);
++  if (redundant) { assert.equal(result.exit, 0, result.output); assert.match(result.output, /C1B_B_AUTH_PASS 90/); }
++  else {
++    const witness = { 2: 'destroyed_sender', 3: 'foreign_sender', 5: 'foreign_frame', 6: 'frame_url_mismatch', 7: 'navigated_sender' }[i];
++    assert.equal(result.exit, 1, result.output);
++    assert.ok(result.output.includes('Missing expected rejection: ' + witness + ':get-last-project'), result.output);
++  }
++  const row = { clause, childExit: result.exit, outcome: redundant ? 'EQUIVALENT_GUARD_UNDER_FAIL_CLOSED_CATCH' : 'KILLED_BY_NEGATIVE_TEST', diagnostic: redundant ? null : result.output.split('\n').find(line => line.includes('AssertionError')) || result.output.split('\n')[0] };
++  rows.push(row); console.log('AUTH_CLAUSE_MUTATION', JSON.stringify(row));
++}
++const deny = run('c1b-auth-mutation-child.cjs', ['always-deny']); assert.equal(deny.exit, 1); assert.match(deny.output, /SENDER_DENIED/);
++assert.deepEqual(fs.readFileSync(source), before, 'Mutation must not edit the delivered production bytes');
++console.log('C1B_AUTH_MUTATIONS_PASS', JSON.stringify({ clauses: 8, killed: 5, equivalentPresenceGuards: 3, alwaysDenyControlKilled: true, scope: 'mock-level; equivalent survivors are reported, not counted as killed' }));
+--- delivered-V3/tests/c1b-alias-missing-target.cjs
++++ V3-auth-tests-r1/tests/c1b-alias-missing-target.cjs
+@@ -0,0 +1,21 @@
++'use strict';
++// Exercise the darwin-only entry branch with the REAL filesystem on this host.
++// Only process.platform is stubbed in a child; no Mac/APFS security claim.
++const fs = require('node:fs');
++const path = require('node:path');
++const os = require('node:os');
++const assert = require('node:assert/strict');
++const { spawnSync } = require('node:child_process');
++const base = fs.mkdtempSync(path.join(os.tmpdir(), 'dvl-missing-alias-target-'));
++try {
++  const preload = path.join(base, 'darwin-branch.cjs'), report = path.join(base, 'must-not-exist.json');
++  fs.writeFileSync(preload, "Object.defineProperty(process, 'platform', { value: 'darwin' });\n");
++  const run = spawnSync(process.execPath, ['--require', preload, path.join(__dirname, '../scripts/qualify-unicode-aliases.cjs')], {
++    env: { ...process.env, DVL_ALIAS_PROJECT: path.join(base, 'ABSENT_PROJECT'), DVL_ALIAS_REPORT: report }, encoding: 'utf8', timeout: 10000
++  });
++  assert.equal(run.error, undefined); assert.equal(run.status, 1, run.stdout + run.stderr);
++  assert.match(run.stderr, /UNICODE_ALIAS_GATE_FAILED:.*ENOENT/);
++  assert.doesNotMatch(run.stdout, /ALIAS_RESOLUTION|UNICODE_ALIAS_GATE_PASS/);
++  assert.equal(fs.existsSync(report), false); assert.deepEqual(fs.readdirSync(base), ['darwin-branch.cjs']);
++  console.log('C1B_ALIAS_MISSING_TARGET_PASS exit=1 ENOENT; zero aliases checked is a failure, no PASS/report/fixtures (platform-branch stub; real filesystem)');
++} finally { fs.rmSync(base, { recursive: true, force: true }); }
+--- delivered-V3/package.json
++++ V3-auth-tests-r1/package.json
+@@ -12,7 +12,7 @@
+     "test:c1:native": "node tests/c1-boundary.cjs && node tests/c1-native-repair.cjs",
+     "test:c1": "npm run build:reader && npm run test:c1:unit && npm run test:c1:repair && npm run test:c1:native",
+     "test:c1:repair": "node tests/c1-repair.cjs",
+-    "test:c1b:control": "node tests/c1b-ipc.cjs && node tests/c1b-policy.cjs && node tests/c1b-renderer.cjs && node tests/c1b-v2-control.cjs && node tests/c1b-b-auth.cjs && node tests/c1b-v3-control.cjs",
++    "test:c1b:control": "node tests/c1b-ipc.cjs && node tests/c1b-policy.cjs && node tests/c1b-renderer.cjs && node tests/c1b-v2-control.cjs && node tests/c1b-b-auth.cjs && node tests/c1b-v3-control.cjs && node tests/c1b-auth-mutations.cjs && node tests/c1b-alias-missing-target.cjs",
+     "test:c1b:electron": "node tests/c1b-electron.cjs",
+     "qualify:c1b": "npm run verify:source && npm run test:c1 && npm run test:c1b:native && npm test && npm run test:c1b:control && npm run test:native-secret && npm run test:c1b:electron && npm run test:c1b:aliases",
+     "verify:source": "node scripts/verify-source.cjs",

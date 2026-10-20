@@ -1,0 +1,14 @@
+KIT_AUTH_BASELINE_PASS 90
+KIT_AUTH_CLAUSE_MUTATION {"clause":"!!win","childExit":0,"outcome":"EQUIVALENT_UNDER_CURRENT_FAIL_CLOSED_LOGIC","originalRestored":true}
+KIT_AUTH_CLAUSE_MUTATION {"clause":"!!sender","childExit":0,"outcome":"EQUIVALENT_UNDER_CURRENT_FAIL_CLOSED_LOGIC","originalRestored":true}
+KIT_AUTH_CLAUSE_MUTATION {"clause":"!sender.isDestroyed()","childExit":1,"outcome":"KILLED","originalRestored":true}
+KIT_AUTH_CLAUSE_MUTATION {"clause":"sender === win.webContents","childExit":1,"outcome":"KILLED","originalRestored":true}
+KIT_AUTH_CLAUSE_MUTATION {"clause":"!!frame","childExit":0,"outcome":"EQUIVALENT_UNDER_CURRENT_FAIL_CLOSED_LOGIC","originalRestored":true}
+KIT_AUTH_CLAUSE_MUTATION {"clause":"frame === sender.mainFrame","childExit":1,"outcome":"KILLED","originalRestored":true}
+KIT_AUTH_CLAUSE_MUTATION {"clause":"frame.url === this.url","childExit":1,"outcome":"KILLED","originalRestored":true}
+KIT_AUTH_CLAUSE_MUTATION {"clause":"sender.getURL() === this.url","childExit":1,"outcome":"KILLED","originalRestored":true}
+KIT_CATCH_DEPENDENCY_CONTROL_PASS !!win
+KIT_CATCH_DEPENDENCY_CONTROL_PASS !!sender
+KIT_CATCH_DEPENDENCY_CONTROL_PASS !!frame
+KIT_AUTH_MUTATIONS_PASS 5 killed; 3 conditional equivalent survivors; all child originals restored; mock-level
+KIT_AND_SOURCE_FILES_UNCHANGED

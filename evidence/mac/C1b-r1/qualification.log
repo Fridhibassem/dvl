@@ -1,0 +1,466 @@
+ProductName:		macOS
+ProductVersion:		13.7.8
+BuildVersion:		22H730
+i386
+x86_64
+{"node":"v26.8.1","platform":"darwin","arch":"x64"}
+C1B SOURCE MATCH PASS: 124 entries
+{
+  "result": "PASS",
+  "frozenGateSha256": "a1c599efc9859812486462c91102c0dbcc55583dd33e79c5e17c4f825e8f4d4c",
+  "v3GateSha256": "f951f0faf6f8a65828aa0a9ef401ceb80a1b0a2cac7eb7a8dd14d8116913dd4f",
+  "testNames": 24,
+  "testNameDifferences": 0,
+  "assertionBearingSuffixLines": 39,
+  "assertionSuffixDifferences": 0,
+  "assertionCalls": 68,
+  "approvedHarnessChanges": [
+    "URL helper import for authenticated mock frame",
+    "Window mock webContents/mainFrame",
+    "Authenticated mock IPC sender/frame",
+    "Await real asynchronous shutdown and provide mock event",
+    "DOM mock textContent clearing"
+  ],
+  "fullFileDifferencesAfterOnlyApprovedHarnessReversal": 0,
+  "normalizedSha256": "a1c599efc9859812486462c91102c0dbcc55583dd33e79c5e17c4f825e8f4d4c",
+  "rawAssertionBearingPhysicalLineDifferences": 1,
+  "physicalLineExplanation": "One mixed setup/assertion line adds async/await and a mock before-quit event; its complete assertion suffix is byte-identical.",
+  "evidenceClass": "Static automated source comparison, not frozen B runtime qualification"
+}
+KIT_AUTH_BASELINE_PASS 90
+KIT_AUTH_CLAUSE_MUTATION {"clause":"!!win","childExit":0,"outcome":"EQUIVALENT_UNDER_CURRENT_FAIL_CLOSED_LOGIC","originalRestored":true}
+KIT_AUTH_CLAUSE_MUTATION {"clause":"!!sender","childExit":0,"outcome":"EQUIVALENT_UNDER_CURRENT_FAIL_CLOSED_LOGIC","originalRestored":true}
+KIT_AUTH_CLAUSE_MUTATION {"clause":"!sender.isDestroyed()","childExit":1,"outcome":"KILLED","originalRestored":true}
+KIT_AUTH_CLAUSE_MUTATION {"clause":"sender === win.webContents","childExit":1,"outcome":"KILLED","originalRestored":true}
+KIT_AUTH_CLAUSE_MUTATION {"clause":"!!frame","childExit":0,"outcome":"EQUIVALENT_UNDER_CURRENT_FAIL_CLOSED_LOGIC","originalRestored":true}
+KIT_AUTH_CLAUSE_MUTATION {"clause":"frame === sender.mainFrame","childExit":1,"outcome":"KILLED","originalRestored":true}
+KIT_AUTH_CLAUSE_MUTATION {"clause":"frame.url === this.url","childExit":1,"outcome":"KILLED","originalRestored":true}
+KIT_AUTH_CLAUSE_MUTATION {"clause":"sender.getURL() === this.url","childExit":1,"outcome":"KILLED","originalRestored":true}
+KIT_CATCH_DEPENDENCY_CONTROL_PASS !!win
+KIT_CATCH_DEPENDENCY_CONTROL_PASS !!sender
+KIT_CATCH_DEPENDENCY_CONTROL_PASS !!frame
+KIT_AUTH_MUTATIONS_PASS 5 killed; 3 conditional equivalent survivors; all child originals restored; mock-level
+KIT_AND_SOURCE_FILES_UNCHANGED
+
+> dvl-desktop@0.6.0 qualify:c1b
+> npm run verify:source && npm run test:c1 && npm run test:c1b:native && npm test && npm run test:c1b:control && npm run test:native-secret && npm run test:c1b:electron && npm run test:c1b:aliases
+
+
+> dvl-desktop@0.6.0 verify:source
+> node scripts/verify-source.cjs
+
+C1B SOURCE MATCH PASS: 124 entries
+
+> dvl-desktop@0.6.0 test:c1
+> npm run build:reader && npm run test:c1:unit && npm run test:c1:repair && npm run test:c1:native
+
+
+> dvl-desktop@0.6.0 build:reader
+> node scripts/build-reader.cjs
+
+
+> dvl-desktop@0.6.0 test:c1:unit
+> node tests/c1-unit.cjs
+
+PASS Path grammar rejects escapes and accepts Unicode/spaces without normalization
+PASS Sensitive policy consistent for case and nested paths
+PASS No native binary means BOUNDARY_UNSUPPORTED with no fallback
+PASS Unknown request keys and caller root rejected before backend
+PASS Request IDs cannot be reused in one generation
+PASS A → B → A produces a fresh generation and fences old requests
+PASS Root replaced by directory invalidates generation
+PASS Native malformed protocol becomes RUNTIME_FAILED without stdout leakage
+PASS Cancellation waits for helper close and releases active slot
+PASS Hard timeout terminates helper with bounded error
+PASS Two running and eight queued; overload BUSY; switch fences every pending request
+PASS Invalid cursor cannot reach filesystem helper
+PASS No project writes or .dvl activation from service refusal paths
+PASS Production native binary enforces malformed-input/policy failures
+NATIVE SUPPORT PROBE: NOT_FOUND
+PASS Runtime support is reported honestly and unsupported native reader fails closed
+PASS Close drains all tracked children/requests
+C1a CONTROL CHECKS PASSED: 16 (not OS-confinement qualification)
+
+> dvl-desktop@0.6.0 test:c1:repair
+> node tests/c1-repair.cjs
+
+PASS F7 single policy table denies every name/prefix/extension in JS AND production native entrypoint
+FD PROBE {"softBefore":1048575,"fd3Closed":true,"fd37Closed":true}
+PASS F3 close inherited descriptors including fd above lowered soft limit
+PASS F4 JS and native reject home/ancestors/system roots before sandbox
+PASS F4 custom userData root, ancestors and descendants rejected by host and native
+PASS F8 strict native protocol validates error/mode/kind/size/identity/offset/hex and unknown fields
+MATCH CPU MS 6.18
+MATCH CPU MS 24.54
+EVENT LOOP MAX MS 11.06
+PASS F2 one-MiB line, 200 start/end matches: bounded CPU and event-loop delay
+PASS F2 matching cooperatively observes cancellation during a long line
+PASS F9 snippets stay well-formed and Unicode columns remain correct
+PASS F5 excluded directories are counted and search reports partial
+PASS F5 newline/CR query rejected instead of reporting a false no-match
+PASS F5 invalid listing names and directory failures retain earlier matches and expose skip counts
+PASS F5 path-depth refusal preserves completed search evidence
+PASS F5 time budget returns explicit partial results rather than false completion
+PASS F6 helpers ignoring SIGKILL cannot wedge requests/shutdown or exceed global helper ceiling
+PASS F3 one root-bound process serves every list/read within a search (simulated protocol)
+PASS F8 malformed session response fails closed without raw error text
+C1a REPAIR CONTROL CHECKS PASSED: 16 (simulated protocol tests are not native security evidence)
+
+> dvl-desktop@0.6.0 test:c1:native
+> node tests/c1-boundary.cjs && node tests/c1-native-repair.cjs
+
+READY seatbelt
+{"externalDenied":true,"writeDenied":true,"movedDenied":true,"truncateDenied":true}
+PASS Mandatory OS boundary blocks direct outside read, write, and moved-directory injection
+PASS Real directory list hides denied targets, links and non-regular files
+PASS Read UTF-8 Unicode path, exact contents/hash and inert markup bytes
+PASS Traversal, empty, absolute, backslash, drive and NUL rejected
+PASS Denied targets blocked across read/list/search
+PASS Symlink parent, internal symlink, hard link and FIFO cannot disclose bytes
+PASS Binary, invalid encoding, oversized and missing files return bounded errors
+PASS Literal search correct 1-based Unicode column and explicit skipped files
+PASS Regex characters treated literally; empty/oversize query rejected
+PASS Unknown keys, caller-supplied root, duplicate IDs and bad project rejected
+PASS Cancellation and A → B → A fence pending and old-generation results
+PASS Root identity replacement invalidates capability
+PASS Pagination bounded to 200, cursor single-use, directory changes reject cursor
+PASS Result limit caps matches and labels partial
+PASS Unavailable backend fails closed, no path-only fallback
+PASS File inventory including .git/hidden/ignored bytes unchanged; .dvl absent
+PASS Close cancels pending requests and leaves no tracked helper
+C1a CHECKS PASSED: 17 platform: darwin x64
+REPAIRED NATIVE MODE seatbelt
+PASS Native sandbox operational; repaired service reads actual fixture bytes
+ALIAS RESOLUTION ".ſsh/config" true
+ALIAS RESOLUTION ".awſ/credentialſ" true
+ALIAS RESOLUTION "id_rſa" true
+ALIAS RESOLUTION ".ßh/config" true
+ALIAS RESOLUTION ".AWS/CREDENTIALS" true
+ALIAS RESOLUTION "srv.Key" true
+PASS F1 direct native AND service deny actual sensitive-name aliases before content disclosure
+PASS F1 exact stored Unicode spelling works; normalization aliases fail closed or are exact
+PASS Native helper independently rejects wrong root inode (bypasses host check)
+PASS Persistent native protocol cannot rebind root or introduce a new method
+PASS F11 root quoting/escaping: spaces, quotes, backslash and Arabic
+PASS Real child cancellation AFTER spawn returns no content and reaps child
+PASS Real child A → B switch AFTER spawn fences old response
+100 READS MS 2230.42
+PASS F3 100 sequential reads record target latency without leaking helpers
+500 FILE SEARCH MS 876.92 HELPERS 1
+PASS F3 persistent sandbox: complete 500-file search in the unchanged 5-second budget
+C1a REPAIR NATIVE CHECKS PASSED: 10 darwin x64
+
+> dvl-desktop@0.6.0 test:c1b:native
+> node tests/c1b-v2-native.cjs && node tests/c1b-v3-native.cjs
+
+PASS Binary NUL refusal happens inside the confined helper before hex transfer
+C1B_NEXT_FIXTURE {"elapsedMs":640,"pipeBytes":1418596,"bytesScanned":676549,"bytesRead":8540869,"filesScanned":452,"excludedDirectories":1,"skipped":{"UNSUPPORTED_ENCODING":120},"mode":"darwin"}
+PASS Next-shaped 794-file tree finishes its permitted search within the unchanged budget
+PASS .next remains listable and directly readable; only search traversal excludes it
+C1B_V2_NATIVE_PASS 3 darwin x64
+C1B_V2_NATIVE_CLOSE {"pendingRequests":0,"abandonedHelpers":0,"liveHelpers":0}
+PASS Real list pages omit every guarded stored name and count hidden entries once
+PASS Search counts encountered entries, keeps excluded descendants out of total, and reveals no hidden bytes
+PASS Policy-hidden count alone does not falsely mark permitted search partial
+C1B_V3_NATIVE_PASS 3 darwin x64
+C1B_V3_NATIVE_CLOSE {"pendingRequests":0,"abandonedHelpers":0,"liveHelpers":0}
+
+> dvl-desktop@0.6.0 test
+> node tests/green-gate.cjs
+
+PASS Schema and integrity before all schema/journal writes
+PASS Mock picker IPC cancellation leaves last project empty
+PASS Open-project IPC and same canonical path reuse ID
+PASS Canonical alias reuses ID
+PASS Settings IPC round trip and invalid inputs
+PASS Secrets IPC verifies persisted ciphertext with status only
+PASS Recent IPC selects older project and persists selection
+PASS Missing recent returns null and unavailable; restored folder keeps ID
+PASS BrowserWindow security flags
+PASS Second instance restores minimized window; closed window recreated
+PASS Before-quit checkpoints and closes database
+PASS Restart preserves project, setting and decryptable secret via IPC
+PASS Unreadable ciphertext returns boolean failure; row retained
+PASS Unavailable encryption and mismatched round trip reject without write
+PASS Delete-secret IPC removes row and reports status only
+PASS Regular-file replacement not restored or registered
+PASS Canonical path replaced by symlink cannot impersonate original project
+PASS Legacy import executes on boot and is idempotent across restart
+PASS Legacy regular-file path is rejected safely
+PASS Rejected single-instance lock never opens or changes database
+PASS Corrupt database handled, retained and never migrated
+PASS Project content unchanged; logs contain no test secret values
+PASS Failed round trip preserves existing ciphertext
+PASS Renderer handles unreadable secret, IPC failure and stale recent
+TOTAL CHECKS PASSED: 24
+
+> dvl-desktop@0.6.0 test:c1b:control
+> node tests/c1b-ipc.cjs && node tests/c1b-policy.cjs && node tests/c1b-renderer.cjs && node tests/c1b-v2-control.cjs && node tests/c1b-b-auth.cjs && node tests/c1b-v3-control.cjs && node tests/c1b-auth-mutations.cjs && node tests/c1b-alias-missing-target.cjs
+
+PASS Helper is outside asar and matches platform, architecture and startup digest
+PASS Reject foreign webContents, child frames, wrong origin and detached frames
+PASS Own main frame receives bounded context without root or rebinding capability
+PASS Exact IPC schemas reject root injection, missing/unknown keys, bad query and extra args
+PASS Wrong generation/project cannot reach the service
+PASS Exception mapping never reveals exception text or helper payload
+PASS Per-renderer pending ceiling and duplicate ownership do not overwrite a request
+PASS A -> B fences an in-flight completion even when backend ignored cancellation
+PASS Reload same URL fences old document, preserves rate budget and rebinds fresh generation
+PASS Cancellation requires exact sender/frame/context ownership and code-maps throws
+PASS Navigation/webviews/popups are blocked and renderer loss revokes binding
+PASS Old-window destruction cannot clear a newer window binding
+PASS Helper modification after startup is refused before spawning
+PASS Close is idempotent, rejects reads and surfaces exact cleanup counts without content logs
+C1b IPC CONTROL CHECKS PASSED: 14 (simulated completion; not native/Electron qualification)
+PASS N-1 all derived protected home entries are rejected by the host
+PASS N-1 native independently refuses protected credential roots before sandbox setup
+PASS N-2 reopened: all eleven observed alias characters and eight disclosure names are refused
+C1b POLICY CHECKS PASSED: 3 (pre-confinement; not OS qualification)
+PASS Initial project obtains main-chosen generation and lists permitted entries as text
+PASS Markup contents remain inert text
+PASS Project switch clears visible content and fences a late result
+PASS Search reports partial reason and counts without dropping semantics
+PASS Stop fences late completion and invokes owned cancellation
+PASS List hidden counts accumulate per page and reset on refresh
+PASS Shutdown shows exact pending/live/abandoned counts and disables reading
+C1b RENDERER CONTROL CHECKS PASSED: 7 (DOM simulation; not browser qualification)
+PASS Timeout reports once with enum/numeric metadata: before_spawn_event
+PASS Timeout reports once with enum/numeric metadata: before_first_byte
+PASS Timeout reports once with enum/numeric metadata: after_first_byte
+PASS Timeout logging failure cannot change TIMEOUT or leak helper bytes
+PASS Forward wall-clock jump does not expire monotonic read deadline
+PASS Rejected binary reads consume the scan budget and preserve skip codes
+PASS Successful file growth is charged; decoded bytes never exceed charged bytes
+PASS Native protocol accepts only the exact UNSUPPORTED_ENCODING error shape
+C1B_V2_CONTROL_PASS 8 (simulated children/accounting; not OS confinement)
+AUTH_SCENARIO_PASS foreign_sender 9
+AUTH_SCENARIO_PASS foreign_frame 9
+AUTH_SCENARIO_PASS navigated_sender 9
+AUTH_SCENARIO_PASS frame_url_mismatch 9
+AUTH_SCENARIO_PASS destroyed_sender 9
+AUTH_SCENARIO_PASS missing_window 9
+AUTH_SCENARIO_PASS closed_window 9
+AUTH_SCENARIO_PASS missing_sender 9
+AUTH_SCENARIO_PASS missing_frame 9
+AUTH_SCENARIO_PASS missing_event 9
+C1B_B_AUTH_PASS 90 (9 B channels x 10 negative scenarios; authenticated read/write controls; mock-level)
+PASS All eleven observed hazards refuse benign names too; unrelated Unicode remains usable
+PASS Native list requires bounded hidden count and rejects impossible accounting
+PASS Host listing defense counts policy names separately from invalid encodings
+PASS Search aggregates encountered policy counts across pages and keeps exclusions/skips distinct
+UNICODE_PROBE_LOGIC_SELFTEST_PASS (data/pair generation/inode identity only; no Mac/APFS/native claim)
+PASS Repaired probe preserves EILSEQ handling and generates all twelve default ASCII folds
+PASS Alias gate fails allowed/missing/incorrect native or host refusal and incomplete filesystem evidence
+C1B_V3_CONTROL_PASS 6 (logic/simulated; no native OS qualification)
+AUTH_CLAUSE_MUTATION {"clause":"!!win","childExit":0,"outcome":"EQUIVALENT_GUARD_UNDER_FAIL_CLOSED_CATCH","diagnostic":null}
+AUTH_CLAUSE_MUTATION {"clause":"!!sender","childExit":0,"outcome":"EQUIVALENT_GUARD_UNDER_FAIL_CLOSED_CATCH","diagnostic":null}
+AUTH_CLAUSE_MUTATION {"clause":"!sender.isDestroyed()","childExit":1,"outcome":"KILLED_BY_NEGATIVE_TEST","diagnostic":"AssertionError [ERR_ASSERTION]: Missing expected rejection: destroyed_sender:get-last-project"}
+AUTH_CLAUSE_MUTATION {"clause":"sender === win.webContents","childExit":1,"outcome":"KILLED_BY_NEGATIVE_TEST","diagnostic":"AssertionError [ERR_ASSERTION]: Missing expected rejection: foreign_sender:get-last-project"}
+AUTH_CLAUSE_MUTATION {"clause":"!!frame","childExit":0,"outcome":"EQUIVALENT_GUARD_UNDER_FAIL_CLOSED_CATCH","diagnostic":null}
+AUTH_CLAUSE_MUTATION {"clause":"frame === sender.mainFrame","childExit":1,"outcome":"KILLED_BY_NEGATIVE_TEST","diagnostic":"AssertionError [ERR_ASSERTION]: Missing expected rejection: foreign_frame:get-last-project"}
+AUTH_CLAUSE_MUTATION {"clause":"frame.url === this.url","childExit":1,"outcome":"KILLED_BY_NEGATIVE_TEST","diagnostic":"AssertionError [ERR_ASSERTION]: Missing expected rejection: frame_url_mismatch:get-last-project"}
+AUTH_CLAUSE_MUTATION {"clause":"sender.getURL() === this.url","childExit":1,"outcome":"KILLED_BY_NEGATIVE_TEST","diagnostic":"AssertionError [ERR_ASSERTION]: Missing expected rejection: navigated_sender:get-last-project"}
+C1B_AUTH_MUTATIONS_PASS {"clauses":8,"killed":5,"equivalentPresenceGuards":3,"alwaysDenyControlKilled":true,"scope":"mock-level; equivalent survivors are reported, not counted as killed"}
+C1B_ALIAS_MISSING_TARGET_PASS exit=1 ENOENT; zero aliases checked is a failure, no PASS/report/fixtures (platform-branch stub; real filesystem)
+
+> dvl-desktop@0.6.0 test:native-secret
+> node tests/native-secret-check.cjs
+
+Downloading Electron binary...
+[24949:1020/023514.021472:ERROR:ui/gl/gl_display.cc:665] Initialization of all (1) EGL display types failed.
+[24949:1020/023514.022271:ERROR:ui/gl/init/gl_initializer_mac.cc:127] GLDisplayEGL::Initialize failed.
+[24949:1020/023514.022317:ERROR:ui/gl/gl_display.cc:665] Initialization of all (1) EGL display types failed.
+[24949:1020/023514.022331:ERROR:ui/gl/init/gl_initializer_mac.cc:127] GLDisplayEGL::Initialize failed.
+[24949:1020/023514.113794:ERROR:components/viz/service/main/viz_main_impl.cc:190] Exiting GPU process due to errors during initialization
+PASS Native Electron secret write through production preload and IPC
+[24961:1020/023517.048063:ERROR:ui/gl/gl_display.cc:665] Initialization of all (1) EGL display types failed.
+[24961:1020/023517.049798:ERROR:ui/gl/init/gl_initializer_mac.cc:127] GLDisplayEGL::Initialize failed.
+[24961:1020/023517.049860:ERROR:ui/gl/gl_display.cc:665] Initialization of all (1) EGL display types failed.
+[24961:1020/023517.049881:ERROR:ui/gl/init/gl_initializer_mac.cc:127] GLDisplayEGL::Initialize failed.
+[24961:1020/023517.133052:ERROR:components/viz/service/main/viz_main_impl.cc:190] Exiting GPU process due to errors during initialization
+PASS Native Electron secret read through production preload and IPC
+PASS Native restart, clean shutdown, DB integrity and no secret in logs
+NATIVE SECRET CHECK PASSED
+
+> dvl-desktop@0.6.0 test:c1b:electron
+> node tests/c1b-electron.cjs
+
+READY seatbelt
+{"externalDenied":true,"writeDenied":true,"movedDenied":true,"truncateDenied":true}
+PASS Mandatory OS boundary blocks direct outside read, write, and moved-directory injection
+PASS Real directory list hides denied targets, links and non-regular files
+PASS Read UTF-8 Unicode path, exact contents/hash and inert markup bytes
+PASS Traversal, empty, absolute, backslash, drive and NUL rejected
+PASS Denied targets blocked across read/list/search
+PASS Symlink parent, internal symlink, hard link and FIFO cannot disclose bytes
+PASS Binary, invalid encoding, oversized and missing files return bounded errors
+PASS Literal search correct 1-based Unicode column and explicit skipped files
+PASS Regex characters treated literally; empty/oversize query rejected
+PASS Unknown keys, caller-supplied root, duplicate IDs and bad project rejected
+PASS Cancellation and A → B → A fence pending and old-generation results
+PASS Root identity replacement invalidates capability
+PASS Pagination bounded to 200, cursor single-use, directory changes reject cursor
+PASS Result limit caps matches and labels partial
+PASS Unavailable backend fails closed, no path-only fallback
+PASS File inventory including .git/hidden/ignored bytes unchanged; .dvl absent
+PASS Close cancels pending requests and leaves no tracked helper
+C1a CHECKS PASSED: 17 platform: darwin x64
+REPAIRED NATIVE MODE seatbelt
+PASS Native sandbox operational; repaired service reads actual fixture bytes
+ALIAS RESOLUTION ".ſsh/config" true
+ALIAS RESOLUTION ".awſ/credentialſ" true
+ALIAS RESOLUTION "id_rſa" true
+ALIAS RESOLUTION ".ßh/config" true
+ALIAS RESOLUTION ".AWS/CREDENTIALS" true
+ALIAS RESOLUTION "srv.Key" true
+PASS F1 direct native AND service deny actual sensitive-name aliases before content disclosure
+PASS F1 exact stored Unicode spelling works; normalization aliases fail closed or are exact
+PASS Native helper independently rejects wrong root inode (bypasses host check)
+PASS Persistent native protocol cannot rebind root or introduce a new method
+PASS F11 root quoting/escaping: spaces, quotes, backslash and Arabic
+PASS Real child cancellation AFTER spawn returns no content and reaps child
+PASS Real child A → B switch AFTER spawn fences old response
+100 READS MS 2481.86
+PASS F3 100 sequential reads record target latency without leaking helpers
+500 FILE SEARCH MS 892.27 HELPERS 1
+PASS F3 persistent sandbox: complete 500-file search in the unchanged 5-second budget
+C1a REPAIR NATIVE CHECKS PASSED: 10 darwin x64
+PASS N-1 all derived protected home entries are rejected by the host
+PASS N-1 native independently refuses protected credential roots before sandbox setup
+PASS N-2 reopened: all eleven observed alias characters and eight disclosure names are refused
+C1b POLICY CHECKS PASSED: 3 (pre-confinement; not OS qualification)
+PASS Binary NUL refusal happens inside the confined helper before hex transfer
+C1B_NEXT_FIXTURE {"elapsedMs":648,"pipeBytes":1418600,"bytesScanned":676549,"bytesRead":8540869,"filesScanned":452,"excludedDirectories":1,"skipped":{"UNSUPPORTED_ENCODING":120},"mode":"darwin"}
+PASS Next-shaped 794-file tree finishes its permitted search within the unchanged budget
+PASS .next remains listable and directly readable; only search traversal excludes it
+C1B_V2_NATIVE_PASS 3 darwin x64
+C1B_V2_NATIVE_CLOSE {"pendingRequests":0,"abandonedHelpers":0,"liveHelpers":0}
+PASS Real list pages omit every guarded stored name and count hidden entries once
+PASS Search counts encountered entries, keeps excluded descendants out of total, and reveals no hidden bytes
+PASS Policy-hidden count alone does not falsely mark permitted search partial
+C1B_V3_NATIVE_PASS 3 darwin x64
+C1B_V3_NATIVE_CLOSE {"pendingRequests":0,"abandonedHelpers":0,"liveHelpers":0}
+PASS Native suites in Electron embedded Node (not UI tests)
+ELECTRON_RUNTIME 44.7.2 NODE 24.21.0 darwin x64
+[25228:1020/023528.427124:ERROR:ui/gl/gl_display.cc:665] Initialization of all (1) EGL display types failed.
+[25228:1020/023528.427837:ERROR:ui/gl/init/gl_initializer_mac.cc:127] GLDisplayEGL::Initialize failed.
+[25228:1020/023528.427866:ERROR:ui/gl/gl_display.cc:665] Initialization of all (1) EGL display types failed.
+[25228:1020/023528.427872:ERROR:ui/gl/init/gl_initializer_mac.cc:127] GLDisplayEGL::Initialize failed.
+[25228:1020/023528.504469:ERROR:components/viz/service/main/viz_main_impl.cc:190] Exiting GPU process due to errors during initialization
+PASS Real Electron preload has narrow methods and no renderer binding/root API
+PASS Actual native list/read/search through production IPC
+[25234:1020/023529.244778:ERROR:ui/gl/gl_display.cc:665] Initialization of all (1) EGL display types failed.
+[25234:1020/023529.245362:ERROR:ui/gl/init/gl_initializer_mac.cc:127] GLDisplayEGL::Initialize failed.
+[25234:1020/023529.245391:ERROR:ui/gl/gl_display.cc:665] Initialization of all (1) EGL display types failed.
+[25234:1020/023529.245397:ERROR:ui/gl/init/gl_initializer_mac.cc:127] GLDisplayEGL::Initialize failed.
+PASS Live UI displays markup as text and does not execute it
+PASS Production IPC refuses caller root, traversal, denied file and extra query keys
+PASS Native B regression: regular-file and symlink replacements cannot impersonate a registered project
+[25234:1020/023529.313475:ERROR:components/viz/service/main/viz_main_impl.cc:190] Exiting GPU process due to errors during initialization
+PASS Project A -> B rejects old context; new context reads only B
+PASS Reload obtains a fresh generation and clears previous visible bytes
+PASS Fixture bytes unchanged, .dvl absent, no query/contents in logs
+C1B_ELECTRON_INTEGRATION_PASS 8 darwin x64
+[25249:1020/023534.719862:ERROR:ui/gl/gl_display.cc:665] Initialization of all (1) EGL display types failed.
+[25249:1020/023534.720394:ERROR:ui/gl/init/gl_initializer_mac.cc:127] GLDisplayEGL::Initialize failed.
+[25249:1020/023534.720425:ERROR:ui/gl/gl_display.cc:665] Initialization of all (1) EGL display types failed.
+[25249:1020/023534.720436:ERROR:ui/gl/init/gl_initializer_mac.cc:127] GLDisplayEGL::Initialize failed.
+[25249:1020/023534.790895:ERROR:components/viz/service/main/viz_main_impl.cc:190] Exiting GPU process due to errors during initialization
+PASS Startup restore automatically lists the persisted project without a dialog
+[25253:1020/023535.441439:ERROR:ui/gl/gl_display.cc:665] Initialization of all (1) EGL display types failed.
+[25253:1020/023535.441911:ERROR:ui/gl/init/gl_initializer_mac.cc:127] GLDisplayEGL::Initialize failed.
+[25253:1020/023535.441938:ERROR:ui/gl/gl_display.cc:665] Initialization of all (1) EGL display types failed.
+[25253:1020/023535.441949:ERROR:ui/gl/init/gl_initializer_mac.cc:127] GLDisplayEGL::Initialize failed.
+[25253:1020/023535.497008:ERROR:components/viz/service/main/viz_main_impl.cc:190] Exiting GPU process due to errors during initialization
+PASS Actual app pages 200+1 entries, contains scrolling and reveals file text
+PASS Restore/layout path keeps project read-only and content out of logs
+C1B_ELECTRON_RESTORE_PASS 3 44.7.2 darwin x64
+C1B_ELECTRON_GATE_PASS (includes clean shutdown counts; independent review still required)
+
+> dvl-desktop@0.6.0 test:c1b:aliases
+> node scripts/qualify-unicode-aliases.cjs
+
+ALIAS_RESOLUTION U+00DF "probe_ß_end.txt" sensitive=false true/true
+ALIAS_RESOLUTION U+00DF ".ßh" sensitive=true true/true
+ALIAS_RESOLUTION U+00DF ".pgpaß" sensitive=true true/true
+ALIAS_RESOLUTION U+00DF ".htpaßwd" sensitive=true true/true
+ALIAS_RESOLUTION U+00DF ".paßword-store" sensitive=true true/true
+ALIAS_RESOLUTION U+017F "probe_ſ_end.txt" sensitive=false true/true
+ALIAS_RESOLUTION U+017F ".ſsh" sensitive=true true/true
+ALIAS_RESOLUTION U+017F ".sſh" sensitive=true true/true
+ALIAS_RESOLUTION U+017F ".awſ" sensitive=true true/true
+ALIAS_RESOLUTION U+017F "credentialſ" sensitive=true true/true
+ALIAS_RESOLUTION U+017F "credentialſ.json" sensitive=true true/true
+ALIAS_RESOLUTION U+017F "credentials.jſon" sensitive=true true/true
+ALIAS_RESOLUTION U+017F ".git-credentialſ" sensitive=true true/true
+ALIAS_RESOLUTION U+017F ".pgpaſs" sensitive=true true/true
+ALIAS_RESOLUTION U+017F ".pgpasſ" sensitive=true true/true
+ALIAS_RESOLUTION U+017F ".htpaſswd" sensitive=true true/true
+ALIAS_RESOLUTION U+017F ".htpasſwd" sensitive=true true/true
+ALIAS_RESOLUTION U+017F ".paſsword-store" sensitive=true true/true
+ALIAS_RESOLUTION U+017F ".pasſword-store" sensitive=true true/true
+ALIAS_RESOLUTION U+017F ".password-ſtore" sensitive=true true/true
+ALIAS_RESOLUTION U+017F "id_rſaprobe" sensitive=true true/true
+ALIAS_RESOLUTION U+017F "id_ecdſaprobe" sensitive=true true/true
+ALIAS_RESOLUTION U+017F "id_dſaprobe" sensitive=true true/true
+ALIAS_RESOLUTION U+017F "ordinary.tfſtate" sensitive=true true/true
+ALIAS_RESOLUTION U+017F "ordinary.keyſtore" sensitive=true true/true
+ALIAS_RESOLUTION U+017F "ordinary.jkſ" sensitive=true true/true
+ALIAS_RESOLUTION U+1E9E "probe_ẞ_end.txt" sensitive=false true/true
+ALIAS_RESOLUTION U+1E9E ".ẞh" sensitive=true true/true
+ALIAS_RESOLUTION U+1E9E ".pgpaẞ" sensitive=true true/true
+ALIAS_RESOLUTION U+1E9E ".htpaẞwd" sensitive=true true/true
+ALIAS_RESOLUTION U+1E9E ".paẞword-store" sensitive=true true/true
+ALIAS_RESOLUTION U+212A "probe_K_end.txt" sensitive=false true/true
+ALIAS_RESOLUTION U+212A ".Kube" sensitive=true true/true
+ALIAS_RESOLUTION U+212A ".docKer" sensitive=true true/true
+ALIAS_RESOLUTION U+212A ".vault-toKen" sensitive=true true/true
+ALIAS_RESOLUTION U+212A "Kubeconfig" sensitive=true true/true
+ALIAS_RESOLUTION U+212A "ordinary.Key" sensitive=true true/true
+ALIAS_RESOLUTION U+212A "ordinary.Keystore" sensitive=true true/true
+ALIAS_RESOLUTION U+212A "ordinary.jKs" sensitive=true true/true
+ALIAS_RESOLUTION U+FB00 "probe_ﬀ_end.txt" sensitive=false true/true
+ALIAS_RESOLUTION U+FB01 "probe_ﬁ_end.txt" sensitive=false true/true
+ALIAS_RESOLUTION U+FB01 ".conﬁg" sensitive=true true/true
+ALIAS_RESOLUTION U+FB01 "kubeconﬁg" sensitive=true true/true
+ALIAS_RESOLUTION U+FB02 "probe_ﬂ_end.txt" sensitive=false true/true
+ALIAS_RESOLUTION U+FB03 "probe_ﬃ_end.txt" sensitive=false true/true
+ALIAS_RESOLUTION U+FB04 "probe_ﬄ_end.txt" sensitive=false true/true
+ALIAS_RESOLUTION U+FB05 "probe_ﬅ_end.txt" sensitive=false true/true
+ALIAS_RESOLUTION U+FB05 ".password-ﬅore" sensitive=true true/true
+ALIAS_RESOLUTION U+FB05 "ordinary.tfﬅate" sensitive=true true/true
+ALIAS_RESOLUTION U+FB05 "ordinary.keyﬅore" sensitive=true true/true
+ALIAS_RESOLUTION U+FB06 "probe_ﬆ_end.txt" sensitive=false true/true
+ALIAS_RESOLUTION U+FB06 ".password-ﬆore" sensitive=true true/true
+ALIAS_RESOLUTION U+FB06 "ordinary.tfﬆate" sensitive=true true/true
+ALIAS_RESOLUTION U+FB06 "ordinary.keyﬆore" sensitive=true true/true
+ALIAS_RESOLUTION U+1DF95 "probe_𝾕_end.txt" sensitive=false false/NA[CREATE:EILSEQ]
+ALIAS_RESOLUTION U+1DF95 ".𝾕h" sensitive=true false/NA[CREATE:EILSEQ]
+ALIAS_RESOLUTION U+1DF95 ".pgpa𝾕" sensitive=true false/NA[CREATE:EILSEQ]
+ALIAS_RESOLUTION U+1DF95 ".htpa𝾕wd" sensitive=true false/NA[CREATE:EILSEQ]
+ALIAS_RESOLUTION U+1DF95 ".pa𝾕word-store" sensitive=true false/NA[CREATE:EILSEQ]
+ALIAS_RESOLUTION U+0130 "probe_İ_end.txt" sensitive=false false/false
+ALIAS_RESOLUTION U+0130 ".gİt" sensitive=true false/false
+ALIAS_RESOLUTION U+0130 ".confİg" sensitive=true false/false
+ALIAS_RESOLUTION U+0130 ".pypİrc" sensitive=true false/false
+ALIAS_RESOLUTION U+0130 "credentİals" sensitive=true false/false
+ALIAS_RESOLUTION U+0130 "credentİals.json" sensitive=true false/false
+ALIAS_RESOLUTION U+0130 ".gİt-credentials" sensitive=true false/false
+ALIAS_RESOLUTION U+0130 ".git-credentİals" sensitive=true false/false
+ALIAS_RESOLUTION U+0130 "kubeconfİg" sensitive=true false/false
+ALIAS_RESOLUTION U+0130 "İd_rsaprobe" sensitive=true false/false
+ALIAS_RESOLUTION U+0130 "İd_ed25519probe" sensitive=true false/false
+ALIAS_RESOLUTION U+0130 "İd_ecdsaprobe" sensitive=true false/false
+ALIAS_RESOLUTION U+0130 "İd_dsaprobe" sensitive=true false/false
+ALIAS_RESOLUTION U+0130 "ordİnary.pem" sensitive=true false/false
+ALIAS_RESOLUTION U+0130 "ordİnary.key" sensitive=true false/false
+ALIAS_RESOLUTION U+0130 "ordİnary.p12" sensitive=true false/false
+ALIAS_RESOLUTION U+0130 "ordİnary.pfx" sensitive=true false/false
+ALIAS_RESOLUTION U+0130 "ordİnary.tfstate" sensitive=true false/false
+ALIAS_RESOLUTION U+0130 "ordİnary.keystore" sensitive=true false/false
+ALIAS_RESOLUTION U+0130 "ordİnary.jks" sensitive=true false/false
+UNICODE_ALIAS_REPORT /Users/user/desktop/dvl-dsktop/C1B_V3_R1_MAC_EVIDENCE/unicode-aliases-v3.json
+ADDITIONAL_SENSITIVE_ALIASES []
+ALLOWED_SENSITIVE_ALIAS_READS []
+UNICODE_ALIAS_GATE_PASS []
+QUALIFICATION_EXIT=0

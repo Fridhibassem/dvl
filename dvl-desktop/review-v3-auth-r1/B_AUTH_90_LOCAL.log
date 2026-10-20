@@ -1,0 +1,11 @@
+AUTH_SCENARIO_PASS foreign_sender 9
+AUTH_SCENARIO_PASS foreign_frame 9
+AUTH_SCENARIO_PASS navigated_sender 9
+AUTH_SCENARIO_PASS frame_url_mismatch 9
+AUTH_SCENARIO_PASS destroyed_sender 9
+AUTH_SCENARIO_PASS missing_window 9
+AUTH_SCENARIO_PASS closed_window 9
+AUTH_SCENARIO_PASS missing_sender 9
+AUTH_SCENARIO_PASS missing_frame 9
+AUTH_SCENARIO_PASS missing_event 9
+C1B_B_AUTH_PASS 90 (9 B channels x 10 negative scenarios; authenticated read/write controls; mock-level)

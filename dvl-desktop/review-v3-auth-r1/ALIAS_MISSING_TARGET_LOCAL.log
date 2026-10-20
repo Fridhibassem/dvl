@@ -1,0 +1,1 @@
+C1B_ALIAS_MISSING_TARGET_PASS exit=1 ENOENT; zero aliases checked is a failure, no PASS/report/fixtures (platform-branch stub; real filesystem)

@@ -1,0 +1,42 @@
+--- C1a-reviewed/native/project-reader.c
++++ C1b-V3/native/project-reader.c
+@@ -1,5 +1,5 @@
+ /* DVL C1 boundary prototype. No provider, mutation or shell API.
+- * One request per short-lived process. All output is buffered until identity
++ * One immutable root per serial persistent session. All output is buffered until identity
+  * checks pass. OS confinement is mandatory, never a path-only fallback.
+  * macOS Seatbelt branch MUST be qualified on the target Mac before acceptance.
+  */
+@@ -55,6 +55,8 @@
+  for(size_t i=0;i<n;i+=2){if(!isxdigit((unsigned char)s[i])||!isxdigit((unsigned char)s[i+1]))return -1;unsigned x;sscanf(s+i,"%2x",&x);if(!x)return -1;out[i/2]=(char)x;}out[n/2]=0;return 0;
+ }
+ static int denied(const char *s) {
++ /* Broad stored-name refusal; table shared with host policy. */
++ for(int i=0;policy_deniedUnicodeUtf8[i];i++)if(strstr(s,policy_deniedUnicodeUtf8[i]))return 1;
+  char b[4096];size_t n=strlen(s);if(n>=sizeof b)return 1;for(size_t i=0;i<=n;i++)b[i]=(char)tolower((unsigned char)s[i]);
+  for(int i=0;policy_deniedNames[i];i++)if(!strcmp(b,policy_deniedNames[i]))return 1;
+  for(int i=0;policy_deniedPrefixes[i];i++)if(!strncmp(b,policy_deniedPrefixes[i],strlen(policy_deniedPrefixes[i])))return 1;
+@@ -169,11 +171,12 @@
+   if(!S_ISREG(before.st_mode))return fail("NOT_REGULAR_FILE");if(before.st_nlink!=1)return fail("HARDLINK_DENIED");if(before.st_size>MAX_READ)return fail("FILE_TOO_LARGE");
+   static unsigned char bytes[MAX_READ+1];size_t n=0;while(n<sizeof bytes){ssize_t r=read(fd,bytes+n,sizeof bytes-n);if(r<0){if(errno==EINTR)continue;return fail(ioerr());}if(!r)break;n+=(size_t)r;}if(n>MAX_READ)return fail("FILE_TOO_LARGE");
+   struct stat after;if(fstat(fd,&after)||!unchanged(before,after)||after.st_nlink!=1)return fail("FILE_CHANGED");
++  if(memchr(bytes,0,n))return fail("UNSUPPORTED_ENCODING");
+   used=0;append("{\"ok\":true,\"mode\":\"%s\",\"hex\":\"",mode);hex(bytes,n);append("\",\"bytes\":%zu,\"dev\":\"%llu\",\"ino\":\"%llu\"}",n,(unsigned long long)before.st_dev,(unsigned long long)before.st_ino);
+  }else{
+- int scanfd=dup(fd);DIR *d=scanfd<0?NULL:fdopendir(scanfd);if(!d){if(scanfd>=0)close(scanfd);return fail(ioerr());}unsigned seen=0,count=0,skipped=0;int more=0,limited=0;
++ int scanfd=dup(fd);DIR *d=scanfd<0?NULL:fdopendir(scanfd);if(!d){if(scanfd>=0)close(scanfd);return fail(ioerr());}unsigned seen=0,count=0,skipped=0,hidden=0;int more=0,limited=0;
+   used=0;append("{\"ok\":true,\"mode\":\"%s\",\"entries\":[",mode);
+-  struct dirent *e;errno=0;while((e=readdir(d))){if(!strcmp(e->d_name,".")||!strcmp(e->d_name,".."))continue;if(seen>=10000){limited=1;break;}seen++;if(seen<=offset)continue;if(denied(e->d_name))continue;
++  struct dirent *e;errno=0;while((e=readdir(d))){if(!strcmp(e->d_name,".")||!strcmp(e->d_name,".."))continue;if(seen>=10000){limited=1;break;}seen++;if(seen<=offset)continue;if(denied(e->d_name)){hidden++;continue;}
+    if(count>=200||used+strlen(e->d_name)*2+160>=sizeof output){more=1;seen--;break;}
+    struct stat st;if(fstatat(fd,e->d_name,&st,AT_SYMLINK_NOFOLLOW)){closedir(d);return fail("DIRECTORY_CHANGED");}if((!S_ISREG(st.st_mode)&&!S_ISDIR(st.st_mode))||st.st_dev!=before.st_dev||(S_ISREG(st.st_mode)&&st.st_nlink!=1)){skipped++;continue;}
+    append("%s{\"nameHex\":\"",count?",":"");hex((unsigned char*)e->d_name,strlen(e->d_name));append("\",\"kind\":\"%s\",\"size\":%llu}",S_ISDIR(st.st_mode)?"directory":"file",(unsigned long long)st.st_size);count++;errno=0;
+@@ -183,7 +186,7 @@
+ #else
+   long mn=before.st_mtim.tv_nsec,cn=before.st_ctim.tv_nsec;
+ #endif
+-  append("],\"offset\":%u,\"more\":%s,\"limited\":%s,\"skipped\":%u,\"dev\":\"%llu\",\"ino\":\"%llu\",\"stamp\":\"%llu:%ld:%llu:%ld\"}",seen,more?"true":"false",limited?"true":"false",skipped,(unsigned long long)before.st_dev,(unsigned long long)before.st_ino,(unsigned long long)before.st_mtime,mn,(unsigned long long)before.st_ctime,cn);
++  append("],\"offset\":%u,\"more\":%s,\"limited\":%s,\"skipped\":%u,\"hiddenByPolicy\":%u,\"dev\":\"%llu\",\"ino\":\"%llu\",\"stamp\":\"%llu:%ld:%llu:%ld\"}",seen,more?"true":"false",limited?"true":"false",skipped,hidden,(unsigned long long)before.st_dev,(unsigned long long)before.st_ino,(unsigned long long)before.st_mtime,mn,(unsigned long long)before.st_ctime,cn);
+  }
+  /* Verify root and walked name still bind to the observed inodes, then publish.
+   * This detects common races; it is NOT an atomic snapshot or proof against a

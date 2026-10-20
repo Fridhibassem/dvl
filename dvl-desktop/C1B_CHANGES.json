@@ -1,5 +1,5 @@
 {
-  "candidate": "C1b V3",
+  "candidate": "C1b V3 auth-tests r1",
   "state": "REPAIR_CANDIDATE_MAC_AND_INDEPENDENT_REVIEW_PENDING",
   "newFinding": "C1B-UNICODE-01",
   "reopened": [
@@ -19,5 +19,16 @@
       "V3Sha256": "73d25e2a074e87de3ea88678f2caa55d2348be8d79404e29b1df27255fd460fb"
     }
   },
-  "historicalV2": "review-history/c1b-v2/"
+  "historicalV2": "review-history/c1b-v2/",
+  "testRevision": {
+    "basis": "original V3, production src/native/scripts byte-identical",
+    "authCases": 90,
+    "clauseMutations": {
+      "total": 8,
+      "killed": 5,
+      "equivalentPresenceGuards": 3
+    },
+    "evidence": "review-v3-auth-r1/",
+    "targetQualification": "PENDING"
+  }
 }

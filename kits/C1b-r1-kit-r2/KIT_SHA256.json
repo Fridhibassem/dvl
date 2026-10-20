@@ -1,0 +1,22 @@
+{
+  "AUTH_TESTS_R1_REPORT.md": "64546e020629e1c0d74684d842011cc0b5b42d57cf7e3ab2e23af005a1a7ef06",
+  "MAC_STEP_BY_STEP.md": "bd5548dd9e80251c129317c6132d3d10b3a892c51c9bfda6b695767e7816532c",
+  "approved-harness-adaptations.json": "a0a814721a8a8fc6eb3f1808652b8f38eaf74663abc67e16cad2e13eee065a09",
+  "auth-mutation-child.cjs": "5a3e89e5c0bed5640fd602586389548105758df575936f8fbc2a1ec4cf974339",
+  "capture-qualification.zsh": "31e864b33749b135aaf65cd971220f237c8c18f9b14849c13840c2549b1078ff",
+  "capture-v3-launch.cjs": "83062fb78adf1d65eebbcfd62db73cb46fc290c870fea16eafcdd76669339602",
+  "expected-identities.json": "d2c94795bc4ff03ad77157efec2d9c2974cab3e1e39886e87be3e3544d79f5ed",
+  "references/ALIAS_MISSING_TARGET_LOCAL.log": "286d86e27efd529aa5a0db52e74c262094d35f91e415479374a7bfad30328994",
+  "references/AUTH_CLAUSE_MUTATIONS_LOCAL.log": "2a5e4d8edb60427ef5685efc43ea7d815b8cb28a3cd34e6056265668c4ab979b",
+  "references/B_AUTH_90_LOCAL.log": "93d26f071ea94ed8ae67a0586ae3e32c0e89f757977982bbda65a8d3a2372a8b",
+  "references/CAPTURE_WRAPPER_LOCAL_TEST.json": "735a094e543230da8eb005481ddb223bfdb9e838bbe67f477bfefcb3d7d654ed",
+  "references/KIT_R2_AUTH_MUTATIONS_LOCAL.log": "1128725c3763ed0058e174307f6878f873b84a85fd4c3e97b0ce7106c79e8090",
+  "references/NATIVE_IDENTITIES.json": "1e0726512a46a94a516227d9375929537ababec842b398f1ef2cfb32dc89bb58",
+  "references/UNCHANGED_PRODUCTION_AND_VERIFIERS.json": "25ed61c9086948f81fc4576b46266757be77bf639e1baf83e4ee73e74a09c0ce",
+  "references/V3-to-auth-tests-r1.patch": "1150d25826770bded6db8cbd27e0c405cf4397eaac661491d669e8d211a2cb7a",
+  "references/frozen-B-green-gate.cjs": "a1c599efc9859812486462c91102c0dbcc55583dd33e79c5e17c4f825e8f4d4c",
+  "references/project-reader.c.C1a-to-V3.patch": "6b1349a13e02abb7e30c21680b9059666ed2e0c22b10b6400a0362a044f53f75",
+  "references/read-policy.h.C1a-to-V3.patch": "4bd24fd7e05c534f2db3f6c223e22f5b0d5c0277d9ca4724445e90fa88afe4b5",
+  "run-auth-mutations.cjs": "9c3a354c3ed9ad3bb286efb8c584311a13967dc9f36b9bffc14b5c68af822c5a",
+  "verify-b-harness.cjs": "f8fd9cf2dfcaf7ef5c6e98e20458ff9e499395d4083c5391615823331d677a0c"
+}

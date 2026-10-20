@@ -1,0 +1,10 @@
+{
+  "scope": "Linux failure path only; sw_vers unavailable; no Mac positive qualification claim",
+  "firstExit": 1,
+  "captureStatuses": "QUALIFICATION_PROCESS_EXIT=1 CAPTURE_EXIT=0 HASH_EXIT=1 HASH_CAPTURE_EXIT=0",
+  "logHashMatched": true,
+  "missingAliasReportPreventedSuccess": true,
+  "secondExit": 1,
+  "refusedOverwrite": true,
+  "priorEvidenceUnchanged": true
+}

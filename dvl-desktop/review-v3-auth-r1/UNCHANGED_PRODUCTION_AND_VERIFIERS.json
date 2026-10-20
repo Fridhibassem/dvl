@@ -1,0 +1,22 @@
+{
+  "name-policy-unicode.json": "e30ed2a2bc8212523722d4dc63226f447a3f162a7047957fff275fef76f5099c",
+  "native/project-reader.c": "c1a2cb5779f517c0b248f8f8b5cd409836511da42390e2022569d9efd3607f3c",
+  "native/read-policy.h": "73d25e2a074e87de3ea88678f2caa55d2348be8d79404e29b1df27255fd460fb",
+  "package-lock.json": "00a9f1a4e3eae31f105e62d200f32bae3fc6c91bc38f70cdaff6d30cace596ee",
+  "read-policy.json": "87a3befdb1e3f2e6416ca24ce97094ef341cd0b77ff678e373838bb5d8c95ca7",
+  "scripts/build-reader.cjs": "c4993c8688680396a27faa56064495cc8c7ad273ee4f324d1c33e716c25bcce5",
+  "scripts/generate-policy.cjs": "459e0af9515f80af0969dcf97a8d9c56af9d41444b465ece58a770825c3fc1af",
+  "scripts/qualify-unicode-aliases.cjs": "9968d8e42c214744471c918d87f256d1864ac5e1aae9f511c967590025a8755b",
+  "scripts/verify-source.cjs": "c0603dddec4395b7108fab474ad52749f9f5ab2af2b015b9b638e2c02609525d",
+  "src/main/desktop-reader.cjs": "b61b64643775da712bd1fe938a78f81c33d2cbf0a986a8be95237e663de22b2b",
+  "src/main/main.js": "adfbb2052e4f6dba934cd4bc433fae0eaf753652a990ecb112aa40fd070ffd52",
+  "src/main/name-policy.cjs": "bc687175125be663892370d2855ec9d04870f7b9d89d6a79f8551b4c4a517898",
+  "src/main/project-read-service.cjs": "71b8244f53669cdaa8b38f2ce22b2f3a92392ba61a9b432f45f97a2817382eb3",
+  "src/main/read-support.cjs": "840bd0c4aeb8213bbaf3ee32b7981201140267c281fcf6f830812f4c24ecf375",
+  "src/main/reader-session.cjs": "44ff0cd6e10bd00927ad5174303bd39d88f455955b0fcc82c20f08afe131c22b",
+  "src/preload/preload.js": "b766cb656d1f5457b9eb7190bc380d77140abfd3c5504b92fe19bca1e3d81ac6",
+  "src/renderer/files.js": "7590d33313f29679669446d7e9b48269b557c9b8f67a594e689c4091c29d1de7",
+  "src/renderer/index.html": "e9ff0015c3a39dbd74c0bfc4ae0422c2466854f21700d422707aa69fc2a301d1",
+  "src/renderer/renderer.js": "aba776a12b2c4bd0c3431318eb1242b3da6c6027e1025936bb46dd042dddb7a0",
+  "tests/green-gate.cjs": "f951f0faf6f8a65828aa0a9ef401ceb80a1b0a2cac7eb7a8dd14d8116913dd4f"
+}
