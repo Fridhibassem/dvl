@@ -1,0 +1,207 @@
+{
+  "spike_base": "ae13301b8794889d33b3fdab08a85d99aa0e0b7a",
+  "versions": [
+    {
+      "tag": "desktop/B10-workspace-panels-v1",
+      "status": "HISTORICAL",
+      "source_zip": "dvl-desktop-B10-workspace-panels-v1.zip",
+      "source_zip_sha256": "ba5b41ba278ee8295f6c38a8c12efdf8fa9884995af54c1d94232ac50a373a7c",
+      "files": 5,
+      "skipped_binaries": [],
+      "package_date": "2026-10-15T00:51:14",
+      "kits": [],
+      "evidence": [],
+      "commit": "a3a95e0cbfd0203947aa91f953b3a225db408f30"
+    },
+    {
+      "tag": "desktop/B-green-gate-review-v1",
+      "status": "HISTORICAL",
+      "source_zip": "DVL_GREEN_GATE_B_REVIEW_v1.zip",
+      "source_zip_sha256": "bdd950cd53a58f42f687c3ea133ea8acf62fa240215d3b907c236c2c537f8e9a",
+      "files": 6,
+      "skipped_binaries": [],
+      "package_date": "2026-10-15T11:57:30",
+      "kits": [],
+      "evidence": [],
+      "commit": "b8731aa83f4aafe10ba7550d3e71d4592210fd6f"
+    },
+    {
+      "tag": "desktop/B-repair-v2",
+      "status": "SUPERSEDED",
+      "source_zip": "DVL_GREEN_GATE_B_REPAIR_v2.zip",
+      "source_zip_sha256": "1e136f34fbd9075269497f28b67239cbb726233fd64b5c79a3edebeb4948f9e6",
+      "files": 8,
+      "skipped_binaries": [],
+      "package_date": "2026-10-15T13:07:24",
+      "kits": [],
+      "evidence": [],
+      "commit": "6851bb641053caeeab7edfdaa62e3a353eb03dc8"
+    },
+    {
+      "tag": "desktop/B-final-review-v1",
+      "status": "SUPERSEDED",
+      "source_zip": "DVL_B_FINAL_REVIEW_v1.zip",
+      "source_zip_sha256": "b4ceb18268be012552624c859031c11b4ea0a4117b0e83698ef8c75e68484924",
+      "files": 8,
+      "skipped_binaries": [],
+      "package_date": "2026-10-15T13:07:24",
+      "kits": [],
+      "evidence": [],
+      "commit": "271fd80bc407b98df2c29d09f0d9d2ffee68a37e"
+    },
+    {
+      "tag": "desktop/B-repair-v3-FROZEN",
+      "status": "PASS/FROZEN",
+      "source_zip": "DVL_GREEN_GATE_B_REPAIR_v3.zip",
+      "source_zip_sha256": "f77387a4bfc60fccb196bee0228c25f03abb76844c49046860489bb846367aff",
+      "files": 13,
+      "skipped_binaries": [],
+      "package_date": "2026-10-15T14:17:42",
+      "kits": [],
+      "evidence": [],
+      "commit": "a1b4471461df50240cb8ba9846327c15c974837b"
+    },
+    {
+      "tag": "desktop/C1a-boundary-v0.1",
+      "status": "SUPERSEDED",
+      "source_zip": "DVL_C1A_BOUNDARY_CANDIDATE_V0_1.zip",
+      "source_zip_sha256": "32a9948ba6e7c966c50cacc3741b017523e12355fb1b40e8bfb2a74dd74bf4cb",
+      "files": 24,
+      "skipped_binaries": [],
+      "package_date": "2026-10-16T14:40:44",
+      "kits": [],
+      "evidence": [],
+      "commit": "705703d7746e6233fd8800e485ef089992acf042"
+    },
+    {
+      "tag": "desktop/C1a-repair-v2-DRAFT",
+      "status": "SUPERSEDED (string-escaped Seatbelt profile; not the reviewed reader.c)",
+      "source_zip": "DVL_C1A_REPAIR_V2.zip",
+      "source_zip_sha256": "338010883702992be3e6448cdec5080793096f6f3a81df20a309eb3849f54593",
+      "files": 41,
+      "skipped_binaries": [],
+      "package_date": "2026-10-16T15:38:18",
+      "kits": [],
+      "evidence": [],
+      "commit": "535473e2901ef407af6fc19d21af240e8e37638c"
+    },
+    {
+      "tag": "desktop/C1a-repair-v2",
+      "status": "scoped PASS, NOT frozen; F1/N-2 reopened by C1B-UNICODE-01",
+      "source_zip": "dvl-desktop-C1a-repair-v2.zip",
+      "source_zip_sha256": "5eccd0b21bd0bebd9544805686db8a8cb8474030f4cbe288bdbd98e014a11775",
+      "files": 42,
+      "skipped_binaries": [
+        "bin/project-reader"
+      ],
+      "package_date": "2026-10-19T15:44:20",
+      "kits": [],
+      "evidence": [],
+      "commit": "525fafa165c718c9c7cd8f67b766190e1cbafcfd"
+    },
+    {
+      "tag": "desktop/C1b-v1",
+      "status": "NOT PASS",
+      "source_zip": "DVL_C1B_CANDIDATE_V1.zip",
+      "source_zip_sha256": "1c5f05b639e2cba2fe585d680ff3549ffbb63945498691e5f4db0acf99ed7db3",
+      "files": 66,
+      "skipped_binaries": [
+        "bin/project-reader",
+        "bin/reader-integrity.json"
+      ],
+      "package_date": "2026-10-19T16:17:12",
+      "kits": [],
+      "evidence": [],
+      "commit": "1b340391ac33cb605d263251a88c2a69409bdf50"
+    },
+    {
+      "tag": "desktop/C1b-v2",
+      "status": "SUPERSEDED (Unicode ligature aliases)",
+      "source_zip": "DVL_C1B_CANDIDATE_V2.zip",
+      "source_zip_sha256": "17f7026185633726c248b3baaac8d1b16ca14cc1284ce8dfd237a47a332989dd",
+      "files": 95,
+      "skipped_binaries": [],
+      "package_date": "2026-10-20T00:29:18",
+      "kits": [
+        {
+          "path": "kits/C1b-v2-pre-mac-kit",
+          "source_zip_sha256": "629de6cf087bb28cd86107097f05fab73ee6d3d9752297982085e16d39d3d39d",
+          "files": 13
+        },
+        {
+          "path": "kits/C1b-unicode-alias-probe-1",
+          "source_zip_sha256": "97e6be4883d20fe278e42d4f0d1ff7d1c84e7c0502c6c9eed6a06e7bb71770ff",
+          "files": 4
+        }
+      ],
+      "evidence": [
+        {
+          "path": "evidence/mac/C1b-v2/C1B_V2_MAC_QUALIFICATION.log",
+          "sha256": "aa8314e5aae5df20aff5800f846f5fc494cf47179a21566bf692de3b30932f26"
+        },
+        {
+          "path": "evidence/mac/C1b-v2/C1B_UNICODE_ALIAS_PROBE.json",
+          "sha256": "d84e8648acbf978b6dabf312742e66a34a49911dd9583c710f0679acf41befa3"
+        },
+        {
+          "path": "evidence/mac/C1b-v2/C1B_UNICODE_ALIAS_PROBE_REPAIR1.json",
+          "sha256": "d7b4e5afdd01058126c7b9a74fe742fc7d0d348c39299c53aef7a608e522efc7"
+        }
+      ],
+      "commit": "5883aa582a57f5bab0b677ad6b5eb91d4edd00f8"
+    },
+    {
+      "tag": "desktop/C1b-v3",
+      "status": "SUPERSEDED by R1 (auth tests)",
+      "source_zip": "DVL_C1B_CANDIDATE_V3.zip",
+      "source_zip_sha256": "a69338dbd748273bdd598012b5af06aaf376ad1097631eb30b4e1237fef62b6c",
+      "files": 112,
+      "skipped_binaries": [],
+      "package_date": "2026-10-20T01:21:34",
+      "kits": [
+        {
+          "path": "kits/C1b-v3-pre-mac-kit",
+          "source_zip_sha256": "d25dea65681ce862468331a8e43639cf0d856c75b01371c2a2c5b4db4f50d03a",
+          "files": 10
+        }
+      ],
+      "evidence": [],
+      "commit": "d6adabe056240ea3c93e0d2f12d4b0b5b74df330"
+    },
+    {
+      "tag": "desktop/C1b-v3-auth-r1",
+      "status": "CANDIDATE — automated Mac qualification PASS; 0/5 launches; NOT frozen",
+      "source_zip": "DVL_C1B_V3_AUTH_TESTS_R1.zip",
+      "source_zip_sha256": "5701ab7c622697ba8a052536dbbf2e8fea69eb02c284b088c06613bf519b6df5",
+      "files": 125,
+      "skipped_binaries": [],
+      "package_date": "2026-10-20T02:03:24",
+      "kits": [
+        {
+          "path": "kits/C1b-r1-kit-r2",
+          "source_zip_sha256": "241fddcf9d8a3d9716eedd573debc65286ffce1a1b7c73c74aff9b3510d63435",
+          "files": 21
+        }
+      ],
+      "evidence": [
+        {
+          "path": "evidence/mac/C1b-r1/qualification.log",
+          "sha256": "84da6a96777175a9bab58dba5b9a8d52ae74dcec290ccdb63e3703f42c0ff858"
+        },
+        {
+          "path": "evidence/mac/C1b-r1/unicode-aliases-v3.json",
+          "sha256": "2a5c0cb0a6ddab8360d94046bdb12f4d86d15accba4224887b9e933a93b76369"
+        },
+        {
+          "path": "evidence/mac/C1b-r1/SHA256SUMS.txt",
+          "sha256": "992dc86b3a942895ffd0752682d58efd5fd7d27b55798b602d848e89f71969ff"
+        },
+        {
+          "path": "evidence/mac/C1b-r1/capture-status.txt",
+          "sha256": "47c5d001519b40392b6c3391cad40df5042a1a51c667ff0bd2b7900676303d94"
+        }
+      ],
+      "commit": "8f5c9aefa1f657cb334a7816f54695648cc8ebd5"
+    }
+  ]
+}
