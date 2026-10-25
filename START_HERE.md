@@ -15,7 +15,7 @@ Owner rule: nothing is ever deleted; old material is labelled, not removed.
 |---|---|
 | `dvl-spike/` | Kernel / Harness spike (H1–H4). Its own `README.md`, `HARDENING.md` and `CLAUDE_REPORTS/` stay at the repository root. Their hashes are recorded in `dvl-spike/H4_CANDIDATE_TEST_RESULTS.json`, so they must not be moved or edited. |
 | `dvl-desktop/` | The desktop app. Checking out a tag gives that version's exact package. |
-| `kits/` | The **current** owner-run Mac kit (C1b R1 KIT R2). |
+| `kits/` | The **current** owner-run Mac kits: C1b R1 KIT R2 and the C1b launch-evidence kit. |
 | `evidence/mac/` | **Current** raw Mac evidence (C1b R1), with SHA-256. |
 | `history/` | **Old material only, kept apart:** superseded kits and evidence, old state documents, drafts, Mac-only H4 work, earlier reviews. Older code versions are git tags. |
 | `docs/` | **Current** truth only: Master State, plan, findings, decisions, evidence and sources index, handoffs, governing sources, gate records, current checkpoint. |

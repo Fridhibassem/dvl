@@ -1,0 +1,23 @@
+{
+  "result": "PASS",
+  "checks": [
+    "Real filesystem identity and ZIP hashing: executable/framework equality; symlink recorded without traversal",
+    "Mismatched cache ZIP rejected",
+    "Missing cache fails before creating evidence; no zero-cache PASS",
+    "Five simulated captures: non-overlapping/exhaustive byte and line ranges, before/after hashes, exact reconstruction and chained evidence",
+    "Owner first-open TIMEOUT retained separately from absent console literal; EGL errors detected in captured app stderr",
+    "Overwrite refused",
+    "Inter-run/baseline gap: diagnostic written and no app process started",
+    "Changed installed runtime rejected before launch",
+    "Skipped launch numbers refused",
+    "Edited owner observation invalidates evidence hashes",
+    "Log replacement/truncation/invalid JSON/incomplete line/multiple startups/unclean helper counts fail; absence of EGL kept separate"
+  ],
+  "host": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v24.19.0"
+  },
+  "scope": "Disposable filesystem and fake executable fixtures, Mac entry checks simulated. Not real Electron, APFS, UI, owner Mac launches or candidate qualification.",
+  "candidateSourceChanged": false
+}

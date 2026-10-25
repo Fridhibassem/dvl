@@ -33,7 +33,7 @@ finding closes only through its own lane, with evidence and independent review.
 
 | ID | Finding | Status |
 |---|---|---|
-| F-17 | Launch-evidence kit `DVL_C1B_R1_LAUNCH_EVIDENCE_KIT.zip` (`1a6cf525…`, contains `discover.cjs`) is not in `dvl` or Project sources. Its path assumptions are uninspected. (A-02 O-01, O-03) | OPEN: blocks C1b launches |
+| F-17 | Launch-evidence kit `DVL_C1B_R1_LAUNCH_EVIDENCE_KIT.zip` was missing from the repo and its path assumptions were uninspected. (A-02 O-01, O-03) | **RESOLVED 2026-10-25**: the owner uploaded it; hash `1a6cf525…` and all 7 internal hashes match; reads/writes inspected; imported to `kits/`; procedure in `docs/RUN_C1B_LAUNCHES.md` |
 | F-18 | Oct 13 core-freeze candidate: the source defining **C-01..C-04** and any acceptance record were not found. Do not map BH/VN IDs onto them. | OPEN (UNKNOWN) |
 | F-19 | "Teamspace / Core V2": package, repo, commit and logs are unidentified. Not the same as the INVALID `CURRENT_STATE_V2`. | OPEN (UNKNOWN) |
 | F-20 | Arena Linux ABI 2 + seccomp: last DVL disposition = **excluded**. External repo, branch and merge state are unknown. | RECORDED |

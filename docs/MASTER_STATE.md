@@ -115,7 +115,7 @@ Superseded *for execution status* does not mean superseded as product requiremen
 | Work | Owner / lane | Status |
 |---|---|---|
 | Repository consolidation (this repo) | Claude (lead) | **DONE**: GitHub `Fridhibassem/dvl` (main, archive branches, all 16 tags; verified identical). Clean Mac copy in `~/Desktop/DVL`. |
-| C1b R1 manual launches (5) | Owner on Mac, with the launch-evidence kit (`1a6cf525…`) | 0/5. **BLOCKED on F-17**: kit bytes are not in the repo and its path assumptions are not inspected (D-12). |
+| C1b R1 manual launches (5) | Owner on Mac, with the launch-evidence kit (`1a6cf525…`) | 0/5. **READY**: kit verified and inspected; follow `docs/RUN_C1B_LAUNCHES.md` (D-12). Next: step 1, discovery. |
 | C1b independent review | to be assigned | WAITING (after the launches) |
 | Lanes | D-07 | Code = Claude Code / Codex (cross-review each other); ChatGPT = context, specs, independent review; Claude (this) = lead + evidence; owner = Mac, approvals |
 | H-01 independent check of the repo migration | Codex (handoff `docs/handoffs/H-01_*.md`) | READY to send |
@@ -125,9 +125,8 @@ Superseded *for execution status* does not mean superseded as product requiremen
 
 ## 4. Exact next action
 
-1. **Owner: upload `DVL_C1B_R1_LAUNCH_EVIDENCE_KIT.zip`** (SHA-256 `1a6cf525…`; probably in Downloads or a ChatGPT download). The lead verifies the hash, inspects every path the kit assumes and where it writes, then fixes the launch procedure (D-12) before discovery.
-2. Owner: send H-01 to Codex, and H-02 + H-03 to ChatGPT (H-02 now has to respect the Live Product limit in PLAN RS-0).
-3. Owner: upload the missing sources: `we_continue_from_here_phase_B_frozen_next_C (1).md`, product state `_AR`, `DVL_SECURITY_REVIEW_AUDIT_INDIVIDUAL_PLUS_MASTER_STATE_2026-10-11`, `DVL_ETAPE_PAR_ETAPE_BUILD_HANDOFF_V1`, the Farmer / Smart Décalage file (`__________________DVL.md`) and the Oct 13 core-freeze-candidate (C-01..C-04) if found.
-4. Then C1b: discovery, then preflight, then launches 1 to 5, per the reconciled procedure.
+1. **Owner: C1b discovery** (read-only): step 1 in `docs/RUN_C1B_LAUNCHES.md`. Send the output to the lead.
+2. Owner: send H-01 to Codex, and H-02 + H-03 to ChatGPT.
+3. Lead: finish importing the DVL source documents found in `~/Downloads` (including the C-01..C-04 core-freeze-candidate files, which address F-18) into `history/`. Nothing is moved or deleted on the Mac.
 
 See `PLAN.md`, `FINDINGS.md`, `DECISIONS.md`, `EVIDENCE_INDEX.md`, `SOURCES_INDEX.md` (where every old copy lives), `CHANGELOG.md`.

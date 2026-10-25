@@ -18,3 +18,4 @@
 - **2026-10-25 (MS-10).** D-14: Rooms are clickable; clicking one brings it to the front.
 - **2026-10-25 (MS-11).** D-15: the clicked Room comes forward and covers the rest; X closes it and returns it to its place; the ring does not rotate.
 - **2026-10-25 (MS-12).** Owner decisions D-16 (Rooms differ by type; Database Room), D-17 (outer sidebar; multi-provider roles; per-provider skills; Design Room has no code), D-18 (layout by prototype). Lead D-19 (MVP sidebar honesty and build order). Handoff H-03 issued.
+- **2026-10-25 (MS-13).** Launch kit received (`1a6cf525…` verified; 7/7 internal hashes). Inspected: writes only to the given evidence folder; no hard-coded old paths. Imported to `kits/`. D-12 procedure in `docs/RUN_C1B_LAUNCHES.md`. F-17 resolved. C1b is ready for discovery.
