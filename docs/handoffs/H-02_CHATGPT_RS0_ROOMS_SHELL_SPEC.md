@@ -25,7 +25,7 @@ It must not come before the Kernel and mutation work in a way that breaks D-04.
 1. Room layout and switching behaviour; what each Room shows in RS-0:
    - **Meeting/Chat**: UI only, no provider.
    - **Live Task**: real reader activity, meaning the C1b list, search progress, Stop and partial results.
-   - **Live Product**: the opened project, read-only.
+   - **Live Product**: the opened project, read-only, as a file and static content view only. It must **never launch a dev server or execute project HTML/JS**; the executable preview belongs to [13]. Define the exact viewer behaviour (A-02 Q6).
    - **Design**: placeholder.
 2. Whether and how the Rooms vary by project type in RS-0 (it may be "not yet").
 3. **Security boundary.** Every new IPC channel (ideally none) must pass the same
