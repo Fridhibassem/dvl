@@ -47,6 +47,7 @@ finding closes only through its own lane, with evidence and independent review.
 |---|---|---|
 | P-01 | Can the user add, remove or hide Rooms during a project? | **DECIDED: NO** (owner, 2026-10-25 16:28; D-13). DVL alone sets the Rooms. |
 | P-02 | Room mapping per project type (web app, mobile, website, presentation, visual) and the fallback. RS-0 may say "not yet". | OPEN: owner |
+| P-04 | Rooms layout: a **full circle around the DVL core** (owner's visual reference) or the **semi-circle** in product baseline §4? Is the centre core a visible element that shows project state? | OPEN: owner |
 | P-03 | Which sidebar items (Settings, Providers, Skills, Toolbox) are visible in the MVP, and whether unavailable ones are hidden, disabled or explained. | OPEN: owner |
 
 ## Architecture (imported from Full Resume 2026-10-12 §16–18; none accepted)
