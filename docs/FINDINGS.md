@@ -29,6 +29,26 @@ finding closes only through its own lane, with evidence and independent review.
 | F-15 | Local-only Mac branches in `~/Desktop/dvl-dsktop/dvl-spike-phase-1/.git`: `main` `6390bdca`, `claude/hopeful-feynman-5tukg2` `c062be9c`, `claude/h2-adapter-spool-isolation` `822c3d19`. Likely the history before "remove sensitive contract references". **Deliberately not imported.** It is preserved in the 3.2 GB backup. | RECORDED |
 | F-16 | Claude's GitHub branch `claude/sweet-curie-6o0u3u` (tip `a6896f8`, B1–B4) is not in the `d92d063` lineage. The Mac copy of that branch (`0a54fd7`) is an ancestor. Disposition: historical predecessor, superseded for candidate selection, **not rejected**. | RECORDED (`archive/spike-h4-claude-branch-unmerged`) |
 
+## From A-02 (ChatGPT, 2026-10-25): gaps to close, nothing accepted
+
+| ID | Finding | Status |
+|---|---|---|
+| F-17 | Launch-evidence kit `DVL_C1B_R1_LAUNCH_EVIDENCE_KIT.zip` (`1a6cf525…`, contains `discover.cjs`) is not in `dvl` or Project sources. Its path assumptions are uninspected. (A-02 O-01, O-03) | OPEN: blocks C1b launches |
+| F-18 | Oct 13 core-freeze candidate: the source defining **C-01..C-04** and any acceptance record were not found. Do not map BH/VN IDs onto them. | OPEN (UNKNOWN) |
+| F-19 | "Teamspace / Core V2": package, repo, commit and logs are unidentified. Not the same as the INVALID `CURRENT_STATE_V2`. | OPEN (UNKNOWN) |
+| F-20 | Arena Linux ABI 2 + seccomp: last DVL disposition = **excluded**. External repo, branch and merge state are unknown. | RECORDED |
+| F-21 | MVP [22]: the ladder exists (roadmap V2), but there is no executable qualification manifest (pinned repos, stacks, budgets, repetitions, oracles). Write it before [22]. | OPEN |
+| F-22 | First provider for [17] is not chosen (roadmap: choose by experiment and official docs at implementation time). | OPEN (owner decision later) |
+| F-23 | Migration: repo accessible ≠ independent migration audit passed (H-01 pending). (A-02 O-04) | OPEN |
+
+### Product questions for the owner (no decision invented)
+
+| ID | Question | Status |
+|---|---|---|
+| P-01 | Can the user add, remove or hide Rooms during a project? What happens to active work when a Room is hidden? ChatGPT advises that hiding a view must never cancel work or delete state. | OPEN: owner |
+| P-02 | Room mapping per project type (web app, mobile, website, presentation, visual) and the fallback. RS-0 may say "not yet". | OPEN: owner |
+| P-03 | Which sidebar items (Settings, Providers, Skills, Toolbox) are visible in the MVP, and whether unavailable ones are hidden, disabled or explained. | OPEN: owner |
+
 ## Architecture (imported from Full Resume 2026-10-12 §16–18; none accepted)
 
 Codex: **VN-F01** accepted graph delta vs contract-publication race.

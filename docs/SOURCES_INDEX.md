@@ -38,7 +38,7 @@ Labels:
 | `dvl-dsktop/DVL_C1A_REPAIR_V2.zip` | SUPERSEDED: **early draft, do not use** | tag `desktop/C1a-repair-v2-DRAFT` |
 | `dvl-spike-phase-1/dvl-spike-phase-1 2.zip`, `dvl-dsktop/dvl-spike-phase-1/dvl-spike-phase-1 2.zip` | RECORD (contains the uncommitted 0.G test fixes, the source of `ae13301`) | tag `spike/ETAPE0-FROZEN-ae13301` |
 
-**Not in Project sources (owner to upload):** R1 source and KIT R2 ZIPs (on the
+**Not in Project sources or `dvl` yet (owner to upload):** `DVL_C1B_R1_LAUNCH_EVIDENCE_KIT.zip`, `DVL_SECURITY_REVIEW_AUDIT_INDIVIDUAL_PLUS_MASTER_STATE_2026-10-11`, `DVL_ETAPE_PAR_ETAPE_BUILD_HANDOFF_V1`, the Farmer file, the research files (skills/audit, Zhilin Yang, Gagan Bhat, ZadLoop/DeepSeek), and also: R1 source and KIT R2 ZIPs (on the
 Mac and now in `dvl`), `we_continue_from_here_phase_B_frozen_next_C (1).md`,
 `DVL_MASTER_PROJECT_STATE_V1_AR`, `DVL_SCIENTIFIC_BUILD_MAP_CURRENT_POSITION_V1`.
 
@@ -46,7 +46,7 @@ Mac and now in `dvl`), `we_continue_from_here_phase_B_frozen_next_C (1).md`,
 
 | Repo | Label |
 |---|---|
-| `dvl` (to create) | **CURRENT**: canonical |
+| `dvl` | **CURRENT**: canonical (created and pushed 2026-10-25; all 16 tags) |
 | `dvl-spike-phase-1` | SUPERSEDED as working repo. `main` = H3; H4 on `codex/h4-candidate`. All of it is inside `dvl`. |
 | `dvl-code-research` | Research history. Its `DVL_CODE_MASTER_STATE.md` (2026-09-29) is SUPERSEDED for status. |
 | `PRIVATE-DVL-BACKUP-CLEAN-FOR-NEW-VERSION-LAPTOP` | RECORD: full 3.2 GB laptop backup (release `backup-20261020-130157`) |
@@ -57,7 +57,7 @@ Mac and now in `dvl`), `we_continue_from_here_phase_B_frozen_next_C (1).md`,
 | Item | Label |
 |---|---|
 | `dvl.bundle` (SHA-256 `d3222997…`, added 2026-10-25 by the lead) | Early copy of the repo, superseded by the copy in the separate clean folder. Not deleted (owner rule); the owner may remove it. |
-| `dvl-desktop-C1b-v3-auth-repair1/` | CURRENT working folder for the C1b launches (same source as tag `desktop/C1b-v3-auth-r1`) |
+| `dvl-desktop-C1b-v3-auth-repair1/` | The qualified R1 install, **run in place** for the C1b launches (D-12). Not edited. Launch evidence goes to `~/Desktop/DVL`, not here. |
 | `C1B_V3_R1_MAC_EVIDENCE/` | RECORD (in `dvl/evidence/mac/C1b-r1/`) |
 | `dvl-spike-phase-1/` (with `.git`) | RECORD. Holds local-only branches (FINDINGS F-15). |
 | `dvl-spike-phase-1 2.zip`, `dvl-spike-phase-1 3.zip` (477 MB each) | RECORD (near-duplicates) |

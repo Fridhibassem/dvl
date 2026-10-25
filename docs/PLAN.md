@@ -29,7 +29,8 @@ and settings work does not close [05] or [06].
 1b. **RS-0 Rooms shell, read-only** (D-09). Scope is plan [03]/[37] visual subset:
    semi-circle Room layout plus switching; Meeting/Chat (UI only, no provider);
    Live Task (shows real reader activity: list, search, Stop); Live Product (shows
-   the opened project read-only); Design (static placeholder). Gate: B 24/24 and
+   the opened project read-only: file and static content view only. It **never launches a
+   dev server and never executes project HTML/JS**; the executable preview stays behind [13]); Design (static placeholder). Gate: B 24/24 and
    C1b suites still pass, no new IPC authority, the sender-auth tests extended to
    any new channel, and owner visual acceptance. Spec runs in parallel with the
    C1b launches; code starts only after C1b PASS.
@@ -47,7 +48,7 @@ and settings work does not close [05] or [06].
    before anything autonomous can publish Project Truth.
 6. [16] no-LLM full tool-chain gate (former "C10" becomes this end-to-end
    regression gate), then [17]/[18] provider with budget/cancel, then [19]–[21],
-   then [22] **Single-Worker MVP — GREEN-SCOPED**.
+   then [22] **Single-Worker MVP — GREEN-SCOPED** (needs the qualification manifest, F-21).
 7. Then [23]–[40] as in roadmap V2: context, planning/URG/compiler, lifecycle,
    multi-worker, orchestrator, Smart Décalage, review/security, rooms, scale, release.
 
