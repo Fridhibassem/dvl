@@ -41,8 +41,8 @@ From the governing product baseline (`sources/product/DVL_MASTER_PROJECT_STATE_V
    orchestration, parallel work, recovery and execution behind the scenes.*
 
 Where the Rooms are today: Phase B froze **four static panels** (workspace
-shell). Live, dynamic Rooms come at plan step [37], after the coding agent
-core. See PLAN.md.
+shell). A read-only Rooms shell (RS-0, DECISIONS D-09) comes right after C1b closes.
+Full dynamic Rooms come at plan step [37]. See PLAN.md.
 
 ---
 
@@ -110,12 +110,15 @@ Superseded *for execution status* does not mean superseded as product requiremen
 | Repository consolidation (this repo) | Claude (lead) | Built and verified locally. **Waiting for the owner to create the empty private GitHub repo `dvl`.** |
 | C1b R1 manual launches (5) | Owner on Mac, with the launch-evidence kit (`1a6cf525…`) | 0/5. Next: `discover.cjs` (discovery only). |
 | C1b independent review | to be assigned | WAITING (after the launches) |
-| Lanes (builder / reviewer) | Owner decision | **OPEN**: owner said "decide later" |
+| Lanes | D-07 | Code = Claude Code / Codex (cross-review each other); ChatGPT = context, specs, independent review; Claude (this) = lead + evidence; owner = Mac, approvals |
+| H-01 independent check of the repo migration | Codex (handoff `docs/handoffs/H-01_*.md`) | READY to send |
+| H-02 RS-0 Rooms shell spec (no code) | ChatGPT (handoff `docs/handoffs/H-02_*.md`) | READY to send |
 
 ## 4. Exact next action
 
-1. Owner: create the empty private repo `Fridhibassem/dvl`. Claude pushes all branches and tags, then re-runs the identity check against GitHub.
+1. Owner: create the empty private repo `Fridhibassem/dvl`. Claude pushes all branches and tags, then re-runs the identity check against GitHub. Until then the repo is preserved as `dvl.bundle` (D-10).
 2. Owner: upload `we_continue_from_here_phase_B_frozen_next_C (1).md` and the `_AR` product state so they can be added to `sources/`.
-3. Resume C1b: put the launch-evidence kit in `~/Desktop/dvl-dsktop`, check `shasum -c`, run `discover.cjs` only, and send the output for review.
+3. Send handoff H-01 to Codex and H-02 to ChatGPT.
+4. Resume C1b: put the launch-evidence kit in `~/Desktop/dvl-dsktop`, check `shasum -c`, run `discover.cjs` only, and send the output for review.
 
 See `PLAN.md`, `FINDINGS.md`, `DECISIONS.md`, `EVIDENCE_INDEX.md`, `CHANGELOG.md`.

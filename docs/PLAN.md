@@ -26,6 +26,13 @@ and settings work does not close [05] or [06].
 ## Order after C1b (corrected; DECISIONS D-04)
 
 1. **Close C1b** in its read-only scope: 5 launches, independent review, Unicode closure decision.
+1b. **RS-0 Rooms shell, read-only** (D-09). Scope is plan [03]/[37] visual subset:
+   semi-circle Room layout plus switching; Meeting/Chat (UI only, no provider);
+   Live Task (shows real reader activity: list, search, Stop); Live Product (shows
+   the opened project read-only); Design (static placeholder). Gate: B 24/24 and
+   C1b suites still pass, no new IPC authority, the sender-auth tests extended to
+   any new channel, and owner visual acceptance. Spec runs in parallel with the
+   C1b launches; code starts only after C1b PASS.
 2. **Shared prerequisites before ANY mutation or shell:**
    [05] authoritative durable Event Store wired into the app
    (B's app SQLite is **not** it), [06.3–06.6] allow/block/ask plus scoped approval
@@ -46,5 +53,4 @@ and settings work does not close [05] or [06].
 
 ## Open plan decisions (owner)
 
-- Lanes: who builds, who reviews (open).
 - Whether H4 gets an explicit final closure decision bound to `ae13301` / `d92d063` (FINDINGS F-08).
