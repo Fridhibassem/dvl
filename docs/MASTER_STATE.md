@@ -15,6 +15,37 @@ the source wins and this file is corrected.
 
 ---
 
+## 0. What DVL is (owner's words, 2026-10-25)
+
+> **DVL is a coding agent like Claude Code / Claude Desktop / Codex, but with
+> something special: the Dynamic Project Environment (dynamic Rooms).**
+
+From the governing product baseline (`sources/product/DVL_MASTER_PROJECT_STATE_V1_EN.md` §3–4, §23):
+
+1. **First, a complete coding agent.** It reads, edits, runs and tests the
+   project, shows the live result, and keeps work alive through interruptions.
+   This is the same category as Claude Code and Codex, and it must hold up
+   against them on its own.
+2. **Then, the differentiator: the Dynamic Project Environment.** DVL works out
+   the project type (web app, mobile app, website, presentation, visual
+   product, …) and builds a matching environment of **Rooms**. Rooms differ by
+   project type.
+   - Core Rooms: **Meeting / Chat**, **Live Task**, **Design** (visual only),
+     **Live Product**.
+   - Rooms sit side by side in a semi-circle; clicking one brings it forward
+     inside the environment.
+   - Fixed sidebar: Settings, Providers, Skills, Toolbox.
+3. Thesis: *an AI-native dynamic project environment where a user builds,
+   designs, observes, controls, verifies and experiences a software product
+   through natural interaction, while DVL handles the technical complexity,
+   orchestration, parallel work, recovery and execution behind the scenes.*
+
+Where the Rooms are today: Phase B froze **four static panels** (workspace
+shell). Live, dynamic Rooms come at plan step [37], after the coding agent
+core. See PLAN.md.
+
+---
+
 ## 1. Where we are (last verified point)
 
 | Item | Status | Truth label | Evidence |
