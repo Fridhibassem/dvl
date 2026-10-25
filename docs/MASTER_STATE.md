@@ -43,7 +43,7 @@ From the governing product baseline (`sources/product/DVL_MASTER_PROJECT_STATE_V
 **Visual reference (owner, 2026-10-25):** `sources/product/DVL_ROOMS_VISUAL_REFERENCE_2026-10-25.jpg`.
 The **DVL core** is a glowing cube in the centre. The **Rooms** are curved glass
 panels standing around it (code/activity, charts and data, a document/form, a
-live camera/product view). It is labelled "Dynamic Room" / "D.E.Dy". It is a
+live camera/product view). It is labelled "Dynamic Room" and, at the bottom, the owner's handwritten "D.E.Dy", meaning the **Dynamic Project Environment** (owner, 17:38). It is a
 mood reference for RS-0 and [37], not a pixel spec. Open: is it a full circle
 or the semi-circle in the product baseline (P-04)?
 
