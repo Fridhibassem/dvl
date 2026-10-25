@@ -4,7 +4,7 @@
 |---|---|
 | Revision | MS-1, 2026-10-25 |
 | Writer | Claude, continuity lead. The owner (Bacem) approves. |
-| Basis | ChatGPT answers 2026-10-25 (`sources/lead-2026-10-25/`), the Oct 20 checkpoint, and the source register below. |
+| Basis | ChatGPT answers 2026-10-25 (`../history/docs/lead-2026-10-25/`), the Oct 20 checkpoint, and the source register below. |
 | Owner rule | **Nothing is deleted.** Cleanup is additive only. Old documents are labelled, never edited or removed. |
 | This file does NOT | Accept, freeze or close any gate, or replace any governing source listed below. |
 
@@ -86,19 +86,19 @@ Superseded *for execution status* does not mean superseded as product requiremen
 |---|---|---|
 | `product/DVL_MASTER_PROJECT_STATE_V1_EN.md` (AR version not in this repo yet) | **GOVERNING: product scope** | Coding agent → Dynamic Project Environment; role separation; work survival; human control |
 | `contract/DVL_CORE_STABLE_CONTRACT_FINAL_V0_3_2_FROZEN_FOR_SPIKE.md` (two byte-identical copies in Project sources) | **GOVERNING: frozen-for-spike contract** | Identities, execution modes, isolation, evidence, verification and integration |
-| `state-history/DVL_COMPLETE_CHECKPOINT_STEP0_TO_C1B_R1_2026-10-20.md` | **CURRENT OPERATIONAL CONSOLIDATION** (imported into §1) | Execution, freeze and evidence status up to R1 |
+| `checkpoint/DVL_COMPLETE_CHECKPOINT_STEP0_TO_C1B_R1_2026-10-20.md` | **CURRENT OPERATIONAL CONSOLIDATION** (imported into §1) | Execution, freeze and evidence status up to R1 |
 | `../gates/*` | **ACCEPTANCE RECORDS** (never edited) | ÉTAPE 0 PASS, 0.G, 1.A checkpoint, Phase B freeze |
 | `architecture/…RECONSTRUCTED_2026-10-11.md` | PARTLY VALID: source reconstruction | Core architecture reference. Final Kernel law **not** frozen. H1–H4 status corrections. |
 | `architecture/DVL_ARCHITECTURE_VNEXT_RECONCILIATION_2026-10-12.md` | CANDIDATE / TEST BASELINE ONLY | R1–R20 not accepted. Physical-test obligations. |
 | `architecture/…CLAUDE_CODEX_RECONCILIATION_AND_RETEST_2026-10-11.md`, `…INPUT_TO_EXECUTION_PIPELINE_V0_1.md` | Reference (not frozen) | Pipeline: Normal → Smart → Ultra → Ultra-Pro → URG → Compiler → … |
-| `state-history/DVL_FULL_RESUME_2026-10-12.md` | SUPERSEDED for desktop progress; **VALID as architecture/findings handoff** | VN-F01–F06, VN-1–VN-13 (imported into FINDINGS); invalid-V2 disposition |
-| `state-history/DVL_MASTER_STATE_UPDATE_2026-10-08.md` | SUPERSEDED for status; partly valid architecture | Its "H4 not closed" is historical |
-| `state-history/DVL_CODE_MASTER_STATE_2026-09-29.md` (also in the `dvl-code-research` repo) | SUPERSEDED for status; historical research | Its "FREEZE — waiting" was a research pause |
+| `../history/docs/state-history/DVL_FULL_RESUME_2026-10-12.md` | SUPERSEDED for desktop progress; **VALID as architecture/findings handoff** | VN-F01–F06, VN-1–VN-13 (imported into FINDINGS); invalid-V2 disposition |
+| `../history/docs/state-history/DVL_MASTER_STATE_UPDATE_2026-10-08.md` | SUPERSEDED for status; partly valid architecture | Its "H4 not closed" is historical |
+| `../history/docs/state-history/DVL_CODE_MASTER_STATE_2026-09-29.md` (also in the `dvl-code-research` repo) | SUPERSEDED for status; historical research | Its "FREEZE — waiting" was a research pause |
 | `DVL_ARCHITECTURE_CURRENT_STATE_V2_2026-10-11.md` (not in this repo) | **INVALID — DO NOT USE** | Invalid history only |
 | `DVL_SCIENTIFIC_BUILD_MAP_CURRENT_POSITION_V1` (not in this repo) | Historical plan reference | Capability/dependency map. Its status table is stale (B shown RED). |
 | `plans/DVL_STEP_BY_STEP_BUILD_ROADMAP_V2_AR.md` | **Plan reference IDs 00–40** (see PLAN.md) | Dependency order |
-| `plans/bluid_dvl_etape_by_etape.md` (chart of Oct 25) | History. Its C10 placement is **corrected** (DECISIONS D-04). | — |
-| `plans/DVL_BUILD_ROADMAP_V3_PROPOSAL.*` | Proposal, not approved | — |
+| `../history/docs/plans/bluid_dvl_etape_by_etape.md` (chart of Oct 25) | History. Its C10 placement is **corrected** (DECISIONS D-04). | — |
+| `../history/docs/plans/DVL_BUILD_ROADMAP_V3_PROPOSAL.*` | Proposal, not approved | — |
 | `we_continue_from_here_phase_B_frozen_next_C (1).md` | Acceptance appendix for B (ChatGPT verified, SHA `3a230587…`). **Not yet in this repo; owner to upload.** | B freeze binding |
 
 ---
@@ -116,9 +116,10 @@ Superseded *for execution status* does not mean superseded as product requiremen
 
 ## 4. Exact next action
 
-1. Owner: create the empty private repo `Fridhibassem/dvl`. Claude pushes all branches and tags, then re-runs the identity check against GitHub. Until then the repo is preserved as `dvl.bundle` (D-10).
-2. Owner: upload `we_continue_from_here_phase_B_frozen_next_C (1).md` and the `_AR` product state so they can be added to `sources/`.
-3. Send handoff H-01 to Codex and H-02 to ChatGPT.
-4. Resume C1b: put the launch-evidence kit in `~/Desktop/dvl-dsktop`, check `shasum -c`, run `discover.cjs` only, and send the output for review.
+1. Owner: create the empty private repo `Fridhibassem/dvl`. Claude pushes all branches and tags, then re-runs the identity check against GitHub. Until then the repo is preserved as `dvl.bundle` in a separate clean place, never inside the old folders (D-10).
+2. Owner: create an **empty folder `~/Desktop/DVL`** on the Mac. It is the clean home for the current DVL (bundle and readable docs), kept apart from `dvl-dsktop`. The lead then copies the files there.
+3. Owner: upload `we_continue_from_here_phase_B_frozen_next_C (1).md` and the `_AR` product state so they can be added to `sources/`.
+4. Send handoff H-01 to Codex and H-02 to ChatGPT.
+5. Resume C1b: put the launch-evidence kit in `~/Desktop/dvl-dsktop`, check `shasum -c`, run `discover.cjs` only, and send the output for review.
 
 See `PLAN.md`, `FINDINGS.md`, `DECISIONS.md`, `EVIDENCE_INDEX.md`, `SOURCES_INDEX.md` (where every old copy lives), `CHANGELOG.md`.

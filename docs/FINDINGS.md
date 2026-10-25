@@ -50,5 +50,5 @@ V-Next candidates R1–R20: **not accepted**. Codex reported bounded survival fo
 R1, R8, R14, R16–R18 and R20; R2 and R19 inconclusive. Next architecture task:
 source-aware Codex↔Claude reconciliation, then owner decisions, then an
 adversarial re-test.
-Full text: `sources/state-history/DVL_FULL_RESUME_2026-10-12.md` §16–18,
+Full text: `../history/docs/state-history/DVL_FULL_RESUME_2026-10-12.md` §16–18,
 `sources/architecture/DVL_ARCHITECTURE_VNEXT_RECONCILIATION_2026-10-12.md`.

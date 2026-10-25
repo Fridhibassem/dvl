@@ -6,7 +6,7 @@ delivered version is one commit plus one tag, imported byte-for-byte.
 **Project state starts at [`docs/MASTER_STATE.md`](docs/MASTER_STATE.md).**
 It is followed by `PLAN.md`, `FINDINGS.md`, `DECISIONS.md`, `EVIDENCE_INDEX.md`, `SOURCES_INDEX.md`
 and `CHANGELOG.md`. Verbatim governing and historical sources are in
-`docs/sources/`, acceptance records in `docs/gates/`, and reviews in `docs/reviews/`.
+`docs/sources/` and acceptance records in `docs/gates/`. Everything old (superseded kits, old evidence, old state documents, drafts) is kept separately in `history/`, never mixed with current files.
 Owner rule: nothing is ever deleted; old material is labelled, not removed.
 
 ## Layout
@@ -15,9 +15,10 @@ Owner rule: nothing is ever deleted; old material is labelled, not removed.
 |---|---|
 | `dvl-spike/` | Kernel / Harness spike (H1–H4). Its own `README.md`, `HARDENING.md` and `CLAUDE_REPORTS/` stay at the repository root. Their hashes are recorded in `dvl-spike/H4_CANDIDATE_TEST_RESULTS.json`, so they must not be moved or edited. |
 | `dvl-desktop/` | The desktop app. Checking out a tag gives that version's exact package. |
-| `kits/` | Owner-run Mac verification kits that belong to a candidate. |
-| `evidence/mac/` | Raw Mac qualification logs and alias reports, with their SHA-256. |
-| `docs/` | Master State, plan, findings, decisions, evidence index, verbatim sources, gates, reviews, Mac-only H4 history. |
+| `kits/` | The **current** owner-run Mac kit (C1b R1 KIT R2). |
+| `evidence/mac/` | **Current** raw Mac evidence (C1b R1), with SHA-256. |
+| `history/` | **Old material only, kept apart:** superseded kits and evidence, old state documents, drafts, Mac-only H4 work, earlier reviews. Older code versions are git tags. |
+| `docs/` | **Current** truth only: Master State, plan, findings, decisions, evidence and sources index, handoffs, governing sources, gate records, current checkpoint. |
 | `tools/` | The import and identity-verification scripts used to build this repository. |
 
 ## Versions (tags)

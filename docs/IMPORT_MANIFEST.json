@@ -124,27 +124,27 @@
       "package_date": "2026-10-20T00:29:18",
       "kits": [
         {
-          "path": "kits/C1b-v2-pre-mac-kit",
+          "path": "history/kits/C1b-v2-pre-mac-kit",
           "source_zip_sha256": "629de6cf087bb28cd86107097f05fab73ee6d3d9752297982085e16d39d3d39d",
           "files": 13
         },
         {
-          "path": "kits/C1b-unicode-alias-probe-1",
+          "path": "history/kits/C1b-unicode-alias-probe-1",
           "source_zip_sha256": "97e6be4883d20fe278e42d4f0d1ff7d1c84e7c0502c6c9eed6a06e7bb71770ff",
           "files": 4
         }
       ],
       "evidence": [
         {
-          "path": "evidence/mac/C1b-v2/C1B_V2_MAC_QUALIFICATION.log",
+          "path": "history/evidence/mac/C1b-v2/C1B_V2_MAC_QUALIFICATION.log",
           "sha256": "aa8314e5aae5df20aff5800f846f5fc494cf47179a21566bf692de3b30932f26"
         },
         {
-          "path": "evidence/mac/C1b-v2/C1B_UNICODE_ALIAS_PROBE.json",
+          "path": "history/evidence/mac/C1b-v2/C1B_UNICODE_ALIAS_PROBE.json",
           "sha256": "d84e8648acbf978b6dabf312742e66a34a49911dd9583c710f0679acf41befa3"
         },
         {
-          "path": "evidence/mac/C1b-v2/C1B_UNICODE_ALIAS_PROBE_REPAIR1.json",
+          "path": "history/evidence/mac/C1b-v2/C1B_UNICODE_ALIAS_PROBE_REPAIR1.json",
           "sha256": "d7b4e5afdd01058126c7b9a74fe742fc7d0d348c39299c53aef7a608e522efc7"
         }
       ],
@@ -160,7 +160,7 @@
       "package_date": "2026-10-20T01:21:34",
       "kits": [
         {
-          "path": "kits/C1b-v3-pre-mac-kit",
+          "path": "history/kits/C1b-v3-pre-mac-kit",
           "source_zip_sha256": "d25dea65681ce862468331a8e43639cf0d856c75b01371c2a2c5b4db4f50d03a",
           "files": 10
         }

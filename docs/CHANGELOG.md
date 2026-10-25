@@ -8,4 +8,4 @@
   MASTER_STATE, PLAN, FINDINGS, DECISIONS and EVIDENCE_INDEX were created.
   Nothing was deleted or edited anywhere else. No gate was accepted or frozen.
 - **2026-10-25 (MS-2).** Product identity added (§0). Lead decisions D-03, D-07 (lanes; the owner corrected the code lane to Claude Code / Codex), D-08 (delegation), D-09 (RS-0 milestone, reversible), D-10 (bundle durability). Handoffs H-01 (Codex: verify the migration) and H-02 (ChatGPT: RS-0 spec) issued. No gate accepted or frozen. Nothing deleted.
-- **2026-10-25 (MS-3).** SOURCES_INDEX added (label-only map of Project sources, GitHub and Mac). Saved copies: git bundle on the Mac and as a GitHub release asset in the backup repo; readable state documents in `~/Desktop/dvl-dsktop/DVL_CURRENT/`. Nothing deleted.
+- **2026-10-25 (MS-3).** SOURCES_INDEX added (label-only map of Project sources, GitHub and Mac). Owner rule D-11: new and old are never mixed. Repo restructured so that current files are at the top and old material sits in `history/` (moved with `git mv`; nothing deleted). The planned release in the old backup repo was cancelled. Nothing deleted.
