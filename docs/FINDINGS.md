@@ -13,10 +13,10 @@ finding closes only through its own lane, with evidence and independent review.
 | F-04 | Manual restored-project launches **0/5** | OPEN | Oct 20 checkpoint §6 |
 | F-05 | First-open "Reader: TIMEOUT" root cause unknown | OPEN | Oct 20 checkpoint |
 | F-06 | GPU/EGL "Exiting GPU process" messages on every Electron start, unexplained | OPEN (known issue) | R1 qualification log |
-| F-07 | Electron binary/dist/cache hash was not recorded during qualification. A later hash cannot prove the earlier bytes. | OPEN, measured from the launch kit onward | launch-evidence kit `1a6cf525…` |
+| F-07 | Electron binary/dist/cache hash was not recorded during qualification. A later hash cannot prove the earlier bytes. | **PARTLY RESOLVED 2026-10-25**: current identity recorded in preflight (executable `5ebaa92f…`, dist tree `0ae27a2e…`, cache ZIP `915cb638…`; ZIP Electron and Electron Framework match the installed files). It still cannot prove the bytes used during the Oct 20 qualification. | `evidence/mac/C1b-r1-launches/preflight/` |
 | F-10 | Packaged-app Desktop TCC permission risk. Terminal-source evidence does not qualify a packaged identity. | OPEN future risk | Oct 20 checkpoint |
 | F-11 | Separate spawn/ready timeout and cold-start retry redesign | DEFERRED until data | C1b status doc |
-| F-12 | Mac environment changed after the checkpoint. Measure the current OS and runtime when DVL resumes. | OPEN | ChatGPT answer §6 |
+| F-12 | Mac environment changed after the checkpoint. Measure the current OS and runtime when DVL resumes. | **RESOLVED 2026-10-25**: preflight measured macOS 13.7.8 (22H730), Node v26.8.1, x64, the same as qualification | preflight runtime.json |
 | F-13 | Scope: C1 is proven on macOS 13.7.8 Intel only. Linux was reported BLOCKED on ChatGPT's host, but the native suites pass on Landlock ABI ≥ 3 (Claude, 2026-10-20). Apple Silicon is untested. | RECORDED SCOPE | — |
 
 ## Spike / provenance

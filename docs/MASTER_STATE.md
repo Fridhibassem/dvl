@@ -115,7 +115,7 @@ Superseded *for execution status* does not mean superseded as product requiremen
 | Work | Owner / lane | Status |
 |---|---|---|
 | Repository consolidation (this repo) | Claude (lead) | **DONE**: GitHub `Fridhibassem/dvl` (main, archive branches, all 16 tags; verified identical). Clean Mac copy in `~/Desktop/DVL`. |
-| C1b R1 manual launches (5) | Owner on Mac, with the launch-evidence kit (`1a6cf525…`) | 0/5. Discovery **done and reviewed (OK)** on 2026-10-25: Electron 44.7.2; executable `5ebaa92f…`; 1 cache ZIP found; app log present (239 lines, ends with a newline); no errors. Next: step 2, preflight. |
+| C1b R1 manual launches (5) | Owner on Mac, with the launch-evidence kit (`1a6cf525…`) | 0/5. Discovery **done and reviewed (OK)** on 2026-10-25: Electron 44.7.2; executable `5ebaa92f…`; 1 cache ZIP found; app log present (239 lines, ends with a newline); no errors. Preflight **done and reviewed (OK)**: hashes bound; macOS 13.7.8 22H730, Node v26.8.1; the cache ZIP binaries match the installed ones; native reader `5ecce79a…` matches its integrity record. Next: **launch 1**. |
 | C1b independent review | to be assigned | WAITING (after the launches) |
 | Lanes | D-07 | Code = Claude Code / Codex (cross-review each other); ChatGPT = context, specs, independent review; Claude (this) = lead + evidence; owner = Mac, approvals |
 | H-01 independent check of the repo migration | Codex (handoff `docs/handoffs/H-01_*.md`) | READY to send |
@@ -125,7 +125,7 @@ Superseded *for execution status* does not mean superseded as product requiremen
 
 ## 4. Exact next action
 
-1. **Owner: C1b preflight** (step 2 in `docs/RUN_C1B_LAUNCHES.md`, with the real cache path). It launches nothing. Send the output to the lead.
+1. **Owner: C1b launch 1** (step 3 in `docs/RUN_C1B_LAUNCHES.md`). Send the terminal summary to the lead before launch 2.
 2. Owner: send H-01 to Codex, and H-02 + H-03 to ChatGPT.
 3. Lead: finish importing the DVL source documents found in `~/Downloads` (including the C-01..C-04 core-freeze-candidate files, which address F-18) into `history/`. Nothing is moved or deleted on the Mac.
 

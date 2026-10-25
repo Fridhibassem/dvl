@@ -1,0 +1,3494 @@
+{
+  "capturedAt": "2026-10-25T15:56:06.584Z",
+  "source": "/Users/user/Desktop/dvl-dsktop/dvl-desktop-C1b-v3-auth-repair1",
+  "logFile": "/Users/user/Library/Application Support/dvl-desktop/logs/dvl.log",
+  "environment": {
+    "node": "v26.8.1",
+    "platform": "darwin",
+    "arch": "x64",
+    "swVers": "ProductName:\t\tmacOS\nProductVersion:\t\t13.7.8\nBuildVersion:\t\t22H730",
+    "archCommand": "i386",
+    "unameMachine": "x86_64"
+  },
+  "runtime": {
+    "version": "44.7.2",
+    "dist": "/Users/user/Desktop/dvl-dsktop/dvl-desktop-C1b-v3-auth-repair1/node_modules/electron/dist",
+    "executable": "/Users/user/Desktop/dvl-dsktop/dvl-desktop-C1b-v3-auth-repair1/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron",
+    "executableSha256": "5ebaa92f307c3c128813c2a795ac0356842fa751334f38db28859dd95c4b83e2",
+    "distribution": {
+      "entries": [
+        {
+          "path": "Electron.app",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Electron Framework",
+          "type": "symlink",
+          "target": "Versions/Current/Electron Framework"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Helpers",
+          "type": "symlink",
+          "target": "Versions/Current/Helpers"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Libraries",
+          "type": "symlink",
+          "target": "Versions/Current/Libraries"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Resources",
+          "type": "symlink",
+          "target": "Versions/Current/Resources"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Electron Framework",
+          "type": "file",
+          "bytes": 217891108,
+          "mode": 493,
+          "sha256": "b8ec070c293bab58bc1b5762f87cf2cbbd45718545ddb823522d08a2c8ec2608"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Helpers",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Helpers/chrome_crashpad_handler",
+          "type": "file",
+          "bytes": 1263240,
+          "mode": 493,
+          "sha256": "6be4f94541649ce3ca17c2c2ebd95631fd1c94223c868bc21849fe828c8e0ba1"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/libffmpeg.dylib",
+          "type": "file",
+          "bytes": 2555716,
+          "mode": 493,
+          "sha256": "c1f47b298a3ca9d39fcda859729b9371386b3f9645c89e0296339f7f4b6de3fb"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/libvk_swiftshader.dylib",
+          "type": "file",
+          "bytes": 4563504,
+          "mode": 493,
+          "sha256": "b58d87e4dbdc31d3dddd1a97037892392a902c234c754a92cdf423a0d05129b5"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/vk_swiftshader_icd.json",
+          "type": "file",
+          "bytes": 110,
+          "mode": 420,
+          "sha256": "d717d915e31e7c27948b80b36ab34e2d897888114c5c7d0af835f93eb53e58f5"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/Info.plist",
+          "type": "file",
+          "bytes": 920,
+          "mode": 420,
+          "sha256": "391401023ab68397aa80e47fcfc727d05bae47dccc1e5d0811bb8bd2ab7f915e"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/MainMenu.nib",
+          "type": "file",
+          "bytes": 2005,
+          "mode": 420,
+          "sha256": "4b2168de2d6d9a09b20faaa23139d5f25f73b2595671de25872d191b6939d819"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/af.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/af.lproj/locale.pak",
+          "type": "file",
+          "bytes": 632257,
+          "mode": 420,
+          "sha256": "1e3c85f3d53ac661e035e01166a2faafba821a60780fdf8f88dc497658d787a0"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/af_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/af_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/af_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/af_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/af_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/af_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/am.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/am.lproj/locale.pak",
+          "type": "file",
+          "bytes": 1025252,
+          "mode": 420,
+          "sha256": "db080ebc3e8242316ad60ee8b655e9a773046cd9b0143512841a497bea3066e3"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/am_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/am_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/am_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/am_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/am_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/am_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ar.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ar.lproj/locale.pak",
+          "type": "file",
+          "bytes": 1125955,
+          "mode": 420,
+          "sha256": "defe16bb19a561c9e4b138b1674af37a9a69f7000e193e2617fb12c87477ffb1"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ar_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ar_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ar_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ar_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ar_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ar_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/bg.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/bg.lproj/locale.pak",
+          "type": "file",
+          "bytes": 1171480,
+          "mode": 420,
+          "sha256": "d9d984338d9b4ae822a06dc06fe6b09affa7c2e263a76a04e2d06fa6c948d37d"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/bg_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/bg_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/bg_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/bg_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/bg_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/bg_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/bn.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/bn.lproj/locale.pak",
+          "type": "file",
+          "bytes": 1504862,
+          "mode": 420,
+          "sha256": "5f6c3672c073968a3cc68f51f1433b7cc3c4bf1888f55169121292809ced66dd"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/bn_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/bn_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/bn_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/bn_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/bn_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/bn_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ca.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ca.lproj/locale.pak",
+          "type": "file",
+          "bytes": 712710,
+          "mode": 420,
+          "sha256": "a2f0b2ee162ae98d08613307e6ccae6777cd7722ed47c241bfd7de16e1a21466"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ca_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ca_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ca_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ca_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ca_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ca_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/chrome_100_percent.pak",
+          "type": "file",
+          "bytes": 662674,
+          "mode": 420,
+          "sha256": "f50e6f15a39f086092c26abdb922b298780b63decc316b798b5f0ad7a5468a2e"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/chrome_200_percent.pak",
+          "type": "file",
+          "bytes": 1337098,
+          "mode": 420,
+          "sha256": "d923367c81374695f88d6176aa6fe8d0c41b1a43f5188ef43c3f0a53dd06f96d"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/cs.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/cs.lproj/locale.pak",
+          "type": "file",
+          "bytes": 739491,
+          "mode": 420,
+          "sha256": "596bdb8f1051fcf37a5a2499f01ab16e833cf70b0f55f4ce6f4cda5b49b86a4b"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/cs_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/cs_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/cs_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/cs_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/cs_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/cs_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/da.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/da.lproj/locale.pak",
+          "type": "file",
+          "bytes": 662378,
+          "mode": 420,
+          "sha256": "433e45f504ad6b8f748c8968b6846146819affd495030a220b691fe7a5d4cb7d"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/da_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/da_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/da_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/da_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/da_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/da_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/de.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/de.lproj/locale.pak",
+          "type": "file",
+          "bytes": 713183,
+          "mode": 420,
+          "sha256": "a019c72a5126dedcb143edc6348d7dc800744bb1d3cf52a310f874123bff0441"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/de_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/de_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/de_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/de_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/de_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/de_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/el.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/el.lproj/locale.pak",
+          "type": "file",
+          "bytes": 1287465,
+          "mode": 420,
+          "sha256": "d6ca1cd3ee52c19be6e32514f4b2f18e3a6fb2653b60227e1541c39630acef41"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/el_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/el_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/el_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/el_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/el_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/el_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/en.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/en.lproj/locale.pak",
+          "type": "file",
+          "bytes": 584413,
+          "mode": 420,
+          "sha256": "e647fca0c580bd485a4e40705ed4ad87f0a72bc7e03c4858720c30d2e4f1269d"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/en_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/en_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/en_GB.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/en_GB.lproj/locale.pak",
+          "type": "file",
+          "bytes": 576988,
+          "mode": 420,
+          "sha256": "e6f4632ed53b6605221b2e704ea421f33ca4887f1c2e05c7b485421b52c274af"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/en_GB_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/en_GB_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/en_GB_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/en_GB_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/en_GB_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/en_GB_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/en_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/en_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/en_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/en_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/es.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/es.lproj/locale.pak",
+          "type": "file",
+          "bytes": 699818,
+          "mode": 420,
+          "sha256": "144109f3693d6284d6a4e065d3c1177dc3f7ba86fa43222a6cf66d79c6b38b24"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/es_419.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/es_419.lproj/locale.pak",
+          "type": "file",
+          "bytes": 703604,
+          "mode": 420,
+          "sha256": "0620beddd4f5e9d682a2aa3904832f655984a9533d21f0eeb00408abf1925db8"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/es_419_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/es_419_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/es_419_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/es_419_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/es_419_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/es_419_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/es_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/es_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/es_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/es_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/es_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/es_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/et.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/et.lproj/locale.pak",
+          "type": "file",
+          "bytes": 638956,
+          "mode": 420,
+          "sha256": "93deeaf354aacdfd56abb31176156189e1dc6a5635a05e2367e27c321427aa85"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/et_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/et_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/et_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/et_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/et_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/et_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fa.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fa.lproj/locale.pak",
+          "type": "file",
+          "bytes": 1057345,
+          "mode": 420,
+          "sha256": "71334a21c15f88f4a2bafd8acedf008d58a9b28c62a6796b0f9d5da1144e7f1a"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fa_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fa_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fa_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fa_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fa_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fa_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fi.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fi.lproj/locale.pak",
+          "type": "file",
+          "bytes": 651794,
+          "mode": 420,
+          "sha256": "a1b18b17cc1106244f1dace48c3ba1a92c62490e4bce195fa208aecb0c8f71a4"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fi_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fi_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fi_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fi_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fi_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fi_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fil.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fil.lproj/locale.pak",
+          "type": "file",
+          "bytes": 738500,
+          "mode": 420,
+          "sha256": "ec90ae9b3e5e460ae1687db6ee5caa6e139183a657080b624b22fea6efe9ba3f"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fil_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fil_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fil_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fil_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fil_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fil_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fr.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fr.lproj/locale.pak",
+          "type": "file",
+          "bytes": 758955,
+          "mode": 420,
+          "sha256": "c908a3940cc231ce78499451cda31139ff270f35afd08d6e5836639428a8dfc6"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fr_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fr_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fr_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fr_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fr_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/fr_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/gu.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/gu.lproj/locale.pak",
+          "type": "file",
+          "bytes": 1485480,
+          "mode": 420,
+          "sha256": "643d347eb6425b369f203ed707749c497dfac8d250e78ffbaca4a45b46247ed1"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/gu_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/gu_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/gu_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/gu_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/gu_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/gu_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/he.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/he.lproj/locale.pak",
+          "type": "file",
+          "bytes": 923406,
+          "mode": 420,
+          "sha256": "9d661c15c1103238ce353794b137424c99784e696227445eec4c7e44b2724199"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/he_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/he_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/he_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/he_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/he_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/he_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/hi.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/hi.lproj/locale.pak",
+          "type": "file",
+          "bytes": 1575308,
+          "mode": 420,
+          "sha256": "9f7bcdbe323c711f7d2dcf3a1fea9bfd17cffe7f30ecb66aeca25aa0b93780d7"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/hi_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/hi_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/hi_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/hi_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/hi_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/hi_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/hr.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/hr.lproj/locale.pak",
+          "type": "file",
+          "bytes": 711220,
+          "mode": 420,
+          "sha256": "4ba4b2c8a7841d5a3ed8e92674cae53c3df7b2af2bb3dd449f0fdf898956ed82"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/hr_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/hr_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/hr_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/hr_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/hr_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/hr_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/hu.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/hu.lproj/locale.pak",
+          "type": "file",
+          "bytes": 761163,
+          "mode": 420,
+          "sha256": "b4effdb0df85b386ba6f2be6b52aabcb45447dcdf826276c6950e7dde325d553"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/hu_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/hu_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/hu_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/hu_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/hu_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/hu_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/icudtl.dat",
+          "type": "file",
+          "bytes": 10875024,
+          "mode": 420,
+          "sha256": "da53f0b69843aaa43315f0f210a67e4a874b0be338f3dae08ff57b8afe76ab0d"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/id.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/id.lproj/locale.pak",
+          "type": "file",
+          "bytes": 633143,
+          "mode": 420,
+          "sha256": "96f11211f98e45d1f3feeea04950ffbfc6f53056b10c489af1565949782ac82f"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/id_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/id_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/id_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/id_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/id_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/id_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/it.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/it.lproj/locale.pak",
+          "type": "file",
+          "bytes": 689584,
+          "mode": 420,
+          "sha256": "94641a1f7113ee85b1bf52f503a1f212f72a9b0f8e5859d6e44f8afaaf7ce790"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/it_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/it_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/it_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/it_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/it_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/it_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ja.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ja.lproj/locale.pak",
+          "type": "file",
+          "bytes": 835810,
+          "mode": 420,
+          "sha256": "9d7f384c2d631deaabf6c9fb378b438547e9773a41e4bb48e87167db95fbddaf"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ja_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ja_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ja_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ja_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ja_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ja_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/kn.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/kn.lproj/locale.pak",
+          "type": "file",
+          "bytes": 1710175,
+          "mode": 420,
+          "sha256": "5275729cc054eb62f8377b69b45e84239a7e08a2230825496b2f1f6d4c367769"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/kn_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/kn_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/kn_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/kn_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/kn_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/kn_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ko.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ko.lproj/locale.pak",
+          "type": "file",
+          "bytes": 713268,
+          "mode": 420,
+          "sha256": "46559e543c794d0ca8848ec05fef3852769cf1f0f7536ca84b5fa8da31ffcf68"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ko_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ko_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ko_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ko_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ko_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ko_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/lt.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/lt.lproj/locale.pak",
+          "type": "file",
+          "bytes": 773841,
+          "mode": 420,
+          "sha256": "402fa83fb09dbb6d095fc08a0602b77e224d892345fb9b106ba194d5d03f67a3"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/lt_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/lt_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/lt_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/lt_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/lt_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/lt_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/lv.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/lv.lproj/locale.pak",
+          "type": "file",
+          "bytes": 771026,
+          "mode": 420,
+          "sha256": "92b9acba38310821e9060cb554f6523a454cc70998e6baadd328d3a6a3ceb7d4"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/lv_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/lv_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/lv_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/lv_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/lv_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/lv_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ml.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ml.lproj/locale.pak",
+          "type": "file",
+          "bytes": 1759838,
+          "mode": 420,
+          "sha256": "46e532cbb9584d279a201a4b9f19c198c7bc80b82aa3d39d4af109f77019b72e"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ml_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ml_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ml_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ml_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ml_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ml_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/mr.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/mr.lproj/locale.pak",
+          "type": "file",
+          "bytes": 1457577,
+          "mode": 420,
+          "sha256": "fe094e0d6d11111f949d78ee614f530567e6f583fa0cf2936e507906e6b6e41b"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/mr_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/mr_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/mr_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/mr_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/mr_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/mr_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ms.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ms.lproj/locale.pak",
+          "type": "file",
+          "bytes": 665961,
+          "mode": 420,
+          "sha256": "fb281323ea5bb88b353ea20472733563cb45d86e44af3b20657a9875b16fb240"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ms_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ms_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ms_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ms_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ms_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ms_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/nb.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/nb.lproj/locale.pak",
+          "type": "file",
+          "bytes": 633754,
+          "mode": 420,
+          "sha256": "29661ccfbb38a5cca1b226a1e9ff6e3aa3e2e88b2dc87922139412245ddd6ad5"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/nb_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/nb_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/nb_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/nb_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/nb_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/nb_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/nl.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/nl.lproj/locale.pak",
+          "type": "file",
+          "bytes": 660755,
+          "mode": 420,
+          "sha256": "c326cfa4ac58b5facb6e88489d9d8dc8e44975d35e45d6cc235c7b0435db7027"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/nl_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/nl_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/nl_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/nl_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/nl_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/nl_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/pl.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/pl.lproj/locale.pak",
+          "type": "file",
+          "bytes": 738298,
+          "mode": 420,
+          "sha256": "5c8155ba0156efdf02ee2f47608f8f50df45fa271f12e8ac37a4ced965daeafc"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/pl_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/pl_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/pl_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/pl_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/pl_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/pl_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/pt_BR.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/pt_BR.lproj/locale.pak",
+          "type": "file",
+          "bytes": 693297,
+          "mode": 420,
+          "sha256": "8891a567dc9978d08db75eb0f15002d84f35a2afa209c0628c4fdec86f470f74"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/pt_BR_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/pt_BR_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/pt_BR_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/pt_BR_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/pt_BR_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/pt_BR_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/pt_PT.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/pt_PT.lproj/locale.pak",
+          "type": "file",
+          "bytes": 697151,
+          "mode": 420,
+          "sha256": "60c975b06a1528777db8a45aa216724c57302d9a38f4ff316cb8ed2c1427165e"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/pt_PT_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/pt_PT_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/pt_PT_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/pt_PT_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/pt_PT_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/pt_PT_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/resources.pak",
+          "type": "file",
+          "bytes": 12398071,
+          "mode": 420,
+          "sha256": "b2ac67d0486055ba4418515fabacb7cd7eb3069f7deafaf421653267d053c64b"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ro.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ro.lproj/locale.pak",
+          "type": "file",
+          "bytes": 724159,
+          "mode": 420,
+          "sha256": "6d0a723bd507172da42ca40088443be5dd1abc727ab04aafcf27812d5c401c83"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ro_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ro_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ro_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ro_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ro_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ro_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ru.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ru.lproj/locale.pak",
+          "type": "file",
+          "bytes": 1194697,
+          "mode": 420,
+          "sha256": "075fdc5e44ad5e1d0d055f1019fd73eec4d59419a7c9d8e285a53d26fbf70243"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ru_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ru_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ru_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ru_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ru_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ru_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sk.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sk.lproj/locale.pak",
+          "type": "file",
+          "bytes": 751695,
+          "mode": 420,
+          "sha256": "d8d44bfc9ff3688dc2f7c6590ffb5b771cbc26154f90040db6e7fb668e126779"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sk_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sk_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sk_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sk_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sk_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sk_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sl.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sl.lproj/locale.pak",
+          "type": "file",
+          "bytes": 718884,
+          "mode": 420,
+          "sha256": "e593d8e41002b7985751459ee5e6a980f0e93e688834dfdff7659d22c703262f"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sl_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sl_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sl_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sl_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sl_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sl_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sr.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sr.lproj/locale.pak",
+          "type": "file",
+          "bytes": 1106461,
+          "mode": 420,
+          "sha256": "d5396bfe9e86b70a0292f20754796fffbaa278457bf33965d752e00dcd04e953"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sr_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sr_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sr_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sr_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sr_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sr_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sv.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sv.lproj/locale.pak",
+          "type": "file",
+          "bytes": 642502,
+          "mode": 420,
+          "sha256": "df2d102b8ce63b0612584c5a4da045c923ac4eb89491660324350abaec3d74b4"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sv_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sv_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sv_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sv_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sv_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sv_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sw.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sw.lproj/locale.pak",
+          "type": "file",
+          "bytes": 683595,
+          "mode": 420,
+          "sha256": "5074e8a81531152d346170094148eae526601c8d233c661deb1e7c748dc970a4"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sw_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sw_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sw_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sw_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sw_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/sw_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ta.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ta.lproj/locale.pak",
+          "type": "file",
+          "bytes": 1750171,
+          "mode": 420,
+          "sha256": "839e9a1d2e45821f44fb3b864a715bde0d35bc7dbda1742c20483dcebdbf9ea1"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ta_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ta_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ta_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ta_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ta_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ta_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/te.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/te.lproj/locale.pak",
+          "type": "file",
+          "bytes": 1620586,
+          "mode": 420,
+          "sha256": "4791af54ba16497bf01286b44d17ff7f2a53f4edf77f1b8c53024ef48e69ac71"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/te_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/te_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/te_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/te_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/te_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/te_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/th.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/th.lproj/locale.pak",
+          "type": "file",
+          "bytes": 1359671,
+          "mode": 420,
+          "sha256": "3789f3781d8da535db2533f04eed93dafe0555fb64418c3d34e68791754a6a9e"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/th_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/th_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/th_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/th_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/th_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/th_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/tr.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/tr.lproj/locale.pak",
+          "type": "file",
+          "bytes": 694625,
+          "mode": 420,
+          "sha256": "c82db7eff9091912b3330496f51125a15accd61895f912c740930d8341fc9bed"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/tr_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/tr_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/tr_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/tr_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/tr_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/tr_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/uk.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/uk.lproj/locale.pak",
+          "type": "file",
+          "bytes": 1205887,
+          "mode": 420,
+          "sha256": "18fd06c3a2aa9a96d16469c2b2f823f40a656639d218cf4e8f38dee0cf0e5ec9"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/uk_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/uk_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/uk_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/uk_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/uk_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/uk_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ur.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ur.lproj/locale.pak",
+          "type": "file",
+          "bytes": 1040891,
+          "mode": 420,
+          "sha256": "89e190404b9d2083a5dce37fa594c437f6000d2df6fb7ed76d417a8e2f8f1281"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ur_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ur_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ur_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ur_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ur_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ur_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/v8_context_snapshot.x86_64.bin",
+          "type": "file",
+          "bytes": 742456,
+          "mode": 420,
+          "sha256": "5005c7cf7d65112fa296d928629140a3659d1d55bec6b11da9008200995cdb90"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/vi.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/vi.lproj/locale.pak",
+          "type": "file",
+          "bytes": 825388,
+          "mode": 420,
+          "sha256": "480ddb1156587b2738e59ac571ca4c1aba0a60ff1bc26ec71aee7cb57e779b1b"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/vi_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/vi_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/vi_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/vi_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/vi_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/vi_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/zh_CN.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/zh_CN.lproj/locale.pak",
+          "type": "file",
+          "bytes": 589084,
+          "mode": 420,
+          "sha256": "7ac0f0760103c666bfe5ba561cebd94e92cf9323d0c41559d7a6b0e3a88b78e2"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/zh_CN_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/zh_CN_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/zh_CN_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/zh_CN_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/zh_CN_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/zh_CN_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/zh_TW.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/zh_TW.lproj/locale.pak",
+          "type": "file",
+          "bytes": 580718,
+          "mode": 420,
+          "sha256": "9183e91e36217fd0edc43207baf758da926f78cea27c1693b865294c759abe74"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/zh_TW_FEMININE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/zh_TW_FEMININE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/zh_TW_MASCULINE.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/zh_TW_MASCULINE.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/zh_TW_NEUTER.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/zh_TW_NEUTER.lproj/locale.pak",
+          "type": "file",
+          "bytes": 18,
+          "mode": 420,
+          "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/Current",
+          "type": "symlink",
+          "target": "A"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Helper (GPU).app",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Helper (GPU).app/Contents",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Helper (GPU).app/Contents/Info.plist",
+          "type": "file",
+          "bytes": 832,
+          "mode": 420,
+          "sha256": "5d5f4b055c19317ade0399989ce99a210a7b471a9cb6aa72a19c7a84f0aac27d"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Helper (GPU).app/Contents/MacOS",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Helper (GPU).app/Contents/MacOS/Electron Helper (GPU)",
+          "type": "file",
+          "bytes": 193680,
+          "mode": 493,
+          "sha256": "f42abe251f3b68b8a4cad576539741bc080385959760c9bce98be3aad542cff1"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Helper (GPU).app/Contents/PkgInfo",
+          "type": "file",
+          "bytes": 8,
+          "mode": 420,
+          "sha256": "82502191c9484b04d685374f9879a0066069c49b8acae7a04b01d38d07e8eca0"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Helper (Plugin).app",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Helper (Plugin).app/Contents",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Helper (Plugin).app/Contents/Info.plist",
+          "type": "file",
+          "bytes": 835,
+          "mode": 420,
+          "sha256": "345d730254acfadbf6db99d84c2bd82442ed69d13648169d1da6aefbc188bd2c"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Helper (Plugin).app/Contents/MacOS",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Helper (Plugin).app/Contents/MacOS/Electron Helper (Plugin)",
+          "type": "file",
+          "bytes": 193680,
+          "mode": 493,
+          "sha256": "d19368e8ef0cb2421a37e9c7281bfbe91d5f8f73dc3da58d6d51e41faeeaaf0b"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Helper (Plugin).app/Contents/PkgInfo",
+          "type": "file",
+          "bytes": 8,
+          "mode": 420,
+          "sha256": "82502191c9484b04d685374f9879a0066069c49b8acae7a04b01d38d07e8eca0"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Helper (Renderer).app",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Helper (Renderer).app/Contents",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Helper (Renderer).app/Contents/Info.plist",
+          "type": "file",
+          "bytes": 837,
+          "mode": 420,
+          "sha256": "33cb04a5fbb8cea228504c81abaa224b16e8ac1770c1620df49b2e791104238a"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Helper (Renderer).app/Contents/MacOS",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Helper (Renderer).app/Contents/MacOS/Electron Helper (Renderer)",
+          "type": "file",
+          "bytes": 193680,
+          "mode": 493,
+          "sha256": "d39b2c26d84203574c8616b5fbcba951a814628b8dc38e94d3fd12ed3bb46d28"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Helper (Renderer).app/Contents/PkgInfo",
+          "type": "file",
+          "bytes": 8,
+          "mode": 420,
+          "sha256": "82502191c9484b04d685374f9879a0066069c49b8acae7a04b01d38d07e8eca0"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Helper.app",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Helper.app/Contents",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Helper.app/Contents/Info.plist",
+          "type": "file",
+          "bytes": 826,
+          "mode": 420,
+          "sha256": "c1d0a91da16b4ea637fc10bcc3218cd2769cd43ba1190be028d9859d3987e873"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Helper.app/Contents/MacOS",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Helper.app/Contents/MacOS/Electron Helper",
+          "type": "file",
+          "bytes": 193680,
+          "mode": 493,
+          "sha256": "4452b429c764bbcdc5297f335d2528b54cc545640c7dcf34457ad8160a66982c"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Electron Helper.app/Contents/PkgInfo",
+          "type": "file",
+          "bytes": 8,
+          "mode": 420,
+          "sha256": "82502191c9484b04d685374f9879a0066069c49b8acae7a04b01d38d07e8eca0"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Mantle.framework",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Mantle.framework/Mantle",
+          "type": "symlink",
+          "target": "Versions/Current/Mantle"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Mantle.framework/Resources",
+          "type": "symlink",
+          "target": "Versions/Current/Resources"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Mantle.framework/Versions",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Mantle.framework/Versions/A",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Mantle.framework/Versions/A/Mantle",
+          "type": "file",
+          "bytes": 109052,
+          "mode": 493,
+          "sha256": "e32e1fe6d5266dc56d9912641aa588080dd8e3e062d685365a9e90e6df60ac71"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Mantle.framework/Versions/A/Resources",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Mantle.framework/Versions/A/Resources/Info.plist",
+          "type": "file",
+          "bytes": 1020,
+          "mode": 420,
+          "sha256": "e93f0b4aaebea9bc158392ffa0c1150c16a0f30aecf11501b7871ce485f1a823"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Mantle.framework/Versions/Current",
+          "type": "symlink",
+          "target": "A"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/ReactiveObjC.framework",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/ReactiveObjC.framework/ReactiveObjC",
+          "type": "symlink",
+          "target": "Versions/Current/ReactiveObjC"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/ReactiveObjC.framework/Resources",
+          "type": "symlink",
+          "target": "Versions/Current/Resources"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/ReactiveObjC.framework/Versions",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/ReactiveObjC.framework/Versions/A",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/ReactiveObjC.framework/Versions/A/ReactiveObjC",
+          "type": "file",
+          "bytes": 353856,
+          "mode": 493,
+          "sha256": "b42f19d2de7e3c8ac783bbe5e3248d2506cffb978d772f07fa78968d790d311a"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/ReactiveObjC.framework/Versions/A/Resources",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/ReactiveObjC.framework/Versions/A/Resources/Info.plist",
+          "type": "file",
+          "bytes": 1138,
+          "mode": 420,
+          "sha256": "4ded0fe1f4647f5b1862a2a98998aa7c3ade9bd925d097258e24667c446e7496"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/ReactiveObjC.framework/Versions/Current",
+          "type": "symlink",
+          "target": "A"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Squirrel.framework",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Squirrel.framework/Resources",
+          "type": "symlink",
+          "target": "Versions/Current/Resources"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Squirrel.framework/Squirrel",
+          "type": "symlink",
+          "target": "Versions/Current/Squirrel"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Squirrel.framework/Versions",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Squirrel.framework/Versions/A",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Squirrel.framework/Versions/A/Resources",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Squirrel.framework/Versions/A/Resources/Info.plist",
+          "type": "file",
+          "bytes": 1175,
+          "mode": 420,
+          "sha256": "f61ab349887360a2d84603ecff17ab6633cb7fe2e8e72861f4e38e9120f472bf"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Squirrel.framework/Versions/A/Resources/ShipIt",
+          "type": "file",
+          "bytes": 99948,
+          "mode": 493,
+          "sha256": "4cfde0b024691ae71a6525514536d6ec625112889727f2908ecc9be458e5ca95"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Squirrel.framework/Versions/A/Squirrel",
+          "type": "file",
+          "bytes": 231012,
+          "mode": 493,
+          "sha256": "2ce4bb49b78f520c5a7a125d878225a5e3a5337c2d4af833f74d050163fd4fda"
+        },
+        {
+          "path": "Electron.app/Contents/Frameworks/Squirrel.framework/Versions/Current",
+          "type": "symlink",
+          "target": "A"
+        },
+        {
+          "path": "Electron.app/Contents/Info.plist",
+          "type": "file",
+          "bytes": 2468,
+          "mode": 420,
+          "sha256": "5400fd43ed2717ed32d1df212e1eb42da227d0536668a055e7e3d30a14740006"
+        },
+        {
+          "path": "Electron.app/Contents/MacOS",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/MacOS/Electron",
+          "type": "file",
+          "bytes": 13076,
+          "mode": 493,
+          "sha256": "5ebaa92f307c3c128813c2a795ac0356842fa751334f38db28859dd95c4b83e2"
+        },
+        {
+          "path": "Electron.app/Contents/PkgInfo",
+          "type": "file",
+          "bytes": 8,
+          "mode": 420,
+          "sha256": "82502191c9484b04d685374f9879a0066069c49b8acae7a04b01d38d07e8eca0"
+        },
+        {
+          "path": "Electron.app/Contents/Resources",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/af.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/am.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/ar.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/bg.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/bn.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/ca.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/cs.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/da.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/de.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/default_app.asar",
+          "type": "file",
+          "bytes": 110862,
+          "mode": 420,
+          "sha256": "0eb2491b0a9ac94790389d39c09dd5005c6c1f0665842943829bbd0193f6cc4f"
+        },
+        {
+          "path": "Electron.app/Contents/Resources/el.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/electron.icns",
+          "type": "file",
+          "bytes": 272259,
+          "mode": 420,
+          "sha256": "5a9a78d54c157f55672afea37037464858a87fd5f276fc8206787f366ed684cf"
+        },
+        {
+          "path": "Electron.app/Contents/Resources/en.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/en_GB.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/es.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/es_419.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/et.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/fa.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/fi.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/fil.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/fr.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/gu.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/he.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/hi.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/hr.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/hu.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/id.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/it.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/ja.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/kn.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/ko.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/lt.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/lv.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/ml.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/mr.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/ms.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/nb.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/nl.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/pl.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/pt_BR.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/pt_PT.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/ro.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/ru.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/sk.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/sl.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/sr.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/sv.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/sw.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/ta.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/te.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/th.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/tr.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/uk.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/ur.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/vi.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/zh_CN.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "Electron.app/Contents/Resources/zh_TW.lproj",
+          "type": "directory",
+          "mode": 493
+        },
+        {
+          "path": "LICENSE",
+          "type": "file",
+          "bytes": 1096,
+          "mode": 420,
+          "sha256": "5154e165bd6c2cc0cfbcd8916498c7abab0497923bafcd5cb07673fe8480087d"
+        },
+        {
+          "path": "LICENSES.chromium.html",
+          "type": "file",
+          "bytes": 20115518,
+          "mode": 420,
+          "sha256": "3375e2a9bd7bc631738fde10be6548a76efe8cf5e4b8826b8140ba8b0c4d6353"
+        },
+        {
+          "path": "version",
+          "type": "file",
+          "bytes": 6,
+          "mode": 420,
+          "sha256": "6c2e974c7c389942acf1219ad8fccd94145bc04778fb735d68244686d80cc7b5"
+        }
+      ],
+      "treeSha256": "0ae27a2e4881e89f710085e12cf51b904e748754d5ba926e46a85b6ea4a0ff50"
+    },
+    "packageJsonSha256": "2dc6f7105e1b6b9db671ffe324bac13c8061126da142787cd39c1323641a8137",
+    "pathTxtSha256": "3e0e50495f130af5c4349169f9a109d7a1543b8eca72ec2b5c9b3e8028b7a596",
+    "nativeReaderSha256": "5ecce79a4e99691fe8aa45044451595689e21bbeb6f74399975577a83cf66605",
+    "nativeReaderIntegritySha256": "fb539a155484f27ac0d6ee06f521a86888a029d434b8a0881619e9b3743f8631"
+  },
+  "caches": [
+    {
+      "path": "/Users/user/Library/Caches/electron/7ed8101149447a6570a56a1b5036746257e2802bff7ff7a7abab321697eb0305/electron-v44.7.2-darwin-x64.zip",
+      "bytes": 134104866,
+      "sha256": "915cb638692e3595926fa64903ee0562c3c0c5a1febb84724175756ca2f0f3b7",
+      "binaryComparisons": [
+        {
+          "entry": "Electron.app/Contents/MacOS/Electron",
+          "bytes": 13076,
+          "sha256": "5ebaa92f307c3c128813c2a795ac0356842fa751334f38db28859dd95c4b83e2",
+          "matchesInstalled": true
+        },
+        {
+          "entry": "Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Electron Framework",
+          "bytes": 217891108,
+          "sha256": "b8ec070c293bab58bc1b5762f87cf2cbbd45718545ddb823522d08a2c8ec2608",
+          "matchesInstalled": true
+        }
+      ],
+      "limit": "Current cache archive: executable and Electron Framework match installed files. This is not retrospective proof of the download or vendor provenance."
+    }
+  ],
+  "baselineLog": {
+    "bytes": 24799,
+    "newlineCount": 239,
+    "logicalLineCount": 239,
+    "endsWithNewline": true,
+    "sha256": "0ab80e3ddd7b715568250334847a581d7c31e21b29fbffa9e912f7b244e060f0",
+    "device": "16777220",
+    "inode": "14168579"
+  },
+  "status": "candidate; automated Mac qualification PASS; manual launches 0/5",
+  "scope": "Identity measured now, not a retrospective hash from the qualification run. No app process was launched by preflight."
+}

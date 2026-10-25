@@ -20,3 +20,4 @@
 - **2026-10-25 (MS-12).** Owner decisions D-16 (Rooms differ by type; Database Room), D-17 (outer sidebar; multi-provider roles; per-provider skills; Design Room has no code), D-18 (layout by prototype). Lead D-19 (MVP sidebar honesty and build order). Handoff H-03 issued.
 - **2026-10-25 (MS-13).** Launch kit received (`1a6cf525…` verified; 7/7 internal hashes). Inspected: writes only to the given evidence folder; no hard-coded old paths. Imported to `kits/`. D-12 procedure in `docs/RUN_C1B_LAUNCHES.md`. F-17 resolved. C1b is ready for discovery.
 - **2026-10-25 (MS-14).** C1b discovery run by the owner and reviewed OK (`evidence/mac/C1b-r1-launches/00-discovery-…json`). Preflight command finalized.
+- **2026-10-25 (MS-15).** C1b preflight run by the owner and reviewed OK. Evidence imported (SHA256SUMS verified). F-12 resolved; F-07 partly resolved. Next: launch 1.
