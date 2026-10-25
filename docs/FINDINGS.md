@@ -46,9 +46,9 @@ finding closes only through its own lane, with evidence and independent review.
 | ID | Question | Status |
 |---|---|---|
 | P-01 | Can the user add, remove or hide Rooms during a project? | **DECIDED: NO** (owner, 2026-10-25 16:28; D-13). DVL alone sets the Rooms. |
-| P-02 | Room mapping per project type (web app, mobile, website, presentation, visual) and the fallback. RS-0 may say "not yet". | OPEN: owner |
-| P-04 | (Interaction settled by D-15: no rotation; the clicked Room comes forward over the others; X returns it.) Rooms layout: a **full circle around the DVL core** (owner's visual reference) or the **semi-circle** in product baseline §4? (The centre cube is the DVL logo: owner, 16:40.) | OPEN: owner |
-| P-03 | Which sidebar items (Settings, Providers, Skills, Toolbox) are visible in the MVP, and whether unavailable ones are hidden, disabled or explained. | OPEN: owner |
+| P-02 | Room mapping per project type | **DECIDED: differs by type, with a Database Room when needed** (D-16). The exact table is to be specified (H-03). |
+| P-04 | **DEFERRED to design prototyping (D-18).** (Interaction settled by D-15: no rotation; the clicked Room comes forward over the others; X returns it.) Rooms layout: a **full circle around the DVL core** (owner's visual reference) or the **semi-circle** in product baseline §4? (The centre cube is the DVL logo: owner, 16:40.) | OPEN: owner |
+| P-03 | Sidebar in the MVP | **DECIDED**: outer app sidebar with 4 items, multiple providers with roles, skills per provider (D-17); all visible, only implemented parts active (D-19). |
 
 ## Architecture (imported from Full Resume 2026-10-12 §16–18; none accepted)
 

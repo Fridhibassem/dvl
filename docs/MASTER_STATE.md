@@ -120,12 +120,13 @@ Superseded *for execution status* does not mean superseded as product requiremen
 | Lanes | D-07 | Code = Claude Code / Codex (cross-review each other); ChatGPT = context, specs, independent review; Claude (this) = lead + evidence; owner = Mac, approvals |
 | H-01 independent check of the repo migration | Codex (handoff `docs/handoffs/H-01_*.md`) | READY to send |
 | H-02 RS-0 Rooms shell spec (no code) | ChatGPT (handoff `docs/handoffs/H-02_*.md`) | READY to send |
+| H-03 Rooms by type, Database Room, sidebar/providers/skills spec (no code) | ChatGPT (`docs/handoffs/H-03_*.md`) | READY to send |
 | Q-02 product and architecture questions | ChatGPT | **ANSWERED** by `docs/handoffs/A-02_*.md`. Imported into FINDINGS F-17..F-22 and P-01..P-02. A-02 is an answer, not a second Master State. |
 
 ## 4. Exact next action
 
 1. **Owner: upload `DVL_C1B_R1_LAUNCH_EVIDENCE_KIT.zip`** (SHA-256 `1a6cf525…`; probably in Downloads or a ChatGPT download). The lead verifies the hash, inspects every path the kit assumes and where it writes, then fixes the launch procedure (D-12) before discovery.
-2. Owner: send H-01 to Codex and H-02 to ChatGPT (H-02 now has to respect the Live Product limit in PLAN RS-0).
+2. Owner: send H-01 to Codex, and H-02 + H-03 to ChatGPT (H-02 now has to respect the Live Product limit in PLAN RS-0).
 3. Owner: upload the missing sources: `we_continue_from_here_phase_B_frozen_next_C (1).md`, product state `_AR`, `DVL_SECURITY_REVIEW_AUDIT_INDIVIDUAL_PLUS_MASTER_STATE_2026-10-11`, `DVL_ETAPE_PAR_ETAPE_BUILD_HANDOFF_V1`, the Farmer / Smart Décalage file (`__________________DVL.md`) and the Oct 13 core-freeze-candidate (C-01..C-04) if found.
 4. Then C1b: discovery, then preflight, then launches 1 to 5, per the reconciled procedure.
 
