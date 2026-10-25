@@ -4,7 +4,7 @@ The single repository for DVL code. It replaces scattered ZIP packages: every
 delivered version is one commit plus one tag, imported byte-for-byte.
 
 **Project state starts at [`docs/MASTER_STATE.md`](docs/MASTER_STATE.md).**
-It is followed by `PLAN.md`, `FINDINGS.md`, `DECISIONS.md`, `EVIDENCE_INDEX.md`, `SOURCES_INDEX.md`
+It is followed by `PLAN.md`, `FINDINGS.md`, `DECISIONS.md`, `EVIDENCE_INDEX.md`, `SOURCES_INDEX.md`, `VERSIONS.md`
 and `CHANGELOG.md`. Verbatim governing and historical sources are in
 `docs/sources/` and acceptance records in `docs/gates/`. Everything old (superseded kits, old evidence, old state documents, drafts) is kept separately in `history/`, never mixed with current files.
 Owner rule: nothing is ever deleted; old material is labelled, not removed.
