@@ -12,3 +12,4 @@
 - **2026-10-25 (MS-4).** Pushed to GitHub `Fridhibassem/dvl` (main and archive branches). Tags could not be pushed from the lead's environment; `docs/VERSIONS.md` maps every tag to its commit and gives the owner a one-command tag push. Clean Mac copy written to the separate folder `~/Desktop/DVL`.
 - **2026-10-25 (MS-5).** The owner pushed all 16 tags from the Mac bundle; the lead verified 16/16 tag objects identical on GitHub. Repository consolidation complete.
 - **2026-10-25 (MS-6).** Imported A-02 (ChatGPT answers to Q-02). Added F-17..F-23 and P-01..P-03. D-12 fixes where the C1b launches run and where their evidence goes. RS-0's Live Product is limited to a static, read-only view. SOURCES_INDEX updated. C1b launches are blocked on the launch kit (F-17). Nothing accepted or frozen; nothing deleted.
+- **2026-10-25 (MS-7).** Owner decided P-01 = NO (D-13): the user cannot add, remove or hide Rooms.

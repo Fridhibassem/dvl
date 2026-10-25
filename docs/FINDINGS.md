@@ -45,7 +45,7 @@ finding closes only through its own lane, with evidence and independent review.
 
 | ID | Question | Status |
 |---|---|---|
-| P-01 | Can the user add, remove or hide Rooms during a project? What happens to active work when a Room is hidden? ChatGPT advises that hiding a view must never cancel work or delete state. | OPEN: owner |
+| P-01 | Can the user add, remove or hide Rooms during a project? | **DECIDED: NO** (owner, 2026-10-25 16:28; D-13). DVL alone sets the Rooms. |
 | P-02 | Room mapping per project type (web app, mobile, website, presentation, visual) and the fallback. RS-0 may say "not yet". | OPEN: owner |
 | P-03 | Which sidebar items (Settings, Providers, Skills, Toolbox) are visible in the MVP, and whether unavailable ones are hidden, disabled or explained. | OPEN: owner |
 
