@@ -107,7 +107,7 @@ Superseded *for execution status* does not mean superseded as product requiremen
 
 | Work | Owner / lane | Status |
 |---|---|---|
-| Repository consolidation (this repo) | Claude (lead) | **On GitHub `Fridhibassem/dvl`** (main and archive branches). Tags pending: the owner runs the one command in `VERSIONS.md`. Clean Mac copy in `~/Desktop/DVL`. |
+| Repository consolidation (this repo) | Claude (lead) | **DONE**: GitHub `Fridhibassem/dvl` (main, archive branches, all 16 tags; verified identical). Clean Mac copy in `~/Desktop/DVL`. |
 | C1b R1 manual launches (5) | Owner on Mac, with the launch-evidence kit (`1a6cf525…`) | 0/5. Next: `discover.cjs` (discovery only). |
 | C1b independent review | to be assigned | WAITING (after the launches) |
 | Lanes | D-07 | Code = Claude Code / Codex (cross-review each other); ChatGPT = context, specs, independent review; Claude (this) = lead + evidence; owner = Mac, approvals |
@@ -116,10 +116,8 @@ Superseded *for execution status* does not mean superseded as product requiremen
 
 ## 4. Exact next action
 
-1. Owner: publish the tags with the one command in `docs/VERSIONS.md`, from `~/Desktop/DVL`.
-2. `~/Desktop/DVL` is the clean Mac home (bundle and readable docs), kept apart from `dvl-dsktop`.
-3. Owner: upload `we_continue_from_here_phase_B_frozen_next_C (1).md` and the `_AR` product state so they can be added to `sources/`.
-4. Send handoff H-01 to Codex and H-02 to ChatGPT.
-5. Resume C1b: put the launch-evidence kit in `~/Desktop/dvl-dsktop`, check `shasum -c`, run `discover.cjs` only, and send the output for review.
+1. Owner: upload `we_continue_from_here_phase_B_frozen_next_C (1).md` and the `_AR` product state so they can be added to `sources/`.
+2. Send handoff H-01 to Codex and H-02 to ChatGPT.
+3. Resume C1b: put the launch-evidence kit in `~/Desktop/dvl-dsktop`, check `shasum -c`, run `discover.cjs` only, and send the output for review.
 
 See `PLAN.md`, `FINDINGS.md`, `DECISIONS.md`, `EVIDENCE_INDEX.md`, `SOURCES_INDEX.md` (where every old copy lives), `CHANGELOG.md`.

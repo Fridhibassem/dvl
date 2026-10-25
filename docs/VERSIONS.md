@@ -1,6 +1,6 @@
 # DVL — VERSIONS (tag → commit)
 
-GitHub may not show tags yet (they could not be pushed from the lead's environment). Every version can still be checked out by commit:
+All 16 tags are on GitHub. The owner published them from the Mac bundle on 2026-10-25, and the lead verified that all 16 tag objects match. Check out a version with `git checkout <tag>` or by commit:
 
 `git checkout <commit>` — the commits are all ancestors of `main` (spike/H3-main is on branch `archive/spike-main-H3`).
 
@@ -22,10 +22,3 @@ GitHub may not show tags yet (they could not be pushed from the lead's environme
 | `spike/H3-main` | `e55760f0e336a49ad291a1b5aa1aa226c270bcbb` |
 | `spike/H4-d92d063` | `d92d0636334a4342b917331fa8bbc2d7e24b9b6a` |
 | `spike/H4-evidence-05eef68` | `05eef688102bf43e80e37cc024fa2169b1b8e850` |
-
-To publish the tags from the owner's Mac (adds tags only, changes nothing else):
-
-```sh
-cd ~/Desktop/DVL && git clone dvl.bundle dvl-tags-tmp && cd dvl-tags-tmp
-git remote add github https://github.com/Fridhibassem/dvl && git push github --tags
-```
