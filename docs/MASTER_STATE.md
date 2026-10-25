@@ -113,6 +113,7 @@ Superseded *for execution status* does not mean superseded as product requiremen
 | Lanes | D-07 | Code = Claude Code / Codex (cross-review each other); ChatGPT = context, specs, independent review; Claude (this) = lead + evidence; owner = Mac, approvals |
 | H-01 independent check of the repo migration | Codex (handoff `docs/handoffs/H-01_*.md`) | READY to send |
 | H-02 RS-0 Rooms shell spec (no code) | ChatGPT (handoff `docs/handoffs/H-02_*.md`) | READY to send |
+| Q-02 product and architecture questions | ChatGPT (`docs/handoffs/Q-02_*.md`) | READY to send |
 
 ## 4. Exact next action
 
