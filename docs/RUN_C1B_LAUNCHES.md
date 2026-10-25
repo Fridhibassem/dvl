@@ -29,14 +29,14 @@ cd ~/Desktop/DVL && node kits/C1b-r1-launch-evidence-kit/discover.cjs "$HOME/Des
 
 Send the whole output to the lead. Do not continue until it has been reviewed.
 
-## Step 2: preflight (only after the review). The lead fills in the real cache path.
+## Step 2: preflight. Discovery was reviewed OK on 2026-10-25; the cache path below comes from it.
 
 ```sh
 cd ~/Desktop/DVL && node kits/C1b-r1-launch-evidence-kit/prepare-launches.cjs \
   "$HOME/Desktop/dvl-dsktop/dvl-desktop-C1b-v3-auth-repair1" \
   "$HOME/Library/Application Support/dvl-desktop/logs/dvl.log" \
   "$HOME/Desktop/DVL/evidence/c1b-r1-launches" \
-  "<CACHE ZIP PATH FROM DISCOVERY>"
+  "$HOME/Library/Caches/electron/7ed8101149447a6570a56a1b5036746257e2802bff7ff7a7abab321697eb0305/electron-v44.7.2-darwin-x64.zip"
 ```
 
 ## Step 3: launch N (1 to 5, one at a time, each reviewed before the next)

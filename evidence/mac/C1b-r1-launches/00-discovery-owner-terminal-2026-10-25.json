@@ -1,0 +1,29 @@
+{
+  "action": "Read-only discovery; no Electron require, download or app launch",
+  "source": "/Users/user/Desktop/dvl-dsktop/dvl-desktop-C1b-v3-auth-repair1",
+  "electronVersion": "44.7.2",
+  "executable": "/Users/user/Desktop/dvl-dsktop/dvl-desktop-C1b-v3-auth-repair1/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron",
+  "executableSha256": "5ebaa92f307c3c128813c2a795ac0356842fa751334f38db28859dd95c4b83e2",
+  "cacheDiscovery": {
+    "scannedRoots": [
+      "/Users/user/Library/Caches/electron"
+    ],
+    "matchingZips": [
+      "/Users/user/Library/Caches/electron/7ed8101149447a6570a56a1b5036746257e2802bff7ff7a7abab321697eb0305/electron-v44.7.2-darwin-x64.zip"
+    ],
+    "errors": [],
+    "note": "Candidate paths only; preflight verifies hashes and compares ZIP binaries with installed files."
+  },
+  "expectedAppLog": "/Users/user/Library/Application Support/dvl-desktop/logs/dvl.log",
+  "existingAppLog": {
+    "path": "/Users/user/Library/Application Support/dvl-desktop/logs/dvl.log",
+    "bytes": 24799,
+    "newlineCount": 239,
+    "logicalLineCount": 239,
+    "endsWithNewline": true,
+    "sha256": "0ab80e3ddd7b715568250334847a581d7c31e21b29fbffa9e912f7b244e060f0",
+    "device": "16777220",
+    "inode": "14168579"
+  },
+  "next": "Return this output before preflight or launch 1. If cache or log is missing, locate it; do not silently skip."
+}
