@@ -16,3 +16,4 @@
 - **2026-10-25 (MS-8).** Owner's Rooms visual reference added (product sources). P-04 opened (full circle vs semi-circle; visible core).
 - **2026-10-25 (MS-9).** Owner: the centre cube in the Rooms reference is the DVL logo.
 - **2026-10-25 (MS-10).** D-14: Rooms are clickable; clicking one brings it to the front.
+- **2026-10-25 (MS-11).** D-15: the clicked Room comes forward and covers the rest; X closes it and returns it to its place; the ring does not rotate.
