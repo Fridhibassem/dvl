@@ -15,3 +15,4 @@
 - **2026-10-25 (MS-7).** Owner decided P-01 = NO (D-13): the user cannot add, remove or hide Rooms.
 - **2026-10-25 (MS-8).** Owner's Rooms visual reference added (product sources). P-04 opened (full circle vs semi-circle; visible core).
 - **2026-10-25 (MS-9).** Owner: the centre cube in the Rooms reference is the DVL logo.
+- **2026-10-25 (MS-10).** D-14: Rooms are clickable; clicking one brings it to the front.

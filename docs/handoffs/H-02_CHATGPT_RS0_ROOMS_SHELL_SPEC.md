@@ -17,7 +17,7 @@ It must not come before the Kernel and mutation work in a way that breaks D-04.
 - Product baseline: `docs/sources/product/DVL_MASTER_PROJECT_STATE_V1_EN.md` §3–4, 7, 9, 12, 13
   (semi-circle layout, Room names above, click to bring forward inside the
   environment, sidebar with Settings, Providers, Skills, Toolbox).
-- Owner's visual reference: `docs/sources/product/DVL_ROOMS_VISUAL_REFERENCE_2026-10-25.jpg` (DVL core cube in the centre, Rooms as curved glass panels around it). The layout question is P-04.
+- Owner's visual reference: `docs/sources/product/DVL_ROOMS_VISUAL_REFERENCE_2026-10-25.jpg` (DVL core cube in the centre, Rooms as curved glass panels around it). The layout question is P-04. Owner decision D-14: Rooms are clickable, and clicking a Room brings it to the front.
 - Frozen B baseline (tag `desktop/B-repair-v3-FROZEN`) and the current candidate C1b R1.
 - The frozen-B harness rule: B's 24 tests stay unchanged except approved harness adaptations.
 
