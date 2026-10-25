@@ -121,4 +121,4 @@ Superseded *for execution status* does not mean superseded as product requiremen
 3. Send handoff H-01 to Codex and H-02 to ChatGPT.
 4. Resume C1b: put the launch-evidence kit in `~/Desktop/dvl-dsktop`, check `shasum -c`, run `discover.cjs` only, and send the output for review.
 
-See `PLAN.md`, `FINDINGS.md`, `DECISIONS.md`, `EVIDENCE_INDEX.md`, `CHANGELOG.md`.
+See `PLAN.md`, `FINDINGS.md`, `DECISIONS.md`, `EVIDENCE_INDEX.md`, `SOURCES_INDEX.md` (where every old copy lives), `CHANGELOG.md`.
